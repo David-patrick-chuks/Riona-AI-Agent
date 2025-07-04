@@ -1,2 +1,0 @@
-This is a sample text file ,
-this is what will be passed to the to train the model
