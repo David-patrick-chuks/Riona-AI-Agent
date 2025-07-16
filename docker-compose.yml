@@ -1,0 +1,13 @@
+services:
+  instagram-ai-mongodb:
+    image: mongodb/mongodb-community-server:latest
+    container_name: instagram-ai-mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - instagram-ai-network
+    restart: always
+
+networks:
+  instagram-ai-network:
+    external: true

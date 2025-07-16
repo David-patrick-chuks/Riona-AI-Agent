@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsc && npm run postbuild && node build/index.js",
+    "start": "npx tsc && npm run postbuild && node build/index.js",
     "postbuild": "copyfiles -u 3 src/Agent/characters/*.json build/Agent/characters",
-    "train-model": "tsc && node build/Agent/training/Model.js",
-    "train:link": "tsc && node build/Agent/training/WebsiteScraping.js",
-    "train:audio": "tsc && node build/Agent/training/TrainWithAudio.js"
+    "train-model": "npx tsc && node build/Agent/training/Model.js",
+    "train:link": "npx tsc && node build/Agent/training/WebsiteScraping.js",
+    "train:audio": "npx tsc && node build/Agent/training/TrainWithAudio.js"
   },
   "keywords": [],
   "author": "",

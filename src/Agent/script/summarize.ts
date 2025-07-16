@@ -61,10 +61,23 @@ const geminiApiKeys = [
 
 
 let currentApiKeyIndex = 0; // Keeps track of the current API key in use
+let triedApiKeys = new Set<number>(); // Keep track of which keys we've tried in one request cycle
 
 // Function to get the next API key in the list
 const getNextApiKey = () => {
+    // Add the current key to tried keys
+    triedApiKeys.add(currentApiKeyIndex);
+
+    // Move to next key
     currentApiKeyIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length; // Circular rotation of API keys
+
+    // Check if we've tried all keys
+    if (triedApiKeys.size >= geminiApiKeys.length) {
+        // All keys have been tried, reset tracking and throw error
+        triedApiKeys.clear();
+        throw new Error("All API keys have reached their rate limits. Please try again later.");
+    }
+
     return geminiApiKeys[currentApiKeyIndex];
 };
 
@@ -148,18 +161,30 @@ export async function generateTrainingPrompt(transcript: string, prompt: string 
         const data = JSON.parse(responseText);
 
         return data;
-
     } catch (error) {
         if (error instanceof Error) {
             if (error.message.includes("429 Too Many Requests")) {
-                logger.error(`---${currentApiKeyName} limit exhausted, switching to the next API key...`);
-                geminiApiKey = getNextApiKey();
-                currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
-                return generateTrainingPrompt(transcript, prompt);
+                logger.error(`---${currentApiKeyName} limit exhausted, switching to the next API key...`); try {
+                    geminiApiKey = getNextApiKey();
+                    currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
+                    return generateTrainingPrompt(transcript, prompt);
+                } catch (keyError) {
+                    // This catches the error when all keys have been tried
+                    if (keyError instanceof Error) {
+                        logger.error(keyError.message);
+                        return `Error: ${keyError.message}`;
+                    } else {
+                        logger.error("Unknown error when trying to get next API key");
+                        return "Error: All API keys have reached their rate limits. Please try again later.";
+                    }
+                }
             } else if (error.message.includes("503 Service Unavailable")) {
                 logger.error("Service is temporarily unavailable. Retrying...");
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 return generateTrainingPrompt(transcript, prompt);
+            } else if (error.message.includes("All API keys have reached their rate limits")) {
+                logger.error(error.message);
+                return `Error: ${error.message}`;
             } else {
                 logger.error("Error generating training prompt:", error.message);
                 return `An error occurred: ${error.message}`;

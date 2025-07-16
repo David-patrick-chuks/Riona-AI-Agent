@@ -70,9 +70,24 @@ export async function loadCookies(cookiesPath: string): Promise<any[]> {
     }
 }
 
+// Set to track which API keys have been tried
+const triedApiKeys = new Set<number>();
+
 // Function to get the next API key in the list
 export const getNextApiKey = (currentApiKeyIndex: number) => {
+    // Add the current key to tried keys
+    triedApiKeys.add(currentApiKeyIndex);
+
+    // Move to next key
     currentApiKeyIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length; // Circular rotation of API keys
+
+    // Check if we've tried all keys
+    if (triedApiKeys.size >= geminiApiKeys.length) {
+        // All keys have been tried, reset tracking and throw error
+        triedApiKeys.clear();
+        throw new Error("All API keys have reached their rate limits. Please try again later.");
+    }
+
     return geminiApiKeys[currentApiKeyIndex];
 };
 
@@ -81,13 +96,26 @@ export async function handleError(error: unknown, currentApiKeyIndex: number, sc
     if (error instanceof Error) {
         if (error.message.includes("429 Too Many Requests")) {
             logger.error(`---GEMINI_API_KEY_${currentApiKeyIndex + 1} limit exhausted, switching to the next API key...`);
-            const geminiApiKey = getNextApiKey(currentApiKeyIndex);
-            const currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
-            return runAgent(schema, prompt);
+            try {
+                const geminiApiKey = getNextApiKey(currentApiKeyIndex);
+                const currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
+                return runAgent(schema, prompt);
+            } catch (keyError) {
+                if (keyError instanceof Error) {
+                    logger.error("API key error:", keyError.message);
+                    return `Error: ${keyError.message}`;
+                } else {
+                    logger.error("Unknown error when trying to get next API key");
+                    return "Error: All API keys have reached their rate limits. Please try again later.";
+                }
+            }
         } else if (error.message.includes("503 Service Unavailable")) {
             logger.error("Service is temporarily unavailable. Retrying...");
             await new Promise(resolve => setTimeout(resolve, 5000));
             return runAgent(schema, prompt);
+        } else if (error.message.includes("All API keys have reached their rate limits")) {
+            logger.error(error.message);
+            return `Error: ${error.message}`;
         } else {
             logger.error(`Error generating training prompt: ${error.message}`);
             return `An error occurred: ${error.message}`;

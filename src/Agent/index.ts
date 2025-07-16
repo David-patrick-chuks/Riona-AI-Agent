@@ -7,9 +7,30 @@ import fs from "fs";
 import path from "path";
 import * as readlineSync from "readline-sync";
 
+// Track API key state across requests
+let currentAgentApiKeyIndex = 0;
+const triedAgentApiKeys = new Set<number>();
+
+// Function to get the next API key specifically for the agent
+const getNextAgentApiKey = () => {
+    // Add the current key to tried keys
+    triedAgentApiKeys.add(currentAgentApiKeyIndex);
+
+    // Move to next key
+    currentAgentApiKeyIndex = (currentAgentApiKeyIndex + 1) % geminiApiKeys.length;
+
+    // Check if we've tried all keys
+    if (triedAgentApiKeys.size >= geminiApiKeys.length) {
+        // All keys have been tried, reset tracking and throw error
+        triedAgentApiKeys.clear();
+        throw new Error("All API keys have reached their rate limits. Please try again later.");
+    }
+
+    return geminiApiKeys[currentAgentApiKeyIndex];
+};
+
 export async function runAgent(schema: InstagramCommentSchema, prompt: string): Promise<any> {
-    let currentApiKeyIndex = 0;  
-    let geminiApiKey = geminiApiKeys[currentApiKeyIndex];
+    let geminiApiKey = geminiApiKeys[currentAgentApiKeyIndex];
 
     if (!geminiApiKey) {
         logger.error("No Gemini API key available.");
@@ -39,7 +60,23 @@ export async function runAgent(schema: InstagramCommentSchema, prompt: string): 
 
         return data;
     } catch (error) {
-        await handleError(error, currentApiKeyIndex, schema, prompt, runAgent);
+        if (error instanceof Error && error.message.includes("429 Too Many Requests")) {
+            logger.error(`---GEMINI_API_KEY_${currentAgentApiKeyIndex + 1} limit exhausted, switching to the next API key...`);
+            try {
+                geminiApiKey = getNextAgentApiKey();
+                return runAgent(schema, prompt);
+            } catch (keyError) {
+                if (keyError instanceof Error) {
+                    logger.error("API key error:", keyError.message);
+                    return `Error: ${keyError.message}`;
+                } else {
+                    logger.error("Unknown error when trying to get next API key");
+                    return "Error: All API keys have reached their rate limits. Please try again later.";
+                }
+            }
+        } else {
+            return await handleError(error, currentAgentApiKeyIndex, schema, prompt, runAgent);
+        }
     }
 }
 
