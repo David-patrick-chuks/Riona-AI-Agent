@@ -15,6 +15,7 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:env": "node scripts/check-env.js",
+    "setup": "node scripts/setup.js",
     "recaptcha:dev": "TS_NODE_PROJECT=riona-recaptcha-model/tsconfig.json ts-node -r tsconfig-paths/register riona-recaptcha-model/src/scripts/start.ts",
     "recaptcha:train": "TS_NODE_PROJECT=riona-recaptcha-model/tsconfig.json ts-node -r tsconfig-paths/register riona-recaptcha-model/src/scripts/train.ts",
     "recaptcha:collect": "TS_NODE_PROJECT=riona-recaptcha-model/tsconfig.json ts-node -r tsconfig-paths/register riona-recaptcha-model/src/scripts/collect_data.ts",

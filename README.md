@@ -171,6 +171,7 @@ GitHub automation is planned for future development.
 - Lint: `npm run lint`
 - Format: `npm run format`
 - Env check: `npm run check:env`
+- Setup check: `npm run setup`
 
 ## Guides
 
@@ -194,6 +195,20 @@ This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is
 - `npm run recaptcha:collect`
 - `npm run recaptcha:build`
 - `npm run recaptcha:serve`
+
+## IG Run Profiles
+
+Set `IG_RUN_PROFILE` to tune behavior:
+- `safe`: slower, fewer actions
+- `standard`: balanced (default)
+- `aggressive`: faster, higher limits
+
+Overrides:
+- `IG_DAILY_MAX_ACTIONS`
+- `IG_MAX_POSTS_PER_RUN`
+- `IG_ACTION_DELAY_MIN_MS`
+- `IG_ACTION_DELAY_MAX_MS`
+- `IG_AGENT_INTERVAL_MS`
 
 ## Project Policies
 

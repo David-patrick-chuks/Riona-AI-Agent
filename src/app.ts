@@ -11,6 +11,7 @@ import { connectDB } from "./config/db";
 import apiRoutes from "./routes/api";
 import { getIgClient, closeIgClient } from "./client/Instagram";
 import { getBoolEnv, getNumberEnv } from "./utils/env";
+import { getIgProfile } from "./config/igProfile";
 // import { main as twitterMain } from './client/Twitter'; //
 // import { main as githubMain } from './client/GitHub'; //
 
@@ -62,7 +63,8 @@ const runInstagramOnce = async () => {
 };
 
 const runAgents = async () => {
-  const intervalMs = getNumberEnv("IG_AGENT_INTERVAL_MS", 30000);
+  const profile = getIgProfile();
+  const intervalMs = profile.intervalMs;
   while (true) {
     logger.info("Starting Instagram agent iteration...");
     let didRelogin = false;

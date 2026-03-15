@@ -7,6 +7,7 @@ import { Server } from "proxy-chain";
 import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
 import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount } from "../../utils";
+import { getIgProfile } from "../../config/igProfile";
 import { runAgent } from "../../Agent";
 import { getInstagramCommentSchema } from "../../Agent/schema";
 import readline from "readline";
@@ -416,14 +417,15 @@ export class IgClient {
             logger.warn("Skipping interactions because home feed is not ready.");
             return;
         }
-        const dailyLimit = Number(process.env.IG_DAILY_MAX_ACTIONS || 0);
+        const profile = getIgProfile();
+        const dailyLimit = profile.dailyMaxActions;
         const dailyState = await getIgDailyState();
         if (dailyLimit > 0 && dailyState.count >= dailyLimit) {
             logger.warn(`Daily action limit reached (${dailyState.count}/${dailyLimit}).`);
             return;
         }
         let postIndex = 1; // Start with the first post
-        const maxPosts = 20; // Limit to prevent infinite scrolling
+        const maxPosts = profile.maxPostsPerRun; // Limit to prevent infinite scrolling
         const page = this.page;
         while (postIndex <= maxPosts) {
             // Check for exit flag
@@ -554,7 +556,9 @@ export class IgClient {
                     }
                 }
                 // Wait before moving to the next post
-                const waitTime = Math.floor(Math.random() * 5000) + 5000;
+                const waitTime =
+                    Math.floor(Math.random() * (profile.maxDelayMs - profile.minDelayMs + 1)) +
+                    profile.minDelayMs;
                 console.log(
                     `Waiting ${waitTime / 1000} seconds before moving to the next post...`
                 );

@@ -13,6 +13,10 @@
 - `IG_AGENT_ENABLED` (true/false)
 - `IG_AGENT_INTERVAL_MS`
 - `IG_DAILY_MAX_ACTIONS`
+- `IG_RUN_PROFILE` (safe | standard | aggressive)
+- `IG_MAX_POSTS_PER_RUN`
+- `IG_ACTION_DELAY_MIN_MS`
+- `IG_ACTION_DELAY_MAX_MS`
 
 ## Sponsored content filters
 - `IG_AD_MARKERS`
