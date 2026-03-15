@@ -5,6 +5,7 @@
 [![CI](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml)
 
 ## Support the Project 🙌
+CA: smuCA77z3nkWKH7CUP7FVVDi5AnDoQY5pXEqksmpump
 
 ### 🤝 **Open to Collaboration**
 - [Twitter](https://twitter.com/david_patrick01)  - [Gmail](davidchuksdev@gmail.com)
