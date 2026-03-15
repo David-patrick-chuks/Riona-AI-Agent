@@ -156,6 +156,11 @@ GitHub automation is planned for future development.
 - Lint: `npm run lint`
 - Format: `npm run format`
 
+## Guides
+
+- `Guides/Instagram-Bot.md`
+- `Guides/Operations.md`
+
 ## Project Structure
 
 - **src/client**: Contains the main logic for interacting with social media platforms like Instagram.
