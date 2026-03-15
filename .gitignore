@@ -73,6 +73,7 @@ twitter.js
 .env
 .env.test
 .env.production
+DONATIONS_PRIVATE.md
 
 start.sh
 # parcel-bundler cache (https://parceljs.org/)

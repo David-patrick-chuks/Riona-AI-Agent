@@ -9,13 +9,7 @@
 ### 🤝 **Open to Collaboration**
 - [Twitter](https://twitter.com/david_patrick01)  - [Gmail](davidchuksdev@gmail.com)
 
-If you'd like to support the development of Instagram-AI-Agent, please consider contributing to the following wallet addresses:
-
-- **Bitcoin (BTC)**: 1GkWY6pjn7KoAkCnUab2MxnxeEQihknfUi
-- **Ethereum (ETH-erc20)**: 0xabb45f4d85e7d9db5de684c35ccde7239a167cbb
-- **Solana (SOL)**: EQV7fQ57zKNMFXy53WBfo2sCxtkRQVQLqj8sqWGnoyR
-
-Your support helps keep this project running and growing! 🚀
+If you'd like to support the project, see the private donations file maintained locally.
 
 
 ![Riona](riona.png)
