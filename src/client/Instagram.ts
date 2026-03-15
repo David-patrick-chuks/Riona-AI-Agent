@@ -1,40 +1,48 @@
 import { IgClient } from './IG-bot/IgClient';
 import logger from '../config/logger';
 
-let igClient: IgClient | null = null;
-let lastCredentials: { username: string, password: string } | null = null;
-let lastInitError: string | null = null;
-let lastInitAt: string | null = null;
-
-export const getIgClient = async (username?: string, password?: string): Promise<IgClient> => {
-    if (!igClient || (username && password && (!lastCredentials || lastCredentials.username !== username || lastCredentials.password !== password))) {
-        igClient = new IgClient(username, password);
-        if (username && password) {
-            lastCredentials = { username, password };
-        }
-        try {
-            await igClient.init();
-            lastInitError = null;
-            lastInitAt = new Date().toISOString();
-        } catch (error) {
-            logger.error("Failed to initialize Instagram client", error);
-            lastInitError = error instanceof Error ? error.message : String(error);
-            throw error;
-        }
-    }
-    return igClient;
+type ClientEntry = {
+    client: IgClient;
+    creds: { username: string; password: string };
+    lastInitError: string | null;
+    lastInitAt: string | null;
 };
 
-export const getIgClientStatus = () => ({
-    initialized: !!igClient,
-    lastInitAt,
-    lastInitError,
-});
+const igClients = new Map<string, ClientEntry>();
 
-export const closeIgClient = async () => {
-    if (igClient) {
-        await igClient.close();
-        igClient = null;
+export const getIgClient = async (username?: string, password?: string, accountKey: string = 'default'): Promise<IgClient> => {
+    const key = accountKey || 'default';
+    const entry = igClients.get(key);
+    if (!entry || (username && password && (entry.creds.username !== username || entry.creds.password !== password))) {
+        const client = new IgClient(username, password);
+        const creds = { username: username || '', password: password || '' };
+        try {
+            await client.init();
+            igClients.set(key, { client, creds, lastInitError: null, lastInitAt: new Date().toISOString() });
+        } catch (error) {
+            logger.error("Failed to initialize Instagram client", error);
+            igClients.set(key, { client, creds, lastInitError: error instanceof Error ? error.message : String(error), lastInitAt: null });
+            throw error;
+        }
+        return client;
+    }
+    return entry.client;
+};
+
+export const getIgClientStatus = (accountKey: string = 'default') => {
+    const entry = igClients.get(accountKey);
+    return {
+        initialized: !!entry,
+        lastInitAt: entry?.lastInitAt || null,
+        lastInitError: entry?.lastInitError || null,
+    };
+};
+
+export const closeIgClient = async (accountKey: string = 'default') => {
+    const entry = igClients.get(accountKey);
+    if (entry) {
+        await entry.client.close();
+        igClients.delete(accountKey);
     }
 };
 

@@ -18,6 +18,9 @@
 - `IG_ACTION_DELAY_MIN_MS`
 - `IG_ACTION_DELAY_MAX_MS`
 
+## Multi-account
+- `src/config/accounts.json` (see `src/config/accounts.example.json`)
+
 ## Sponsored content filters
 - `IG_AD_MARKERS`
 - `IG_AD_BUTTON_MARKERS`

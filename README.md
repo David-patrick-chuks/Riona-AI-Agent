@@ -223,6 +223,11 @@ Overrides:
 - `IG_ACTION_DELAY_MAX_MS`
 - `IG_AGENT_INTERVAL_MS`
 
+## Multi-Account Support
+
+Create `src/config/accounts.json` (not committed) based on `src/config/accounts.example.json`.
+Then pass `account` in `/api/login` to select which account to use.
+
 ## Project Policies
 
 - `CONTRIBUTING.md`

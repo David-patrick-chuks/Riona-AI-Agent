@@ -9,6 +9,7 @@ import { getLastRunSummary } from '../utils/igRunSummary';
 import multer from 'multer';
 import fs from 'fs/promises';
 import path from 'path';
+import { getAccount } from '../config/accounts';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -21,7 +22,7 @@ function requireAuth(req: Request, res: Response, next: Function) {
   if (!payload || typeof payload !== 'object' || !('username' in payload)) {
     return res.status(401).json({ error: 'Invalid token' });
   }
-  (req as any).user = { username: payload.username };
+  (req as any).user = { username: payload.username, account: (payload as any).account || 'default' };
   next();
 }
 
@@ -34,10 +35,11 @@ router.get('/status', (_req: Request, res: Response) => {
 });
 
 // Health endpoint
-router.get('/health', (_req: Request, res: Response) => {
+router.get('/health', (req: Request, res: Response) => {
+  const account = (req as any).user?.account || 'default';
   return res.json({
     dbConnected: mongoose.connection.readyState === 1,
-    igClient: getIgClientStatus(),
+    igClient: getIgClientStatus(account),
     geminiKeys: geminiApiKeys.length,
     lastIgRun: getLastRunSummary(),
   });
@@ -46,13 +48,23 @@ router.get('/health', (_req: Request, res: Response) => {
 // Login endpoint
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
+    const { username, password, account } = req.body;
+    const acct = account ? String(account) : undefined;
+    let u = username;
+    let p = password;
+    if (!u || !p) {
+      const fromFile = acct ? getAccount(acct) : null;
+      if (fromFile) {
+        u = fromFile.username;
+        p = fromFile.password;
+      }
+    }
+    if (!u || !p) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    const igClient = await getIgClient(username, password);
+    await getIgClient(u, p, acct || 'default');
     // Sign JWT and set as httpOnly cookie
-    const token = signToken({ username });
+    const token = signToken({ username: u, account: acct || 'default' });
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'lax',
@@ -74,7 +86,7 @@ router.get('/me', (req: Request, res: Response) => {
   if (!payload || typeof payload !== 'object' || !('username' in payload)) {
     return res.status(401).json({ error: 'Invalid token' });
   }
-  return res.json({ username: payload.username });
+  return res.json({ username: payload.username, account: (payload as any).account || 'default' });
 });
 
 // Endpoint to clear Instagram cookies
@@ -98,7 +110,8 @@ router.use(requireAuth);
 // Interact with posts endpoint
 router.post('/interact', async (req: Request, res: Response) => {
   try {
-    const igClient = await getIgClient((req as any).user.username);
+    const account = (req as any).user.account || 'default';
+    const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.interactWithPosts();
     return res.json({ message: 'Interaction successful' });
   } catch (error) {
@@ -114,7 +127,8 @@ router.post('/dm', async (req: Request, res: Response) => {
     if (!username || !message) {
       return res.status(400).json({ error: 'Username and message are required' });
     }
-    const igClient = await getIgClient((req as any).user.username);
+    const account = (req as any).user.account || 'default';
+    const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessage(username, message);
     return res.json({ message: 'Message sent successfully' });
   } catch (error) {
@@ -130,7 +144,8 @@ router.post('/dm-file', async (req: Request, res: Response) => {
     if (!file || !message) {
       return res.status(400).json({ error: 'File and message are required' });
     }
-    const igClient = await getIgClient((req as any).user.username);
+    const account = (req as any).user.account || 'default';
+    const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessagesFromFile(file, message, mediaPath);
     return res.json({ message: 'Messages sent successfully' });
   } catch (error) {
@@ -146,7 +161,8 @@ router.post('/post-photo', async (req: Request, res: Response) => {
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl is required' });
     }
-    const client = await getPosterClient();
+    const account = (req as any).user.account || 'default';
+    const client = await getPosterClient(undefined, undefined, account);
     const result = await client.postPhoto(imageUrl, caption || '');
     return res.json({ success: true, result });
   } catch (error) {
@@ -163,7 +179,8 @@ router.post('/post-photo-file', upload.single('image'), async (req: Request, res
     if (!file || !file.buffer) {
       return res.status(400).json({ error: 'image file is required' });
     }
-    const client = await getPosterClient();
+    const account = (req as any).user.account || 'default';
+    const client = await getPosterClient(undefined, undefined, account);
     const result = await client.postPhotoBuffer(file.buffer, caption);
     return res.json({ success: true, result });
   } catch (error) {
@@ -179,7 +196,8 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
     if (!imageUrl || !cronTime) {
       return res.status(400).json({ error: 'imageUrl and cronTime are required' });
     }
-    const client = await getPosterClient();
+    const account = (req as any).user.account || 'default';
+    const client = await getPosterClient(undefined, undefined, account);
     await client.schedulePost(imageUrl, caption || '', cronTime);
     return res.json({ success: true, message: 'Post scheduled' });
   } catch (error) {
@@ -232,9 +250,10 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
 });
 
 // Exit endpoint
-router.post('/exit', async (_req: Request, res: Response) => {
+router.post('/exit', async (req: Request, res: Response) => {
   try {
-    await closeIgClient();
+    const account = (req as any).user?.account || 'default';
+    await closeIgClient(account);
     return res.json({ message: 'Exiting successfully' });
   } catch (error) {
     logger.error('Exit error:', error);
