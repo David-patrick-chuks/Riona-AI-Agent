@@ -161,6 +161,7 @@ GitHub automation is planned for future development.
 - `Guides/Instagram-Bot.md`
 - `Guides/Operations.md`
 - `Guides/API.md`
+- `Guides/Env.md`
 
 ## Project Policies
 
