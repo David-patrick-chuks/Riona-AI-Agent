@@ -62,24 +62,85 @@ app.get('/dashboard', (_req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Riona Dashboard</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; color: #111; }
-    h1 { margin: 0 0 8px; }
-    .muted { color: #666; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
-    pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+    :root {
+      --pink: #ff5fa2;
+      --pink-dark: #c93a7a;
+      --rose: #fff0f6;
+      --ink: #1b0b14;
+    }
+    body {
+      font-family: "Plus Jakarta Sans", "Poppins", "Avenir Next", system-ui, sans-serif;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #ffd1e8 0%, transparent 60%),
+        radial-gradient(1000px 600px at 90% -20%, #ffe6f2 0%, transparent 55%),
+        linear-gradient(180deg, #fff8fb 0%, #ffffff 100%);
+    }
+    .wrap { max-width: 960px; margin: 32px auto; padding: 0 20px 40px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 22px 24px; border-radius: 16px;
+      background: linear-gradient(135deg, #ff79b7 0%, #ff4f97 100%);
+      color: white; box-shadow: 0 10px 30px rgba(255, 95, 162, .35);
+    }
+    header h1 { margin: 0; font-size: 28px; letter-spacing: 0.2px; }
+    header .tag { background: rgba(255,255,255,.2); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-top: 18px; }
+    .card {
+      background: white; border-radius: 14px; padding: 16px;
+      border: 1px solid #ffe0ef;
+      box-shadow: 0 6px 16px rgba(255, 95, 162, .08);
+    }
+    .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9a456a; }
+    .value { font-size: 20px; margin-top: 6px; font-weight: 700; }
+    .muted { color: #7a4860; }
+    pre {
+      background: var(--rose);
+      padding: 14px; border-radius: 12px;
+      border: 1px dashed #ffc4dd;
+      overflow: auto;
+    }
+    .pill {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      background: #ffe0ef; color: #b23a72; font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
   </style>
 </head>
 <body>
-  <h1>Riona Status</h1>
-  <div class="muted">Live status and last run summary</div>
-  <div class="card">
-    <div><strong>Database:</strong> <span id="db">loading...</span></div>
-    <div><strong>IG Client:</strong> <span id="ig">loading...</span></div>
-    <div><strong>Gemini Keys:</strong> <span id="keys">loading...</span></div>
-  </div>
-  <div class="card">
-    <div><strong>Last IG Run</strong></div>
-    <pre id="run">loading...</pre>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Riona Dashboard</h1>
+        <div class="muted">Live status + last run summary</div>
+      </div>
+      <div class="tag">Riona 🌸</div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="label">Database</div>
+        <div class="value" id="db">loading...</div>
+      </div>
+      <div class="card">
+        <div class="label">IG Client</div>
+        <div class="value" id="ig">loading...</div>
+      </div>
+      <div class="card">
+        <div class="label">Gemini Keys</div>
+        <div class="value" id="keys">loading...</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="label">Last IG Run</div>
+      <div class="pill" id="status-pill">loading...</div>
+      <pre id="run">loading...</pre>
+    </div>
   </div>
   <script>
     fetch('/api/health')
@@ -89,6 +150,7 @@ app.get('/dashboard', (_req, res) => {
         document.getElementById('ig').textContent = data.igClient?.initialized ? 'initialized' : 'not initialized';
         document.getElementById('keys').textContent = String(data.geminiKeys ?? 0);
         document.getElementById('run').textContent = JSON.stringify(data.lastIgRun ?? {}, null, 2);
+        document.getElementById('status-pill').textContent = data.lastIgRun ? 'ok' : 'no runs yet';
       })
       .catch(err => {
         document.getElementById('run').textContent = 'Failed to load /api/health';
@@ -98,7 +160,7 @@ app.get('/dashboard', (_req, res) => {
 </html>`);
 });
 
-app.get('*', (_req, res) => {
+app.get(/.*/, (_req, res) => {
     res.sendFile('index.html', { root: 'frontend/dist' });
 });
 
