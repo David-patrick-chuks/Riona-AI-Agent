@@ -223,6 +223,17 @@ Overrides:
 - `IG_ACTION_DELAY_MAX_MS`
 - `IG_AGENT_INTERVAL_MS`
 
+## Cooldown Mode
+
+If IG triggers a challenge or login error, the agent will enter cooldown and skip interactions.
+Configure via:
+- `IG_COOLDOWN_MINUTES`
+
+Manual trigger:
+```
+POST /api/cooldown { "minutes": 60 }
+```
+
 ## Multi-Account Support
 
 Create `src/config/accounts.json` (not committed) based on `src/config/accounts.example.json`.

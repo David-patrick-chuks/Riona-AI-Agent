@@ -261,6 +261,19 @@ router.post('/exit', async (req: Request, res: Response) => {
   }
 });
 
+// Trigger cooldown manually
+router.post('/cooldown', async (req: Request, res: Response) => {
+  try {
+    const minutes = Number(req.body?.minutes || 60);
+    const { setIgCooldown } = await import('../utils');
+    await setIgCooldown(minutes);
+    return res.json({ success: true, untilMinutes: minutes });
+  } catch (error) {
+    logger.error('Cooldown error:', error);
+    return res.status(500).json({ error: 'Failed to set cooldown' });
+  }
+});
+
 // Logout endpoint
 router.post('/logout', (req: Request, res: Response) => {
   res.clearCookie('token', {

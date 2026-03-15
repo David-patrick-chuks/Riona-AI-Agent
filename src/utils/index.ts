@@ -259,6 +259,31 @@ export const incrementIgDailyCount = async (by = 1): Promise<void> => {
   }
 };
 
+// ---------------------- IG cooldown ----------------------
+export const getIgCooldown = async (): Promise<{ until: number }> => {
+  const dataPath = path.join(__dirname, "../data/igCooldown.json");
+  try {
+    await fs.access(dataPath);
+    const data = await fs.readFile(dataPath, "utf-8");
+    const json = JSON.parse(data);
+    return { until: Number(json.until) || 0 };
+  } catch {
+    return { until: 0 };
+  }
+};
+
+export const setIgCooldown = async (minutes: number): Promise<void> => {
+  const dataPath = path.join(__dirname, "../data/igCooldown.json");
+  const dataDir = path.dirname(dataPath);
+  const until = Date.now() + minutes * 60 * 1000;
+  try {
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(dataPath, JSON.stringify({ until }, null, 2));
+  } catch (error) {
+    logger.error("Error writing igCooldown:", error);
+  }
+};
+
 // ---------------------- Scraped data utilities ----------------------
 export const saveScrapedData = async (link: string, content: string): Promise<void> => {
   const scrapedDataPath = path.join(__dirname, "../data/scrapedData.json");

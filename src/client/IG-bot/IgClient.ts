@@ -6,7 +6,7 @@ import UserAgent from "user-agents";
 import { Server } from "proxy-chain";
 import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
-import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount } from "../../utils";
+import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
 import { setLastRunSummary } from "../../utils/igRunSummary";
 import { runAgent } from "../../Agent";
@@ -413,6 +413,12 @@ export class IgClient {
 
     async interactWithPosts() {
         if (!this.page) throw new Error("Page not initialized");
+        const cooldown = await getIgCooldown();
+        if (cooldown.until > Date.now()) {
+            const minsLeft = Math.ceil((cooldown.until - Date.now()) / 60000);
+            logger.warn(`IG cooldown active for ~${minsLeft} more minutes. Skipping interactions.`);
+            return;
+        }
         const ready = await this.ensureHomeFeedReady();
         if (!ready) {
             logger.warn("Skipping interactions because home feed is not ready.");

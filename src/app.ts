@@ -12,6 +12,7 @@ import apiRoutes from "./routes/api";
 import { getIgClient, closeIgClient } from "./client/Instagram";
 import { getBoolEnv, getNumberEnv } from "./utils/env";
 import { getIgProfile } from "./config/igProfile";
+import { setIgCooldown } from "./utils";
 // import { main as twitterMain } from './client/Twitter'; //
 // import { main as githubMain } from './client/GitHub'; //
 
@@ -191,10 +192,12 @@ const runAgents = async () => {
             logger.info("Re-login attempt succeeded.");
           } catch (retryError) {
             logger.error("Re-login attempt failed:", retryError);
+            await setIgCooldown(getNumberEnv("IG_COOLDOWN_MINUTES", 60));
             logger.error("Stopping agent loop due to login/challenge requirement.");
             return;
           }
         } else {
+          await setIgCooldown(getNumberEnv("IG_COOLDOWN_MINUTES", 60));
           logger.error("Stopping agent loop due to login/challenge requirement.");
           return;
         }
