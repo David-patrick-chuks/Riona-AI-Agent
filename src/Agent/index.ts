@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import logger from "../config/logger";
 import { geminiApiKeys } from "../secret";
 import { handleError } from "../utils";
@@ -37,35 +37,40 @@ export async function runAgent(
   let geminiApiKey = geminiApiKeys[apiKeyIndex];
 
   if (!geminiApiKey) {
-    logger.error("No Gemini API key available.");
+    logger.error("No valid Gemini API key available.");
     return "No API key available.";
   }
 
   const generationConfig = {
     responseMimeType: "application/json",
-    responseSchema: schema,
+    responseJsonSchema: schema,
   };
 
-  const googleAI = new GoogleGenerativeAI(geminiApiKey);
-  const model = googleAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    generationConfig,
-  });
+  const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: generationConfig,
+    });
 
-    if (!result || !result.response) {
+    if (!result || !result.text) {
       logger.info("No response received from the AI model. || Service Unavailable");
       return "Service unavailable!";
     }
 
-    const responseText = result.response.text();
+    const responseText = result.text;
     const data = JSON.parse(responseText);
     return data;
   } catch (error: any) {
     // Rotate API key on 429
-    if (error instanceof Error && error.message.includes("429")) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("429") ||
+        error.message.toLowerCase().includes("resource_exhausted") ||
+        error.message.toLowerCase().includes("rate limit"))
+    ) {
       logger.error(
         `---GEMINI_API_KEY_${apiKeyIndex + 1} limit exhausted, switching to the next API key...`
       );
