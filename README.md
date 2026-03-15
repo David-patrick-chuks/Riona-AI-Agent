@@ -1,5 +1,4 @@
 
-![Riona](riona.png)
 
 ## Riona AI Agent 🌸
 
@@ -17,6 +16,9 @@ If you'd like to support the development of Instagram-AI-Agent, please consider 
 - **Solana (SOL)**: EQV7fQ57zKNMFXy53WBfo2sCxtkRQVQLqj8sqWGnoyR
 
 Your support helps keep this project running and growing! 🚀
+
+
+![Riona](riona.png)
 
 Riona AI Agent is an AI-powered automation tool designed for **Instagram and Twitter** to automate social media interactions such as posting, liking, and commenting. It leverages advanced AI models to generate engaging content, automate interactions, and manage social media accounts efficiently.
 
