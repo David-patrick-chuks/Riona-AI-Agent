@@ -60,6 +60,25 @@ GitHub automation is planned for future development.
    Xpassword= #Twitter password
 
    MONGODB_URI= #MongoDB URI
+   
+   # Gemini API keys (set only the ones you use)
+   GEMINI_API_KEY=your_primary_gemini_api_key
+   GEMINI_API_KEY_1=your_gemini_api_key_1
+   GEMINI_API_KEY_2=your_gemini_api_key_2
+   
+   # Optional: locale-specific ad/sponsored markers (comma-separated)
+   IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
+   IG_AD_BUTTON_MARKERS=learn more,shop now,sign up,install now,get offer,subscribe,book now
+
+   # Optional: run Instagram agent loop automatically
+   IG_AGENT_ENABLED=false
+   IG_AGENT_INTERVAL_MS=30000
+   
+   # Optional: daily limit for IG actions (likes/comments). 0 = unlimited
+   IG_DAILY_MAX_ACTIONS=0
+   
+   # Optional: logging backend ("winston" or "console")
+   LOGGER=console
    ```
 
 ## MongoDB Setup (Using Docker)
@@ -113,6 +132,21 @@ GitHub automation is planned for future development.
    npm start
    ```
    Note: The specific platform (Instagram, Twitter) and actions performed by the agent are typically configured through environment variables in the `.env` file, or by selections made if the application prompts for choices at runtime.
+
+2. **Log in and trigger interactions via API**:
+   ```sh
+   curl -X POST http://localhost:3000/api/login \
+     -H "Content-Type: application/json" \
+     -d '{"username":"YOUR_IG_USERNAME","password":"YOUR_IG_PASSWORD"}'
+   ```
+   ```sh
+   curl -X POST http://localhost:3000/api/interact \
+     -H "Content-Type: application/json" \
+     --cookie "token=YOUR_JWT_TOKEN"
+   ```
+
+3. **Optional: auto-run the Instagram agent loop**
+   Set `IG_AGENT_ENABLED=true` in `.env` to run the interaction loop continuously.
 
 ## Project Structure
 

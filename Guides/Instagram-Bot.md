@@ -23,6 +23,25 @@ Before running the bot, ensure the project has the following structure and files
   ```env
   IGusername=your_instagram_username
   IGpassword=your_instagram_password
+
+  # Optional: locale-specific ad/sponsored markers (comma-separated)
+  IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
+  IG_AD_BUTTON_MARKERS=learn more,shop now,sign up,install now,get offer,subscribe,book now
+
+  # Optional: run Instagram agent loop automatically
+  IG_AGENT_ENABLED=false
+  IG_AGENT_INTERVAL_MS=30000
+
+  # Optional: daily limit for IG actions (likes/comments). 0 = unlimited
+  IG_DAILY_MAX_ACTIONS=0
+
+  # Optional: logging backend ("winston" or "console")
+  LOGGER=console
+
+  # Gemini API keys (set only the ones you use)
+  GEMINI_API_KEY=your_primary_gemini_api_key
+  GEMINI_API_KEY_1=your_gemini_api_key_1
+  GEMINI_API_KEY_2=your_gemini_api_key_2
   ```
 - Ensure `src/secret/index.ts` exports these credentials correctly.
 
