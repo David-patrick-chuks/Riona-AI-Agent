@@ -10,7 +10,9 @@
     "train:youtube": "tsc && node build/Agent/training/youtubeURL.js",
     "test": "jest",
     "lint": "eslint . --ext .ts,.js",
-    "lint:fix": "eslint . --ext .ts,.js --fix"
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
@@ -71,8 +73,10 @@
     "@types/request": "^2.48.13",
     "@types/textract": "^2.4.5",
     "@types/user-agents": "^1.0.4",
+    "eslint-config-prettier": "^10.1.8",
     "eslint": "^9.35.0",
     "jest": "^30.3.0",
+    "prettier": "^3.6.2",
     "ts-jest": "^29.4.6"
   }
 }

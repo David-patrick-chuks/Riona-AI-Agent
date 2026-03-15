@@ -11,7 +11,7 @@ module.exports = {
     sourceType: "module",
   },
   plugins: ["@typescript-eslint"],
-  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
   ignorePatterns: ["build/", "dist/", "node_modules/"],
   rules: {
     "@typescript-eslint/no-explicit-any": "off",
