@@ -1,0 +1,16 @@
+name: Question
+description: Ask a question about usage or setup
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask your question with relevant details.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Environment details or logs (remove secrets).
