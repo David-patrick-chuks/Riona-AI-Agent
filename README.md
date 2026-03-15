@@ -23,7 +23,6 @@ Your support helps keep this project running and growing! 🚀
 Riona AI Agent is an AI-powered automation tool designed for **Instagram and Twitter** to automate social media interactions such as posting, liking, and commenting. It leverages advanced AI models to generate engaging content, automate interactions, and manage social media accounts efficiently.
 
 Before using the automation features, you can personalize the agent by training with the following, including:
-https://www.instagram.com/dreamlandofficial_1?igsh=NTZvcHRkNjlhYzhp
 - **YouTube Video URL** 🎥
 - **Audio File** 🎙️
 - **Portfolio or Website Link** 🌐
