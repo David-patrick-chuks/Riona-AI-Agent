@@ -4,10 +4,20 @@ services:
     container_name: instagram-ai-mongodb
     ports:
       - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
     networks:
       - instagram-ai-network
     restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   instagram-ai-network:
     external: true
+
+volumes:
+  mongodb_data:
