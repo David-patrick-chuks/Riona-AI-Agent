@@ -165,6 +165,7 @@ GitHub automation is planned for future development.
 - `Guides/Testing.md`
 - `Guides/CI.md`
 - `Guides/FAQ.md`
+- `Guides/Logging.md`
 
 ## Project Policies
 
