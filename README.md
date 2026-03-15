@@ -228,3 +228,12 @@ Thank you to all our supporters!
 <p align="center">
 Built with ❤️ by David Patrick 
 </p>
+
+## Community & Contact
+
+- GitHub Discussions: use the Discussions tab for Q&A
+- Issues: bug reports and feature requests
+- Twitter: @david_patrick01
+- Email: davidchuksdev@gmail.com
+
+Real-time chat is not set up yet. If you want a Discord server, open a discussion and we can spin it up based on interest.
