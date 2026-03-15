@@ -64,6 +64,7 @@ web_modules/
 # Output of 'npm pack'
 *.tgz
 .vscode
+.DS_Store
 # Yarn Integrity file
 .yarn-integrity
 img.js

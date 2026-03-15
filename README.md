@@ -1,4 +1,6 @@
 
+![Riona](riona.png)
+
 ## Riona AI Agent 🌸
 
 [![CI](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml)
