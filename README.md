@@ -161,6 +161,13 @@ GitHub automation is planned for future development.
 - `Guides/Instagram-Bot.md`
 - `Guides/Operations.md`
 
+## Project Policies
+
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+- `LICENSE`
+
 ## Project Structure
 
 - **src/client**: Contains the main logic for interacting with social media platforms like Instagram.
