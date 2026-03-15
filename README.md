@@ -157,7 +157,16 @@ GitHub automation is planned for future development.
      -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Hello IG!"}'
    ```
 
-5. **Schedule a photo post**
+5. **Post a photo (file upload)**
+   ```sh
+   curl -X POST http://localhost:3000/api/post-photo-file \\
+     -H "Content-Type: multipart/form-data" \\
+     --cookie "token=YOUR_JWT_TOKEN" \\
+     -F "image=@/path/to/photo.jpg" \\
+     -F "caption=Hello IG!"
+   ```
+
+6. **Schedule a photo post**
    ```sh
    curl -X POST http://localhost:3000/api/schedule-post \\
      -H "Content-Type: application/json" \\

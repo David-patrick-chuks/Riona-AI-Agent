@@ -1,13 +1,17 @@
 import express, { Request, Response } from 'express';
-import { getIgClient, closeIgClient, scrapeFollowersHandler } from '../client/Instagram';
+import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus } from '../client/Instagram';
 import { getPosterClient } from '../client/InstagramPoster';
 import logger from '../config/logger';
 import mongoose from 'mongoose';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
+import { geminiApiKeys } from '../secret';
+import { getLastRunSummary } from '../utils/igRunSummary';
+import multer from 'multer';
 import fs from 'fs/promises';
 import path from 'path';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // JWT Auth middleware
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -27,6 +31,16 @@ router.get('/status', (_req: Request, res: Response) => {
         dbConnected: mongoose.connection.readyState === 1
     };
     return res.json(status);
+});
+
+// Health endpoint
+router.get('/health', (_req: Request, res: Response) => {
+  return res.json({
+    dbConnected: mongoose.connection.readyState === 1,
+    igClient: getIgClientStatus(),
+    geminiKeys: geminiApiKeys.length,
+    lastIgRun: getLastRunSummary(),
+  });
 });
 
 // Login endpoint
@@ -138,6 +152,23 @@ router.post('/post-photo', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Post photo error:', error);
     return res.status(500).json({ error: 'Failed to post photo' });
+  }
+});
+
+// Post photo from file (multipart)
+router.post('/post-photo-file', upload.single('image'), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    const caption = req.body?.caption || '';
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'image file is required' });
+    }
+    const client = await getPosterClient();
+    const result = await client.postPhotoBuffer(file.buffer, caption);
+    return res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Post photo file error:', error);
+    return res.status(500).json({ error: 'Failed to post photo file' });
   }
 });
 

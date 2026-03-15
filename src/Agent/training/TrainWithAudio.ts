@@ -24,6 +24,15 @@ export class AIAudioFileService {
      */
     async processFile(filePath: string, displayName: string, mimeType: string): Promise<string> {
         try {
+            const maxMb = Number(process.env.TRAIN_MAX_FILE_MB || 10);
+            const dryRun = (process.env.TRAIN_DRY_RUN || 'false').toLowerCase() === 'true';
+            const stat = fs.statSync(filePath);
+            if (stat.size > maxMb * 1024 * 1024) {
+                throw new Error(`File exceeds max size of ${maxMb}MB`);
+            }
+            if (dryRun) {
+                return `DRY_RUN: would upload ${displayName} (${stat.size} bytes)`;
+            }
             let file = await this.ai.files.upload({
                 file: filePath,
                 config: { mimeType, displayName },

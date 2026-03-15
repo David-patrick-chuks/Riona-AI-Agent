@@ -10,6 +10,10 @@ export type SupportedFileType = 'pdf' | 'doc' | 'docx' | 'csv' | 'txt';
 
 export async function parseFile(fileBuffer: Buffer, fileType: SupportedFileType): Promise<string> {
     let content = '';
+    const maxMb = Number(process.env.TRAIN_MAX_FILE_MB || 10);
+    if (fileBuffer.length > maxMb * 1024 * 1024) {
+        throw new Error(`File exceeds max size of ${maxMb}MB`);
+    }
 
     if (fileType === 'pdf') {
         const fn =

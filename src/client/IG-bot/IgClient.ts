@@ -8,6 +8,7 @@ import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
 import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
+import { setLastRunSummary } from "../../utils/igRunSummary";
 import { runAgent } from "../../Agent";
 import { getInstagramCommentSchema } from "../../Agent/schema";
 import readline from "readline";
@@ -424,6 +425,17 @@ export class IgClient {
             logger.warn(`Daily action limit reached (${dailyState.count}/${dailyLimit}).`);
             return;
         }
+        const startedAt = new Date();
+        const summary = {
+            startedAt: startedAt.toISOString(),
+            finishedAt: '',
+            durationMs: 0,
+            postsVisited: 0,
+            likes: 0,
+            comments: 0,
+            skippedSponsored: 0,
+            errors: 0,
+        };
         let postIndex = 1; // Start with the first post
         const maxPosts = profile.maxPostsPerRun; // Limit to prevent infinite scrolling
         const page = this.page;
@@ -438,7 +450,7 @@ export class IgClient {
                 // Check if the post exists
                 if (!(await page.$(postSelector))) {
                     console.log("No more posts found. Ending iteration...");
-                    return;
+                    break;
                 }
 
                 // Skip sponsored/ads
@@ -446,6 +458,7 @@ export class IgClient {
                 if (sponsoredCheck.sponsored) {
                     const reason = sponsoredCheck.reason ? ` (${sponsoredCheck.reason})` : "";
                     console.log(`Post ${postIndex} appears sponsored. Skipping interactions.${reason}`);
+                    summary.skippedSponsored++;
                     await delay(1000);
                     await page.evaluate(() => {
                         window.scrollBy(0, window.innerHeight);
@@ -473,6 +486,7 @@ export class IgClient {
                     if (dailyLimit > 0) {
                         await incrementIgDailyCount(1);
                     }
+                    summary.likes++;
                 } else if (ariaLabel === "Unlike") {
                     console.log(`Post ${postIndex} is already liked.`);
                 } else {
@@ -540,6 +554,7 @@ export class IgClient {
                         if (dailyLimit > 0) {
                             await incrementIgDailyCount(1);
                         }
+                        summary.comments++;
                         // Wait for comment to be posted and UI to update
                         await delay(2000);
                     } else {
@@ -548,11 +563,12 @@ export class IgClient {
                 } else {
                     console.log("Comment box not found.");
                 }
+                summary.postsVisited++;
                 if (dailyLimit > 0) {
                     const updated = await getIgDailyState();
                     if (updated.count >= dailyLimit) {
                         logger.warn(`Daily action limit reached (${updated.count}/${dailyLimit}). Stopping.`);
-                        return;
+                        break;
                     }
                 }
                 // Wait before moving to the next post
@@ -572,9 +588,15 @@ export class IgClient {
                 postIndex++;
             } catch (error) {
                 console.error(`Error interacting with post ${postIndex}:`, error);
+                summary.errors++;
                 break;
             }
         }
+        const finishedAt = new Date();
+        summary.finishedAt = finishedAt.toISOString();
+        summary.durationMs = finishedAt.getTime() - startedAt.getTime();
+        setLastRunSummary(summary);
+        logger.info(`IG run summary: ${JSON.stringify(summary)}`);
     }
 
     async scrapeFollowers(targetAccount: string, maxFollowers: number) {

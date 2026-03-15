@@ -24,3 +24,7 @@
 
 ## Logging
 - `LOGGER` ("winston" | "console")
+
+## Training
+- `TRAIN_MAX_FILE_MB`
+- `TRAIN_DRY_RUN` (true/false)

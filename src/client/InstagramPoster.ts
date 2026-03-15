@@ -27,3 +27,8 @@ export const getPosterClient = async (
 
   return posterClient;
 };
+
+export const postPhotoBuffer = async (buffer: Buffer, caption: string = '') => {
+  const client = await getPosterClient();
+  return client.postPhotoBuffer(buffer, caption);
+};

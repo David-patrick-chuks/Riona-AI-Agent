@@ -8,6 +8,7 @@ interface IInstagramClient {
     ig: IgApiClient;
     login(): Promise<void>;
     postPhoto(url: string, caption?: string): Promise<MediaRepositoryConfigureResponseRootObject>;
+    postPhotoBuffer(buffer: Buffer, caption?: string): Promise<MediaRepositoryConfigureResponseRootObject>;
     schedulePost(url: string, caption: string, cronTime: string): Promise<void>;
 }
 
@@ -50,6 +51,19 @@ export class InstagramClient implements IInstagramClient {
             caption,
         });
 
+        console.log("Photo posted successfully!");
+        return response;
+    }
+
+    async postPhotoBuffer(buffer: Buffer, caption: string = ''): Promise<MediaRepositoryConfigureResponseRootObject> {
+        if (!buffer || buffer.length === 0) {
+            throw new Error("Image buffer is required.");
+        }
+        console.log("Uploading photo from buffer...");
+        const response = await this.ig.publish.photo({
+            file: buffer,
+            caption,
+        });
         console.log("Photo posted successfully!");
         return response;
     }

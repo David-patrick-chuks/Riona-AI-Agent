@@ -31,6 +31,17 @@ const processAudioFile = async (fileName: string): Promise<void> => {
     }
 
     // Upload the audio file with the correct MIME type
+    const maxMb = Number(process.env.TRAIN_MAX_FILE_MB || 10);
+    const dryRun = (process.env.TRAIN_DRY_RUN || 'false').toLowerCase() === 'true';
+    const stat = fs.statSync(filePath);
+    if (stat.size > maxMb * 1024 * 1024) {
+      throw new Error(`File exceeds max size of ${maxMb}MB`);
+    }
+    if (dryRun) {
+      console.log(`DRY_RUN: would upload ${fileName} (${stat.size} bytes)`);
+      return;
+    }
+
     let file = await ai.files.upload({
       file: filePath,
       config: { mimeType: mimeType, displayName: "Audio sample" },
