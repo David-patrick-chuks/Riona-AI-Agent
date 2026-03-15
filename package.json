@@ -76,7 +76,7 @@
     "@types/textract": "^2.4.5",
     "@types/user-agents": "^1.0.4",
     "eslint-config-prettier": "^10.1.8",
-    "eslint": "^9.35.0",
+    "eslint": "^10.0.3",
     "jest": "^30.3.0",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.6"
