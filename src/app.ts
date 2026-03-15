@@ -9,6 +9,7 @@ import logger, { setupErrorHandlers } from "./config/logger";
 import { setup_HandleError } from "./utils";
 import { connectDB } from "./config/db";
 import apiRoutes from "./routes/api";
+import { getIgClient, closeIgClient } from "./client/Instagram";
 // import { main as twitterMain } from './client/Twitter'; //
 // import { main as githubMain } from './client/GitHub'; //
 
@@ -54,30 +55,54 @@ app.get('*', (_req, res) => {
     res.sendFile('index.html', { root: 'frontend/dist' });
 });
 
-/*
+const runInstagramOnce = async () => {
+  const igClient = await getIgClient(process.env.IGusername, process.env.IGpassword);
+  await igClient.interactWithPosts();
+};
+
 const runAgents = async () => {
+  const intervalMs = Number(process.env.IG_AGENT_INTERVAL_MS || 30000);
   while (true) {
     logger.info("Starting Instagram agent iteration...");
-    await runInstagram();
-    logger.info("Instagram agent iteration finished.");
+    try {
+      let didRelogin = false;
+      await runInstagramOnce();
+      logger.info("Instagram agent iteration finished.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("Instagram agent iteration failed:", error);
+      if (message.toLowerCase().includes("login") || message.toLowerCase().includes("challenge")) {
+        if (!didRelogin) {
+          didRelogin = true;
+          logger.warn("Attempting one re-login before stopping the loop...");
+          try {
+            await closeIgClient();
+            await runInstagramOnce();
+            logger.info("Re-login attempt succeeded.");
+          } catch (retryError) {
+            logger.error("Re-login attempt failed:", retryError);
+            logger.error("Stopping agent loop due to login/challenge requirement.");
+            return;
+          }
+        } else {
+          logger.error("Stopping agent loop due to login/challenge requirement.");
+          return;
+        }
+      }
+    }
 
-    // logger.info("Starting Twitter agent...");
-    // await twitterMain();
-    // logger.info("Twitter agent finished.");
-
-    // logger.info("Starting GitHub agent...");
-    // await githubMain();
-    // logger.info("GitHub agent finished.");
-
-    // Wait for 30 seconds before next iteration
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    // Wait before next iteration
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 };
 
-runAgents().catch((error) => {
-  setup_HandleError(error, "Error running agents:");
-});
-*/
+if (process.env.IG_AGENT_ENABLED === "true") {
+  runAgents().catch((error) => {
+    setup_HandleError(error, "Error running agents:");
+  });
+} else {
+  logger.warn("Instagram automation is disabled. Set IG_AGENT_ENABLED=true to start the agent loop.");
+}
 
 // Error handling
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
