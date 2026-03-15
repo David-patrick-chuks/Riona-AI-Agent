@@ -9,7 +9,14 @@ export async function Instagram_cookiesExist(): Promise<boolean> {
     await fs.access(cookiesPath);
 
     const cookiesData = await fs.readFile(cookiesPath, "utf-8");
-    const cookies = JSON.parse(cookiesData);
+    let cookies: any[] = [];
+    try {
+      cookies = JSON.parse(cookiesData);
+    } catch (parseError) {
+      logger.warn("Cookies file is invalid JSON. Backing up and forcing re-login.");
+      await backupCorruptCookies(cookiesPath);
+      return false;
+    }
 
     const primaryCookie = cookies.find(
       (cookie: { name: string }) => cookie.name === "sessionid"
@@ -54,10 +61,33 @@ export async function loadCookies(cookiesPath: string): Promise<any[]> {
   try {
     await fs.access(cookiesPath);
     const cookiesData = await fs.readFile(cookiesPath, "utf-8");
-    return JSON.parse(cookiesData);
+    try {
+      return JSON.parse(cookiesData);
+    } catch (parseError) {
+      logger.warn("Cookies file is invalid JSON. Backing up and forcing re-login.");
+      await backupCorruptCookies(cookiesPath);
+      return [];
+    }
   } catch (error) {
     logger.error("Cookies file does not exist or cannot be read.", error);
     return [];
+  }
+}
+
+async function backupCorruptCookies(cookiesPath: string): Promise<void> {
+  try {
+    const dir = path.dirname(cookiesPath);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupPath = path.join(dir, `Instagramcookies.corrupt-${stamp}.json`);
+    await fs.rename(cookiesPath, backupPath);
+    logger.warn(`Corrupt cookies file backed up to ${backupPath}`);
+  } catch (error) {
+    logger.error("Failed to back up corrupt cookies file:", error);
+    try {
+      await fs.unlink(cookiesPath);
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -65,6 +95,9 @@ export async function loadCookies(cookiesPath: string): Promise<any[]> {
 const triedApiKeys = new Set<number>();
 
 export const getNextApiKey = (currentApiKeyIndex: number) => {
+  if (geminiApiKeys.length === 0) {
+    throw new Error("No valid GEMINI API keys configured.");
+  }
   // track current
   triedApiKeys.add(currentApiKeyIndex);
 
@@ -188,6 +221,41 @@ export const canSendTweet = async (): Promise<boolean> => {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return true;
     logger.error("Error checking tweet data:", error);
     throw error;
+  }
+};
+
+// ---------------------- Instagram action limits ----------------------
+export const getIgDailyState = async (): Promise<{ date: string; count: number }> => {
+  const dataPath = path.join(__dirname, "../data/igActionData.json");
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    await fs.access(dataPath);
+    const data = await fs.readFile(dataPath, "utf-8");
+    const json = JSON.parse(data);
+    if (json.date !== today) {
+      return { date: today, count: 0 };
+    }
+    return { date: today, count: Number(json.count) || 0 };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      logger.error("Error reading igActionData:", error);
+    }
+    return { date: today, count: 0 };
+  }
+};
+
+export const incrementIgDailyCount = async (by = 1): Promise<void> => {
+  const dataPath = path.join(__dirname, "../data/igActionData.json");
+  const dataDir = path.dirname(dataPath);
+  const today = new Date().toISOString().slice(0, 10);
+  const current = await getIgDailyState();
+  const next = current.date === today ? current.count + by : by;
+  const payload = { date: today, count: next };
+  try {
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(dataPath, JSON.stringify(payload, null, 2));
+  } catch (error) {
+    logger.error("Error writing igActionData:", error);
   }
 };
 

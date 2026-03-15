@@ -7,7 +7,9 @@ let lastCredentials: { username: string, password: string } | null = null;
 export const getIgClient = async (username?: string, password?: string): Promise<IgClient> => {
     if (!igClient || (username && password && (!lastCredentials || lastCredentials.username !== username || lastCredentials.password !== password))) {
         igClient = new IgClient(username, password);
-        lastCredentials = { username: username || '', password: password || '' };
+        if (username && password) {
+            lastCredentials = { username, password };
+        }
         try {
             await igClient.init();
         } catch (error) {

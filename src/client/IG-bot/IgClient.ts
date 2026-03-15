@@ -6,7 +6,7 @@ import UserAgent from "user-agents";
 import { Server } from "proxy-chain";
 import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
-import { Instagram_cookiesExist, loadCookies, saveCookies } from "../../utils";
+import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount } from "../../utils";
 import { runAgent } from "../../Agent";
 import { getInstagramCommentSchema } from "../../Agent/schema";
 import readline from "readline";
@@ -70,38 +70,59 @@ export class IgClient {
     private async loginWithCookies() {
         if (!this.page) throw new Error("Page not initialized");
         const cookies = await loadCookies("./cookies/Instagramcookies.json");
-        if(cookies.length > 0) {
+        if (cookies.length > 0) {
             await this.page.setCookie(...cookies);
+        } else {
+            logger.warn("No valid cookies found. Falling back to credentials login.");
+            await this.loginWithCredentials();
+            return;
         }
         
         logger.info("Loaded cookies. Navigating to Instagram home page.");
-        await this.page.goto("https://www.instagram.com/", {
-            waitUntil: "networkidle2",
-        });
-        const url = this.page.url();
-        if (url.includes("/login/")) {
-            logger.warn("Cookies are invalid or expired. Falling back to credentials login.");
+        try {
+            await this.page.goto("https://www.instagram.com/", {
+                waitUntil: "networkidle2",
+            });
+            const url = this.page.url();
+            if (url.includes("/login/")) {
+                logger.warn("Cookies are invalid or expired. Falling back to credentials login.");
+                await this.loginWithCredentials();
+            } else {
+                logger.info("Successfully logged in with cookies.");
+            }
+        } catch (error) {
+            logger.warn("Login with cookies failed. Falling back to credentials login.");
             await this.loginWithCredentials();
-        } else {
-            logger.info("Successfully logged in with cookies.");
         }
     }
 
-    private async loginWithCredentials() {
+    private async loginWithCredentials(retry = false): Promise<void> {
+        if (!this.username || !this.password) {
+            throw new Error("Instagram credentials are required for login.");
+        }
         if (!this.page || !this.browser) throw new Error("Browser/Page not initialized");
-        logger.info("Logging in with credentials...");
-        await this.page.goto("https://www.instagram.com/accounts/login/", {
-            waitUntil: "networkidle2",
-        });
-        await this.page.waitForSelector('input[name="username"]');
-        await this.page.type('input[name="username"]', this.username);
-        await this.page.type('input[name="password"]', this.password);
-        await this.page.click('button[type="submit"]');
-        await this.page.waitForNavigation({ waitUntil: "networkidle2" });
-        const cookies = await this.page.cookies();
-        await saveCookies("./cookies/Instagramcookies.json", cookies);
-        logger.info("Successfully logged in and saved cookies.");
-        await this.handleNotificationPopup();
+        try {
+            logger.info("Logging in with credentials...");
+            await this.page.goto("https://www.instagram.com/accounts/login/", {
+                waitUntil: "networkidle2",
+            });
+            await this.page.waitForSelector('input[name="username"]');
+            await this.page.type('input[name="username"]', this.username);
+            await this.page.type('input[name="password"]', this.password);
+            await this.page.click('button[type="submit"]');
+            await this.page.waitForNavigation({ waitUntil: "networkidle2" });
+            const cookies = await this.page.cookies();
+            await saveCookies("./cookies/Instagramcookies.json", cookies);
+            logger.info("Successfully logged in and saved cookies.");
+            await this.handleNotificationPopup();
+        } catch (error) {
+            if (!retry) {
+                logger.warn("Login with credentials failed. Retrying once...");
+                await delay(5000);
+                return this.loginWithCredentials(true);
+            }
+            throw error;
+        }
     }
 
     async handleNotificationPopup() {
@@ -155,6 +176,72 @@ export class IgClient {
             console.log("No notification popup appeared within the timeout period.");
             // If it times out, it means no popup, which is fine.
         }
+    }
+
+    private async isOnLoginOrChallenge(): Promise<boolean> {
+        if (!this.page) return true;
+        const url = this.page.url();
+        return (
+            url.includes("/accounts/login") ||
+            url.includes("/challenge") ||
+            url.includes("/accounts/onetap") ||
+            url.includes("/accounts/suspended") ||
+            url.includes("/accounts/blocked")
+        );
+    }
+
+    async ensureHomeFeedReady(timeoutMs = 20000): Promise<boolean> {
+        if (!this.page) throw new Error("Page not initialized");
+        if (await this.isOnLoginOrChallenge()) {
+            logger.warn("Instagram requires login/challenge resolution. Feed is not ready.");
+            return false;
+        }
+
+        // Navigate to home if we're not already there
+        const url = this.page.url();
+        if (!url.startsWith("https://www.instagram.com/")) {
+            await this.page.goto("https://www.instagram.com/", { waitUntil: "domcontentloaded" });
+        }
+
+        try {
+            await this.page.waitForSelector("article", { timeout: timeoutMs });
+            return true;
+        } catch {
+            logger.warn("Instagram home feed did not load in time.");
+            return false;
+        }
+    }
+
+    private async getPostUsernameByIndex(index: number): Promise<string | null> {
+        if (!this.page) return null;
+        const page = this.page;
+        return await page.evaluate((i) => {
+            const articleSel = `article:nth-of-type(${i})`;
+            const articleEl = document.querySelector(articleSel);
+            if (!articleEl) return null;
+
+            const links = Array.from(articleEl.querySelectorAll('a[href]'));
+            const hrefs = links
+                .map((a) => a.getAttribute('href') || '')
+                .filter(Boolean);
+
+            for (const href of hrefs) {
+                if (href.startsWith('/') && href.split('/').filter(Boolean).length === 1) {
+                    return href.replace(/\//g, '');
+                }
+            }
+
+            // Fallback: try header links if structure changes
+            const headerLink = articleEl.querySelector('header a[href^="/"]');
+            if (headerLink) {
+                const href = headerLink.getAttribute('href') || '';
+                if (href.startsWith('/') && href.split('/').filter(Boolean).length === 1) {
+                    return href.replace(/\//g, '');
+                }
+            }
+
+            return null;
+        }, index);
     }
 
     async sendDirectMessage(username: string, message: string) {
@@ -260,8 +347,81 @@ export class IgClient {
         }
     }
 
+    // Checks if a feed post is an ad/sponsored
+    private async isSponsoredInArticle(index: number): Promise<{ sponsored: boolean; reason?: string }> {
+        if (!this.page) return { sponsored: false };
+        const page = this.page;
+
+        const defaultMarkers = ['sponsored', 'paid partnership'];
+        const defaultButtonMarkers = ['learn more', 'shop now', 'sign up', 'install now', 'get offer', 'subscribe', 'book now'];
+        const markers = this.getAdMarkers(defaultMarkers);
+        const buttonMarkers = this.getAdButtonMarkers(defaultButtonMarkers);
+
+        return await page.evaluate((i, markersList, buttonMarkersList) => {
+            const articleSel = `article:nth-of-type(${i})`;
+            const articleEl = document.querySelector(articleSel);
+            if (!articleEl) return { sponsored: false };
+
+            // STRATEGY 1: Find elements with ad marker text.
+            // Instagram often hides this in a span element containing only this word.
+            const allSpans = articleEl.querySelectorAll('span');
+            for (const span of allSpans) {
+                const text = (span.textContent || '').toLowerCase().trim();
+                const matched = markersList.find((m) => text === m || text.startsWith(m));
+                if (matched) {
+                    return { sponsored: true, reason: `marker:${matched}` }; // Found a direct match!
+                }
+            }
+
+            // STRATEGY 2: Look for common ad call-to-action buttons.
+            // This is an extremely reliable indicator of an ad.
+            const allButtonsText = Array.from(articleEl.querySelectorAll('div[role="button"], a[role="button"]'))
+                .map(el => (el.textContent || '').toLowerCase());
+
+            for (const text of allButtonsText) {
+                const matched = buttonMarkersList.find((marker) => text.includes(marker));
+                if (matched) {
+                    return { sponsored: true, reason: `button:${matched}` }; // Found an ad button!
+                }
+            }
+
+            return { sponsored: false };
+        }, index, markers, buttonMarkers);
+    }
+
+    private getAdMarkers(fallback: string[]): string[] {
+        const raw = process.env.IG_AD_MARKERS;
+        if (!raw) return fallback;
+        const parsed = raw
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+        return parsed.length ? parsed : fallback;
+    }
+
+    private getAdButtonMarkers(fallback: string[]): string[] {
+        const raw = process.env.IG_AD_BUTTON_MARKERS;
+        if (!raw) return fallback;
+        const parsed = raw
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+        return parsed.length ? parsed : fallback;
+    }
+
     async interactWithPosts() {
         if (!this.page) throw new Error("Page not initialized");
+        const ready = await this.ensureHomeFeedReady();
+        if (!ready) {
+            logger.warn("Skipping interactions because home feed is not ready.");
+            return;
+        }
+        const dailyLimit = Number(process.env.IG_DAILY_MAX_ACTIONS || 0);
+        const dailyState = await getIgDailyState();
+        if (dailyLimit > 0 && dailyState.count >= dailyLimit) {
+            logger.warn(`Daily action limit reached (${dailyState.count}/${dailyLimit}).`);
+            return;
+        }
         let postIndex = 1; // Start with the first post
         const maxPosts = 20; // Limit to prevent infinite scrolling
         const page = this.page;
@@ -278,21 +438,50 @@ export class IgClient {
                     console.log("No more posts found. Ending iteration...");
                     return;
                 }
-                const likeButtonSelector = `${postSelector} svg[aria-label="Like"]`;
-                const likeButton = await page.$(likeButtonSelector);
-                let ariaLabel = null;
-                if (likeButton) {
-                    ariaLabel = await likeButton.evaluate((el: Element) => el.getAttribute("aria-label"));
+
+                // Skip sponsored/ads
+                const sponsoredCheck = await this.isSponsoredInArticle(postIndex);
+                if (sponsoredCheck.sponsored) {
+                    const reason = sponsoredCheck.reason ? ` (${sponsoredCheck.reason})` : "";
+                    console.log(`Post ${postIndex} appears sponsored. Skipping interactions.${reason}`);
+                    await delay(1000);
+                    await page.evaluate(() => {
+                        window.scrollBy(0, window.innerHeight);
+                    });
+                    postIndex++;
+                    continue;
                 }
-                if (ariaLabel === "Like" && likeButton) {
+
+                const likeIconSelector = `${postSelector} svg[aria-label="Like"], ${postSelector} svg[aria-label="Unlike"]`;
+                const likeIcon = await page.$(likeIconSelector);
+                let ariaLabel: string | null = null;
+                if (likeIcon) {
+                    ariaLabel = await likeIcon.evaluate((el: Element) => {
+                        const self = el.getAttribute("aria-label");
+                        if (self) return self;
+                        const button = el.closest("button");
+                        return button ? button.getAttribute("aria-label") : null;
+                    });
+                }
+                if (ariaLabel === "Like" && likeIcon) {
                     console.log(`Liking post ${postIndex}...`);
-                    await likeButton.click();
+                    await likeIcon.click();
                     await page.keyboard.press("Enter");
                     console.log(`Post ${postIndex} liked.`);
+                    if (dailyLimit > 0) {
+                        await incrementIgDailyCount(1);
+                    }
                 } else if (ariaLabel === "Unlike") {
                     console.log(`Post ${postIndex} is already liked.`);
                 } else {
                     console.log(`Like button not found for post ${postIndex}.`);
+                }
+
+                const username = await this.getPostUsernameByIndex(postIndex);
+                if (username) {
+                    console.log(`Post ${postIndex} by @${username}`);
+                } else {
+                    console.log(`Post ${postIndex} username not found.`);
                 }
                 // Extract and log the post caption
                 const captionSelector = `${postSelector} div.x9f619 span._ap3a div span._ap3a`;
@@ -317,7 +506,7 @@ export class IgClient {
                     caption = expandedCaption;
                 }
                 // Comment on the post
-                const commentBoxSelector = `${postSelector} textarea`;
+                const commentBoxSelector = `${postSelector} textarea[aria-label*="comment"], ${postSelector} textarea[placeholder*="comment"], ${postSelector} textarea`;
                 const commentBox = await page.$(commentBoxSelector);
                 if (commentBox) {
                     console.log(`Commenting on post ${postIndex}...`);
@@ -325,23 +514,30 @@ export class IgClient {
                     const schema = getInstagramCommentSchema();
                     const result = await runAgent(schema, prompt);
                     const comment = (result[0]?.comment ?? "") as string;
+                    await commentBox.click();
                     await commentBox.type(comment);
                     // New selector approach for the post button
-                    const postButton = await page.evaluateHandle(() => {
+                    const postButton = await page.evaluateHandle((sel) => {
+                        const article = document.querySelector(sel);
+                        if (!article) return null;
                         const buttons = Array.from(
-                            document.querySelectorAll('div[role="button"]')
+                            article.querySelectorAll('div[role="button"], button')
                         );
                         return buttons.find(
                             (button) =>
-                                button.textContent === "Post" && !button.hasAttribute("disabled")
-                        );
-                    });
+                                (button.textContent || "").trim() === "Post" &&
+                                !button.hasAttribute("disabled")
+                        ) || null;
+                    }, postSelector);
                     // Only click if postButton is an ElementHandle and not null
                     const postButtonElement = postButton && postButton.asElement ? postButton.asElement() : null;
                     if (postButtonElement) {
                         console.log(`Posting comment on post ${postIndex}...`);
                         await (postButtonElement as puppeteer.ElementHandle<Element>).click();
                         console.log(`Comment posted on post ${postIndex}.`);
+                        if (dailyLimit > 0) {
+                            await incrementIgDailyCount(1);
+                        }
                         // Wait for comment to be posted and UI to update
                         await delay(2000);
                     } else {
@@ -349,6 +545,13 @@ export class IgClient {
                     }
                 } else {
                     console.log("Comment box not found.");
+                }
+                if (dailyLimit > 0) {
+                    const updated = await getIgDailyState();
+                    if (updated.count >= dailyLimit) {
+                        logger.warn(`Daily action limit reached (${updated.count}/${dailyLimit}). Stopping.`);
+                        return;
+                    }
                 }
                 // Wait before moving to the next post
                 const waitTime = Math.floor(Math.random() * 5000) + 5000;
