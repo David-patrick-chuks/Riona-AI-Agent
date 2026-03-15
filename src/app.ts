@@ -65,8 +65,8 @@ const runAgents = async () => {
   const intervalMs = getNumberEnv("IG_AGENT_INTERVAL_MS", 30000);
   while (true) {
     logger.info("Starting Instagram agent iteration...");
+    let didRelogin = false;
     try {
-      let didRelogin = false;
       await runInstagramOnce();
       logger.info("Instagram agent iteration finished.");
     } catch (error) {

@@ -40,10 +40,17 @@ const processAudioFile = async (fileName: string): Promise<void> => {
     while (file.state && file.state.toString() !== "ACTIVE") {
       process.stdout.write(".");
       await new Promise((resolve) => setTimeout(resolve, 10_000));
+      if (!file.name) {
+        throw new Error("Uploaded file is missing a name.");
+      }
       file = await ai.files.get({ name: file.name });
     }
 
     // Log the uploaded file URI
+    if (!file.uri || !file.mimeType) {
+      throw new Error("Uploaded file metadata is incomplete.");
+    }
+
     console.log(`Uploaded file ${file.displayName || file.name} as: ${file.uri}`);
 
     const result = await ai.models.generateContent({
@@ -57,6 +64,9 @@ const processAudioFile = async (fileName: string): Promise<void> => {
     // Log the response
     console.log(result.text);
 
+    if (!file.name) {
+      throw new Error("Uploaded file is missing a name for deletion.");
+    }
     await ai.files.delete({ name: file.name });
     console.log(`Deleted ${file.displayName || file.name}`);
 

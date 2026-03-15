@@ -12,7 +12,14 @@ export async function parseFile(fileBuffer: Buffer, fileType: SupportedFileType)
     let content = '';
 
     if (fileType === 'pdf') {
-        const data = await pdfParse(fileBuffer);
+        const fn =
+            typeof (pdfParse as unknown) === 'function'
+                ? (pdfParse as unknown as (buf: Buffer) => Promise<any>)
+                : (pdfParse as unknown as { default?: (buf: Buffer) => Promise<any> }).default;
+        if (!fn) {
+            throw new Error('pdf-parse did not export a callable parser');
+        }
+        const data = await fn(fileBuffer);
         content = data.text;
     } else if (fileType === 'docx') {
         const result = await mammoth.extractRawText({ buffer: fileBuffer });

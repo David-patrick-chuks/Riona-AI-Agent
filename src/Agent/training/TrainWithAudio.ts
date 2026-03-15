@@ -33,7 +33,14 @@ export class AIAudioFileService {
             while (file.state && file.state.toString() !== "ACTIVE") {
                 process.stdout.write(".");
                 await new Promise((resolve) => setTimeout(resolve, 10_000));
+                if (!file.name) {
+                    throw new Error("Uploaded file is missing a name.");
+                }
                 file = await this.ai.files.get({ name: file.name });
+            }
+
+            if (!file.uri || !file.mimeType) {
+                throw new Error("Uploaded file metadata is incomplete.");
             }
 
             const result = await this.ai.models.generateContent({
@@ -44,6 +51,9 @@ export class AIAudioFileService {
                 ]),
             });
 
+            if (!file.name) {
+                throw new Error("Uploaded file is missing a name for deletion.");
+            }
             await this.ai.files.delete({ name: file.name });
             console.log(`Deleted ${file.displayName || file.name}`);
 
