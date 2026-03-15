@@ -65,6 +65,7 @@ GitHub automation is planned for future development.
    Xpassword= #Twitter password
 
    MONGODB_URI= #MongoDB URI
+   MONGODB_REQUIRED=false
    
    # Gemini API keys (set only the ones you use)
    GEMINI_API_KEY=your_primary_gemini_api_key

@@ -23,6 +23,8 @@ Before running the bot, ensure the project has the following structure and files
   ```env
   IGusername=your_instagram_username
   IGpassword=your_instagram_password
+  MONGODB_URI=mongodb://localhost:27017/instagram-ai-agent
+  MONGODB_REQUIRED=false
 
   # Optional: locale-specific ad/sponsored markers (comma-separated)
   IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
