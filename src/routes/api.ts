@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus } from '../client/Instagram';
+import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
 import { getPosterClient } from '../client/InstagramPoster';
 import logger from '../config/logger';
 import mongoose from 'mongoose';
@@ -9,7 +9,7 @@ import { getLastRunSummary } from '../utils/igRunSummary';
 import multer from 'multer';
 import fs from 'fs/promises';
 import path from 'path';
-import { getAccount } from '../config/accounts';
+import { getAccount, getAccountsMap } from '../config/accounts';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -36,10 +36,46 @@ router.get('/status', (_req: Request, res: Response) => {
 
 // Health endpoint
 router.get('/health', (req: Request, res: Response) => {
-  const account = (req as any).user?.account || 'default';
+  const accountQuery = typeof req.query.account === 'string' ? req.query.account : null;
+  const allQuery = req.query.all === '1' || req.query.all === 'true';
+  const accountsMap = getAccountsMap();
+  const accountKeys = new Set<string>(['default', ...Object.keys(accountsMap || {})]);
+
+  if (accountQuery) {
+    return res.json({
+      dbConnected: mongoose.connection.readyState === 1,
+      account: accountQuery,
+      accountConfigured: !!accountsMap?.[accountQuery],
+      igClient: getIgClientStatus(accountQuery),
+      igClients: getIgClientsSnapshot(),
+      geminiKeys: geminiApiKeys.length,
+      lastIgRun: getLastRunSummary(),
+    });
+  }
+
+  if (allQuery) {
+    const perAccount: Record<string, { configured: boolean; igClient: ReturnType<typeof getIgClientStatus> }> = {};
+    for (const key of accountKeys) {
+      perAccount[key] = {
+        configured: !!accountsMap?.[key],
+        igClient: getIgClientStatus(key),
+      };
+    }
+    return res.json({
+      dbConnected: mongoose.connection.readyState === 1,
+      igClient: getIgClientStatus('default'),
+      igClients: getIgClientsSnapshot(),
+      accounts: perAccount,
+      geminiKeys: geminiApiKeys.length,
+      lastIgRun: getLastRunSummary(),
+    });
+  }
+
   return res.json({
     dbConnected: mongoose.connection.readyState === 1,
-    igClient: getIgClientStatus(account),
+    igClient: getIgClientStatus('default'),
+    igClients: getIgClientsSnapshot(),
+    accounts: Array.from(accountKeys),
     geminiKeys: geminiApiKeys.length,
     lastIgRun: getLastRunSummary(),
   });

@@ -17,3 +17,6 @@
 ## Maintenance
 - `DELETE /api/clear-cookies` -> delete IG cookies
 - `POST /api/exit` -> close IG client
+- `GET /api/health` -> app health + default IG status
+- `GET /api/health?account=alt` -> health + per-account IG status
+- `GET /api/health?all=1` -> health + status for all configured accounts

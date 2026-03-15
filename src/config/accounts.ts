@@ -24,3 +24,5 @@ export const getAccount = (key?: string): AccountConfig | null => {
   const accountKey = key || 'default';
   return map[accountKey] || null;
 };
+
+export const getAccountsMap = (): AccountsMap => loadAccountsFile();

@@ -10,6 +10,18 @@ type ClientEntry = {
 
 const igClients = new Map<string, ClientEntry>();
 
+export const getIgClientsSnapshot = () => {
+    const out: Record<string, { initialized: boolean; lastInitAt: string | null; lastInitError: string | null }> = {};
+    for (const [key, entry] of igClients.entries()) {
+        out[key] = {
+            initialized: !!entry,
+            lastInitAt: entry.lastInitAt,
+            lastInitError: entry.lastInitError,
+        };
+    }
+    return out;
+};
+
 export const getIgClient = async (username?: string, password?: string, accountKey: string = 'default'): Promise<IgClient> => {
     const key = accountKey || 'default';
     const entry = igClients.get(key);
