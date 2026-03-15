@@ -150,6 +150,22 @@ GitHub automation is planned for future development.
 3. **Optional: auto-run the Instagram agent loop**
    Set `IG_AGENT_ENABLED=true` in `.env` to run the interaction loop continuously.
 
+4. **Post a photo (by URL)**
+   ```sh
+   curl -X POST http://localhost:3000/api/post-photo \\
+     -H "Content-Type: application/json" \\
+     --cookie "token=YOUR_JWT_TOKEN" \\
+     -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Hello IG!"}'
+   ```
+
+5. **Schedule a photo post**
+   ```sh
+   curl -X POST http://localhost:3000/api/schedule-post \\
+     -H "Content-Type: application/json" \\
+     --cookie "token=YOUR_JWT_TOKEN" \\
+     -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Scheduled post","cronTime":"0 9 * * *"}'
+   ```
+
 ## Development
 
 - Run tests: `npm test`

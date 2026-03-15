@@ -43,6 +43,11 @@ Before running the bot, ensure the project has the following structure and files
   GEMINI_API_KEY_1=your_gemini_api_key_1
   GEMINI_API_KEY_2=your_gemini_api_key_2
 
+## Posting
+
+- Use `/api/post-photo` with a public image URL and caption.
+- Use `/api/schedule-post` with a cron expression.
+
 ## Troubleshooting
 
 - If the server starts but no IG actions run, set `IG_AGENT_ENABLED=true` or use `/api/login` + `/api/interact`.

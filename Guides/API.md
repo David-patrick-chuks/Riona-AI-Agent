@@ -9,6 +9,8 @@
 - `POST /api/interact` -> like/comment on feed
 - `POST /api/dm` -> send DM
 - `POST /api/dm-file` -> send DMs from file content
+- `POST /api/post-photo` -> post a photo by URL
+- `POST /api/schedule-post` -> schedule a photo post by URL + cron
 - `POST /api/scrape-followers` -> scrape followers list
 
 ## Maintenance

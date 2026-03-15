@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { getIgClient, closeIgClient, scrapeFollowersHandler } from '../client/Instagram';
+import { getPosterClient } from '../client/InstagramPoster';
 import logger from '../config/logger';
 import mongoose from 'mongoose';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
@@ -121,6 +122,38 @@ router.post('/dm-file', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('File DM error:', error);
     return res.status(500).json({ error: 'Failed to send messages from file' });
+  }
+});
+
+// Post photo endpoint (Instagram API client)
+router.post('/post-photo', async (req: Request, res: Response) => {
+  try {
+    const { imageUrl, caption } = req.body;
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'imageUrl is required' });
+    }
+    const client = await getPosterClient();
+    const result = await client.postPhoto(imageUrl, caption || '');
+    return res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Post photo error:', error);
+    return res.status(500).json({ error: 'Failed to post photo' });
+  }
+});
+
+// Schedule photo post endpoint (cron syntax)
+router.post('/schedule-post', async (req: Request, res: Response) => {
+  try {
+    const { imageUrl, caption, cronTime } = req.body;
+    if (!imageUrl || !cronTime) {
+      return res.status(400).json({ error: 'imageUrl and cronTime are required' });
+    }
+    const client = await getPosterClient();
+    await client.schedulePost(imageUrl, caption || '', cronTime);
+    return res.json({ success: true, message: 'Post scheduled' });
+  } catch (error) {
+    logger.error('Schedule post error:', error);
+    return res.status(500).json({ error: 'Failed to schedule post' });
   }
 });
 

@@ -12,7 +12,7 @@ interface IInstagramClient {
 }
 
 // InstagramClient Class
-class InstagramClient implements IInstagramClient {
+export class InstagramClient implements IInstagramClient {
     username: string;
     password: string;
     ig: IgApiClient;
@@ -72,35 +72,3 @@ class InstagramClient implements IInstagramClient {
         console.log("Cron job started.");
     }
 }
-
-// Usage Example
-(async () => {
-    const username = process.env.IG_USERNAME; // Set your Instagram username in environment variables
-    const password = process.env.IG_PASSWORD; // Set your Instagram password in environment variables
-
-    if (!username || !password) {
-        console.error("Please set IG_USERNAME and IG_PASSWORD in environment variables.");
-        return;
-    }
-
-    const client = new InstagramClient(username, password);
-
-    try {
-        await client.login();
-
-        // Post immediately
-        await client.postPhoto(
-            'https://i.imgur.com/BZBHsauh.jpg',
-            'Really nice photo from the internet!'
-        );
-
-        // Schedule a post
-        await client.schedulePost(
-            'https://i.imgur.com/BZBHsauh.jpg',
-            'Scheduled post with a great view!',
-            '0 9 * * *' // Cron time: Every day at 9 AM
-        );
-    } catch (error) {
-        console.error("Error:", (error as Error).message);
-    }
-})();
