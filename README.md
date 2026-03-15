@@ -148,6 +148,12 @@ GitHub automation is planned for future development.
 3. **Optional: auto-run the Instagram agent loop**
    Set `IG_AGENT_ENABLED=true` in `.env` to run the interaction loop continuously.
 
+## Development
+
+- Run tests: `npm test`
+- Lint: `npm run lint`
+- Format: `npm run format`
+
 ## Project Structure
 
 - **src/client**: Contains the main logic for interacting with social media platforms like Instagram.
