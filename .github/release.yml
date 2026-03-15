@@ -1,0 +1,10 @@
+changelog:
+  categories:
+    - title: "Features"
+      labels: ["feature", "enhancement"]
+    - title: "Fixes"
+      labels: ["bug", "fix"]
+    - title: "Docs"
+      labels: ["docs"]
+    - title: "Chores"
+      labels: ["chore"]
