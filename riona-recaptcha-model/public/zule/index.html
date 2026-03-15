@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>riona AI - Live Orchestrator</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      :root {
+        --primary: #00f2fe;
+        --secondary: #4facfe;
+        --bg: #0a0b10;
+        --card: rgba(255, 255, 255, 0.05);
+        --text: #e0e0e0;
+      }
+
+      body {
+        font-family: 'Outfit', sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+        background-image:
+          radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.05) 0%, transparent 40%),
+          radial-gradient(circle at 90% 80%, rgba(79, 172, 254, 0.05) 0%, transparent 40%);
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background: var(--card);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      h1 {
+        font-weight: 600;
+        margin: 0;
+        background: linear-gradient(to right, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      #status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9em;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        background-color: #666;
+        border-radius: 50%;
+      }
+
+      .dot.active {
+        background-color: #00ff00;
+        box-shadow: 0 0 10px #00ff00;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+        flex-grow: 1;
+        overflow: hidden;
+      }
+
+      .panel {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      h2 {
+        font-size: 1.1em;
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      #log-container {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      #log-container::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #log-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+      }
+
+      .log-entry {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        border-left: 3px solid transparent;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .log-entry.thought {
+        border-left-color: var(--primary);
+      }
+
+      .log-entry.action {
+        border-left-color: #ff9f43;
+      }
+
+      .log-entry.system {
+        border-left-color: #666;
+      }
+
+      .time {
+        font-size: 0.75em;
+        color: #888;
+        margin-bottom: 5px;
+      }
+
+      .msg {
+        line-height: 1.5;
+        font-size: 0.95em;
+      }
+
+      #state-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .stat-card {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 10px;
+      }
+
+      .label {
+        font-size: 0.8em;
+        color: #888;
+        margin-bottom: 5px;
+      }
+
+      .value {
+        font-weight: 600;
+        font-size: 1.1em;
+        color: #fff;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>riona AI DASHBOARD</h1>
+      <div id="status-indicator">
+        <div class="dot" id="socket-dot"></div>
+        <span id="socket-status">OFFLINE</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Activity Stream</h2>
+        <div id="log-container">
+          <div class="log-entry system">
+            <div class="time">SYSTEM</div>
+            <div class="msg">Awaiting connection from riona Engine...</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="state-panel">
+        <div class="panel">
+          <h2>Current Thought</h2>
+          <div id="current-thought" class="value" style="font-size: 0.9em; font-weight: 300">
+            Static
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Execution Stats</h2>
+          <div class="stat-card">
+            <div class="label">Total Actions</div>
+            <div id="action-count" class="value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Last Action</div>
+            <div id="last-action" class="value">None</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const socket = io();
+      const dot = document.getElementById('socket-dot');
+      const status = document.getElementById('socket-status');
+      const logContainer = document.getElementById('log-container');
+      const thoughtEl = document.getElementById('current-thought');
+      const actionCountEl = document.getElementById('action-count');
+      const lastActionEl = document.getElementById('last-action');
+
+      let actionCount = 0;
+
+      socket.on('connect', () => {
+        dot.classList.add('active');
+        status.innerText = 'ONLINE';
+      });
+
+      socket.on('disconnect', () => {
+        dot.classList.remove('active');
+        status.innerText = 'OFFLINE';
+      });
+
+      socket.on('riona_update', (data) => {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${data.type}`;
+
+        const timeStr = new Date(data.timestamp).toLocaleTimeString();
+
+        let html = `
+                <div class="time">${timeStr} | ${data.type.toUpperCase()}</div>
+                <div class="msg">${data.message}</div>
+            `;
+
+        if (data.details && data.details.imagePath) {
+          html += `
+                    <div class="debug-image" style="margin-top: 10px;">
+                        <img src="${data.details.imagePath}" style="width: 100%; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">
+                    </div>
+                `;
+        }
+
+        entry.innerHTML = html;
+
+        logContainer.prepend(entry);
+
+        if (data.type === 'thought') {
+          thoughtEl.innerText = data.message;
+        } else if (data.type === 'action') {
+          actionCount++;
+          actionCountEl.innerText = actionCount;
+          lastActionEl.innerText = data.message;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,122 @@
+:root {
+    --bg: #111;
+    --card-bg: #1a1a1a;
+    --text: #eee;
+    --border: #333;
+    --accent: #fff;
+    --success: #0f0;
+    --danger: #f00;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 20px;
+}
+
+.full-width {
+    grid-column: span 4;
+}
+
+h3 {
+    color: #888;
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+}
+
+.stat-card p {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+th {
+    color: #888;
+}
+
+.status-valid { color: var(--success); }
+.status-invalid { color: var(--danger); }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: black;
+}
+
+.status-online {
+    color: var(--success);
+    border: 1px solid var(--success);
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+    margin-top: 10px;
+}

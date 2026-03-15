@@ -1,0 +1,7 @@
+node_modules
+# /data
+# uploads
+# test 
+
+dist
+# train_image_classifier.js

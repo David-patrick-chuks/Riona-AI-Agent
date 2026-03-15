@@ -1,0 +1,18 @@
+{
+  "watch": ["src"],
+  "ext": "ts,js,json",
+  "ignore": [
+    "logs/**/*",
+    "tests/**/*",
+    "*.log",
+    "node_modules/**/*",
+    "uploads/**/*",
+    "public/**/*",
+    "dist/**/*",
+    ".wwebjs_*"
+  ],
+  "exec": "ts-node src/index.ts",
+  "env": {
+    "NODE_ENV": "development"
+  }
+} 

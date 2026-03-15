@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>riona AI Admin</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-main">
+          <h1>riona AI RECAPTCHA ADMIN <span class="v2">V2</span></h1>
+          <div class="system-metrics">
+            <span id="sys-mem">MEM: 0MB</span>
+            <span id="sys-uptime">UPTIME: 0s</span>
+            <div id="status-indicator" class="status-online">ONLINE</div>
+          </div>
+        </div>
+        <div class="header-controls">
+          <select id="range-selector" onchange="changeRange()">
+            <option value="1h">Last Hour</option>
+            <option value="24h" selected>Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+          </select>
+          <button onclick="clearLogs()" class="btn-danger">CLEAR DATA</button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <!-- Stats Cards -->
+        <div class="card stat-card">
+          <h3>TOTAL PROCESSED</h3>
+          <p id="stat-total">0</p>
+        </div>
+        <div class="card stat-card">
+          <h3>ACCURACY</h3>
+          <p id="stat-accuracy">0%</p>
+        </div>
+        <div class="card stat-card">
+          <h3>AVG CONFIDENCE</h3>
+          <p id="stat-confidence">0.0000</p>
+        </div>
+        <div class="card stat-card">
+          <h3>TOP CLIENTS</h3>
+          <div id="top-ips-list" class="mini-list">-</div>
+        </div>
+
+        <!-- Graph -->
+        <div class="card full-width">
+          <div class="card-header">
+            <h3>PERFORMANCE TREND</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="accuracyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Gallery -->
+        <div class="card full-width">
+          <h3>LIVE IMAGE GALLERY</h3>
+          <div id="image-gallery" class="gallery-grid">
+            <!-- Images injected here -->
+          </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <div class="card full-width">
+          <div class="card-header">
+            <h3>RECENT ACTIVITY LOGS</h3>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>TIME</th>
+                  <th>FILE</th>
+                  <th>SCORE</th>
+                  <th>RESULT</th>
+                  <th>IP</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table">
+                <!-- Logs injected here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
