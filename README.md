@@ -155,6 +155,7 @@ GitHub automation is planned for future development.
 - Run tests: `npm test`
 - Lint: `npm run lint`
 - Format: `npm run format`
+- Env check: `npm run check:env`
 
 ## Guides
 
