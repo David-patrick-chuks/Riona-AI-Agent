@@ -185,6 +185,16 @@ GitHub automation is planned for future development.
 - `Guides/Scripts.md`
 - `Guides/Training.md`
 
+## reCAPTCHA Model
+
+This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is run via root scripts:
+
+- `npm run recaptcha:dev`
+- `npm run recaptcha:train`
+- `npm run recaptcha:collect`
+- `npm run recaptcha:build`
+- `npm run recaptcha:serve`
+
 ## Project Policies
 
 - `CONTRIBUTING.md`
