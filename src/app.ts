@@ -53,6 +53,51 @@ app.use(express.static('frontend/dist'));
 // API Routes
 app.use('/api', apiRoutes);
 
+// Simple status dashboard
+app.get('/dashboard', (_req, res) => {
+  res.type('html').send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Riona Dashboard</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; color: #111; }
+    h1 { margin: 0 0 8px; }
+    .muted { color: #666; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Riona Status</h1>
+  <div class="muted">Live status and last run summary</div>
+  <div class="card">
+    <div><strong>Database:</strong> <span id="db">loading...</span></div>
+    <div><strong>IG Client:</strong> <span id="ig">loading...</span></div>
+    <div><strong>Gemini Keys:</strong> <span id="keys">loading...</span></div>
+  </div>
+  <div class="card">
+    <div><strong>Last IG Run</strong></div>
+    <pre id="run">loading...</pre>
+  </div>
+  <script>
+    fetch('/api/health')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('db').textContent = data.dbConnected ? 'connected' : 'disconnected';
+        document.getElementById('ig').textContent = data.igClient?.initialized ? 'initialized' : 'not initialized';
+        document.getElementById('keys').textContent = String(data.geminiKeys ?? 0);
+        document.getElementById('run').textContent = JSON.stringify(data.lastIgRun ?? {}, null, 2);
+      })
+      .catch(err => {
+        document.getElementById('run').textContent = 'Failed to load /api/health';
+      });
+  </script>
+</body>
+</html>`);
+});
+
 app.get('*', (_req, res) => {
     res.sendFile('index.html', { root: 'frontend/dist' });
 });

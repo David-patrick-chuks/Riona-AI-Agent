@@ -174,6 +174,10 @@ GitHub automation is planned for future development.
      -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Scheduled post","cronTime":"0 9 * * *"}'
    ```
 
+## Dashboard
+
+Open `http://localhost:3000/dashboard` for live status and the last IG run summary.
+
 ## Development
 
 - Run tests: `npm test`
