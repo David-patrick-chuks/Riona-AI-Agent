@@ -37,11 +37,17 @@ Before running the bot, ensure the project has the following structure and files
 
   # Optional: logging backend ("winston" or "console")
   LOGGER=console
-
+  
   # Gemini API keys (set only the ones you use)
   GEMINI_API_KEY=your_primary_gemini_api_key
   GEMINI_API_KEY_1=your_gemini_api_key_1
   GEMINI_API_KEY_2=your_gemini_api_key_2
+
+## Troubleshooting
+
+- If the server starts but no IG actions run, set `IG_AGENT_ENABLED=true` or use `/api/login` + `/api/interact`.
+- If cookie JSON is corrupted, delete it or let the app auto-backup and re-login.
+- If IG shows a challenge screen, login manually once and re-run the agent.
   ```
 - Ensure `src/secret/index.ts` exports these credentials correctly.
 
