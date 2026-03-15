@@ -9,6 +9,7 @@ import logger from "../../config/logger";
 import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
 import { setLastRunSummary } from "../../utils/igRunSummary";
+import { getCommentFilterConfig, shouldSkipComment } from "../../utils/commentFilters";
 import { runAgent } from "../../Agent";
 import { getInstagramCommentSchema } from "../../Agent/schema";
 import readline from "readline";
@@ -536,6 +537,10 @@ export class IgClient {
                     const schema = getInstagramCommentSchema();
                     const result = await runAgent(schema, prompt);
                     const comment = (result[0]?.comment ?? "") as string;
+                    const filterCfg = getCommentFilterConfig();
+                    if (shouldSkipComment(comment, filterCfg)) {
+                        console.log(`Comment blocked by filters for post ${postIndex}.`);
+                    } else {
                     await commentBox.click();
                     await commentBox.type(comment);
                     // New selector approach for the post button
@@ -565,6 +570,7 @@ export class IgClient {
                         await delay(2000);
                     } else {
                         console.log("Post button not found.");
+                    }
                     }
                 } else {
                     console.log("Comment box not found.");

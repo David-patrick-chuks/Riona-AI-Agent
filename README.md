@@ -234,6 +234,13 @@ Manual trigger:
 POST /api/cooldown { "minutes": 60 }
 ```
 
+## Comment Filters
+
+Use allow/deny lists and a simple sentiment gate:
+- `IG_COMMENT_ALLOWLIST`
+- `IG_COMMENT_DENYLIST`
+- `IG_COMMENT_SENTIMENT` = `any | positive | neutral`
+
 ## Multi-Account Support
 
 Create `src/config/accounts.json` (not committed) based on `src/config/accounts.example.json`.

@@ -31,3 +31,8 @@
 ## Training
 - `TRAIN_MAX_FILE_MB`
 - `TRAIN_DRY_RUN` (true/false)
+
+## Comment filters
+- `IG_COMMENT_ALLOWLIST` (comma-separated)
+- `IG_COMMENT_DENYLIST` (comma-separated)
+- `IG_COMMENT_SENTIMENT` (any | positive | neutral)
