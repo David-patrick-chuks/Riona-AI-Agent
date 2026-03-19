@@ -1,41 +1,57 @@
 
+# Riona AI Agent
 
-## Riona AI Agent 🌸
+[Website](https://www.agentriona.xyz) | [Roadmap](ROADMAP.md) | [Twitter](https://twitter.com/david_patrick01) | [Contact](mailto:davidchuksdev@gmail.com)
 
-[Roadmap](ROADMAP.md)
+<p align="center">
+  <img src="riona.png" alt="Riona AI Agent banner" width="100%" />
+</p>
 
-[![CI](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/david-patrick-chuks/riona-ai-agent/actions/workflows/ci.yml)
+Riona AI Agent is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, account workflows, scheduling, engagement actions, and training inputs so you can run a social media operator from one codebase.
 
-## Support the Project 🙌
-CA: smuCA77z3nkWKH7CUP7FVVDi5AnDoQY5pXEqksmpump
+## Overview
 
-### 🤝 **Open to Collaboration**
-- [Twitter](https://twitter.com/david_patrick01)  - [Gmail](davidchuksdev@gmail.com)
+Riona is built to automate social activity while keeping control surfaces explicit. The project includes:
+
+- Instagram automation for login, posting, liking, commenting, messaging, and follower scraping
+- X/Twitter support in progress for publishing and engagement workflows
+- AI content generation using Gemini for captions and comments
+- Training inputs from YouTube, audio, files, and websites
+- API endpoints, health checks, dashboards, cooldowns, summaries, and logging
+- A separate reCAPTCHA ML subproject under `riona-recaptcha-model/`
+
+## Quick Links
+
+- Live website: `https://www.agentriona.xyz`
+- Token ticker: `$RIONA`
+- Contract address: `smuCA77z3nkWKH7CUP7FVVDi5AnDoQY5pXEqksmpump`
+- Project roadmap: `ROADMAP.md`
 
 If you'd like to support the project, see the private donations file maintained locally.
 
+## Training Inputs
 
-![Riona](riona.png)
+Before running automation, you can shape the agent with:
 
-Riona AI Agent is an AI-powered automation tool designed for **Instagram and Twitter** to automate social media interactions such as posting, liking, and commenting. It leverages advanced AI models to generate engaging content, automate interactions, and manage social media accounts efficiently.
+- YouTube video URLs
+- Audio files
+- Portfolio or website links
+- Documents and text files including PDF, DOC, DOCX, and TXT
 
-Before using the automation features, you can personalize the agent by training with the following, including:
-- **YouTube Video URL** 🎥
-- **Audio File** 🎙️
-- **Portfolio or Website Link** 🌐
-- **File Formats Supported**: PDF, DOC, DOCX, TXT 📄
+## Feature Summary
 
-## Features
+- Instagram automation with cookies, relogin handling, posting, scheduling, and interactions
+- AI-generated captions and comments with schema-guided responses
+- Multi-account and profile-based operation support
+- MongoDB-backed state, summaries, and rate-limiting controls
+- Simple dashboard for runtime health and latest activity
+- Logging, environment validation, and utility scripts for operations
 
-- **Instagram Automation**: Automatically log in, post photos, like posts, and leave thoughtful comments.
-- **Twitter Automation**: Automatically tweet, retweet, and like tweets.
-- **AI-Powered Content Generation**: Use Google Generative AI to create engaging captions and comments for Instagram and Twitter.
-- **Proxy Support**: Use proxies to manage multiple accounts and avoid rate limits.
-- **Cookie Management**: Save and load cookies to maintain sessions across restarts.
+## Planned Expansion
 
-**Upcoming Features:**
-
-GitHub automation is planned for future development.
+- Complete X/Twitter workflow coverage
+- GitHub automation
+- Additional analytics, reporting, and compliance controls
 
 ## Installation
 
