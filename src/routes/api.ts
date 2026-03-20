@@ -10,9 +10,13 @@ import multer from 'multer';
 import fs from 'fs/promises';
 import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
+import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
 
 // JWT Auth middleware
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -107,9 +111,24 @@ router.post('/login', async (req: Request, res: Response) => {
       maxAge: 2 * 60 * 60 * 1000, // 2 hours
       secure: process.env.NODE_ENV === 'production',
     });
+    await logAction({
+      platform: 'instagram',
+      action: 'login',
+      status: 'success',
+      account: acct || 'default',
+      username: u,
+    });
     return res.json({ message: 'Login successful' });
   } catch (error) {
     logger.error('Login error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'login',
+      status: 'error',
+      account: req.body?.account ? String(req.body.account) : 'default',
+      username: req.body?.username ? String(req.body.username) : undefined,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to login' });
   }
 });
@@ -130,11 +149,31 @@ router.delete('/clear-cookies', async (req, res) => {
   const cookiesPath = path.join(__dirname, '../../cookies/Instagramcookies.json');
   try {
     await fs.unlink(cookiesPath);
+    await logAction({
+      platform: 'instagram',
+      action: 'clear-cookies',
+      status: 'success',
+      account: 'default',
+    });
     res.json({ success: true, message: 'Instagram cookies cleared.' });
   } catch (err: any) {
     if (err.code === 'ENOENT') {
+      await logAction({
+        platform: 'instagram',
+        action: 'clear-cookies',
+        status: 'success',
+        account: 'default',
+        details: { message: 'No cookies to clear.' },
+      });
       res.json({ success: true, message: 'No cookies to clear.' });
     } else {
+      await logAction({
+        platform: 'instagram',
+        action: 'clear-cookies',
+        status: 'error',
+        account: 'default',
+        error: getErrorMessage(err),
+      });
       res.status(500).json({ success: false, message: 'Failed to clear cookies.', error: err.message });
     }
   }
@@ -149,9 +188,24 @@ router.post('/interact', async (req: Request, res: Response) => {
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.interactWithPosts();
+    await logAction({
+      platform: 'instagram',
+      action: 'interact',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+    });
     return res.json({ message: 'Interaction successful' });
   } catch (error) {
     logger.error('Interaction error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'interact',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to interact with posts' });
   }
 });
@@ -166,9 +220,25 @@ router.post('/dm', async (req: Request, res: Response) => {
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessage(username, message);
+    await logAction({
+      platform: 'instagram',
+      action: 'dm',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { targetUsername: username },
+    });
     return res.json({ message: 'Message sent successfully' });
   } catch (error) {
     logger.error('DM error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'dm',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to send message' });
   }
 });
@@ -183,9 +253,25 @@ router.post('/dm-file', async (req: Request, res: Response) => {
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessagesFromFile(file, message, mediaPath);
+    await logAction({
+      platform: 'instagram',
+      action: 'dm-file',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { file },
+    });
     return res.json({ message: 'Messages sent successfully' });
   } catch (error) {
     logger.error('File DM error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'dm-file',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to send messages from file' });
   }
 });
@@ -200,9 +286,25 @@ router.post('/post-photo', async (req: Request, res: Response) => {
     const account = (req as any).user.account || 'default';
     const client = await getPosterClient(undefined, undefined, account);
     const result = await client.postPhoto(imageUrl, caption || '');
+    await logAction({
+      platform: 'instagram',
+      action: 'post-photo',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { imageUrl },
+    });
     return res.json({ success: true, result });
   } catch (error) {
     logger.error('Post photo error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'post-photo',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to post photo' });
   }
 });
@@ -218,9 +320,25 @@ router.post('/post-photo-file', upload.single('image'), async (req: Request, res
     const account = (req as any).user.account || 'default';
     const client = await getPosterClient(undefined, undefined, account);
     const result = await client.postPhotoBuffer(file.buffer, caption);
+    await logAction({
+      platform: 'instagram',
+      action: 'post-photo-file',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { filename: file.originalname, size: file.size },
+    });
     return res.json({ success: true, result });
   } catch (error) {
     logger.error('Post photo file error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'post-photo-file',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to post photo file' });
   }
 });
@@ -235,9 +353,25 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
     const account = (req as any).user.account || 'default';
     const client = await getPosterClient(undefined, undefined, account);
     await client.schedulePost(imageUrl, caption || '', cronTime);
+    await logAction({
+      platform: 'instagram',
+      action: 'schedule-post',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { imageUrl, cronTime },
+    });
     return res.json({ success: true, message: 'Post scheduled' });
   } catch (error) {
     logger.error('Schedule post error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'schedule-post',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to schedule post' });
   }
 });
@@ -247,6 +381,14 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.body;
   try {
     const result = await scrapeFollowersHandler(targetAccount, maxFollowers);
+    await logAction({
+      platform: 'instagram',
+      action: 'scrape-followers',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { targetAccount, maxFollowers: Number(maxFollowers) || undefined },
+    });
     if (Array.isArray(result)) {
       if (req.query.download === '1') {
         const filename = `${targetAccount}_followers.txt`;
@@ -260,6 +402,14 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
       res.json({ success: true, result });
     }
   } catch (error) {
+    await logAction({
+      platform: 'instagram',
+      action: 'scrape-followers',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     res.status(500).json({ success: false, error: (error as Error).message });
   }
 });
@@ -272,6 +422,14 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       String(targetAccount),
       Number(maxFollowers)
     );
+    await logAction({
+      platform: 'instagram',
+      action: 'scrape-followers-download',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { targetAccount: String(targetAccount), maxFollowers: Number(maxFollowers) || undefined },
+    });
     if (Array.isArray(result)) {
       const filename = `${targetAccount}_followers.txt`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -281,7 +439,41 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       res.status(400).send('No followers found.');
     }
   } catch (error) {
+    await logAction({
+      platform: 'instagram',
+      action: 'scrape-followers-download',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     res.status(500).send('Error scraping followers.');
+  }
+});
+
+router.get('/actions', async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 20);
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
+    const logs = await listActionLogs({ limit, account, platform });
+    return res.json({ actions: logs });
+  } catch (error) {
+    logger.error('Actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load action logs' });
+  }
+});
+
+router.get('/actions/summary', async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 50);
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
+    const summary = await getActionSummary({ limit, account, platform });
+    return res.json(summary);
+  } catch (error) {
+    logger.error('Actions summary error:', error);
+    return res.status(500).json({ error: 'Failed to load action summary' });
   }
 });
 
@@ -290,9 +482,24 @@ router.post('/exit', async (req: Request, res: Response) => {
   try {
     const account = (req as any).user?.account || 'default';
     await closeIgClient(account);
+    await logAction({
+      platform: 'instagram',
+      action: 'exit',
+      status: 'success',
+      account,
+      username: (req as any).user?.username,
+    });
     return res.json({ message: 'Exiting successfully' });
   } catch (error) {
     logger.error('Exit error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'exit',
+      status: 'error',
+      account: (req as any).user?.account || 'default',
+      username: (req as any).user?.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to exit gracefully' });
   }
 });
@@ -303,9 +510,25 @@ router.post('/cooldown', async (req: Request, res: Response) => {
     const minutes = Number(req.body?.minutes || 60);
     const { setIgCooldown } = await import('../utils');
     await setIgCooldown(minutes);
+    await logAction({
+      platform: 'instagram',
+      action: 'cooldown',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { minutes },
+    });
     return res.json({ success: true, untilMinutes: minutes });
   } catch (error) {
     logger.error('Cooldown error:', error);
+    await logAction({
+      platform: 'instagram',
+      action: 'cooldown',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ error: 'Failed to set cooldown' });
   }
 });
@@ -316,6 +539,13 @@ router.post('/logout', (req: Request, res: Response) => {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
+  });
+  void logAction({
+    platform: 'system',
+    action: 'logout',
+    status: 'success',
+    account: (req as any).user?.account || 'default',
+    username: (req as any).user?.username,
   });
   return res.json({ message: 'Logged out successfully' });
 });

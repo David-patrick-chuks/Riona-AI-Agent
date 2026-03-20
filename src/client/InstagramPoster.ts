@@ -1,7 +1,9 @@
 import { InstagramClient } from './IG-bot';
 import logger from '../config/logger';
 
-type PosterEntry = { client: InstagramClient; creds: { username: string; password: string } };\n+\n+const posterClients = new Map<string, PosterEntry>();
+type PosterEntry = { client: InstagramClient; creds: { username: string; password: string } };
+
+const posterClients = new Map<string, PosterEntry>();
 
 export const getPosterClient = async (
   username?: string,
