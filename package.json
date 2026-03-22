@@ -50,7 +50,7 @@
     "mongoose": "^9.3.0",
     "multer": "^2.0.0",
     "node-cron": "^4.2.1",
-    "openai": "^6.16.0",
+    "openai": "^6.32.0",
     "pdf-parse": "^2.4.5",
     "playwright": "^1.58.2",
     "playwright-extra": "^4.3.6",
