@@ -23,8 +23,6 @@ Riona is built to automate social activity while keeping control surfaces explic
 ## Quick Links
 
 - Live website: `https://www.agentriona.xyz`
-- Token ticker: `$RIONA`
-- Contract address: `smuCA77z3nkWKH7CUP7FVVDi5AnDoQY5pXEqksmpump`
 - Project roadmap: `ROADMAP.md`
 
 If you'd like to support the project, see the private donations file maintained locally.
