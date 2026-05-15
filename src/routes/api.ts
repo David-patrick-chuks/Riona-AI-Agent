@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
 import { getPosterClient } from '../client/InstagramPoster';
 import logger from '../config/logger';
@@ -11,15 +11,22 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import { rateLimit } from '../utils/rateLimit';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many login attempts. Please wait before trying again.',
+});
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 // JWT Auth middleware
-function requireAuth(req: Request, res: Response, next: Function) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = getTokenFromRequest(req);
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   const payload = verifyToken(token);
@@ -86,7 +93,7 @@ router.get('/health', (req: Request, res: Response) => {
 });
 
 // Login endpoint
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginRateLimiter, async (req: Request, res: Response) => {
   try {
     const { username, password, account } = req.body;
     const acct = account ? String(account) : undefined;
