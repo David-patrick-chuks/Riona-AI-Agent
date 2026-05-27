@@ -314,3 +314,43 @@ Built with ❤️ by David Patrick
 - Email: davidchuksdev@gmail.com
 
 Real-time chat is not set up yet. If you want a Discord server, open a discussion and we can spin it up based on interest.
+
+
+## ❓ FAQ
+
+### What is Riona AI Agent?
+
+**Riona AI Agent** is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, and scheduling so you can run a social media operator from one codebase.
+
+| Feature | Description |
+|---------|-------------|
+| 📸 **Instagram Automation** | Login, posting, liking, commenting, messaging |
+| 🐦 **X/Twitter Support** | Publishing and engagement workflows |
+| 🤖 **AI Content** | Gemini-generated captions and comments |
+| 📊 **Training Inputs** | YouTube, audio, files, websites |
+| 🌐 **API Endpoints** | Health checks, dashboards, logging |
+| 📁 **Multi-Account** | Profile-based operation support |
+
+### Installation
+
+```bash
+pip install riona-ai-agent
+```
+
+### Requirements
+
+- Python 3.10+
+- MongoDB for state management
+- Gemini API key for AI content
+
+### License
+
+MIT License
+
+### Help & Resources
+
+- [Website](https://www.agentriona.xyz)
+- [Roadmap](ROADMAP.md)
+- [Issues](https://github.com/David-patrick-chuks/Riona-AI-Agent/issues)
+
+---
