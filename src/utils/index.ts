@@ -3,6 +3,10 @@ import path from "path";
 import { geminiApiKeys } from "../secret";
 import logger from "../config/logger";
 
+/**
+ * Checks if valid Instagram cookies exist and are not expired
+ * @returns True if valid cookies exist, false otherwise
+ */
 export async function Instagram_cookiesExist(): Promise<boolean> {
   try {
     const cookiesPath = "./cookies/Instagramcookies.json";
@@ -42,6 +46,12 @@ export async function Instagram_cookiesExist(): Promise<boolean> {
   }
 }
 
+/**
+ * Saves cookies to a file
+ * @param cookiesPath - Path to the cookies file
+ * @param cookies - Array of cookie objects to save
+ * @throws Error if saving fails
+ */
 export async function saveCookies(
   cookiesPath: string,
   cookies: any[]
@@ -57,6 +67,11 @@ export async function saveCookies(
   }
 }
 
+/**
+ * Loads cookies from a file
+ * @param cookiesPath - Path to the cookies file
+ * @returns Array of cookies, empty array if file not found or invalid
+ */
 export async function loadCookies(cookiesPath: string): Promise<any[]> {
   try {
     await fs.access(cookiesPath);
@@ -94,6 +109,12 @@ async function backupCorruptCookies(cookiesPath: string): Promise<void> {
 // ---------------------- API key rotation ----------------------
 const triedApiKeys = new Set<number>();
 
+/**
+ * Gets the next available API key for rotation
+ * @param currentApiKeyIndex - Index of the current API key that failed
+ * @returns The next API key string
+ * @throws Error if no keys are configured or all have been tried
+ */
 export const getNextApiKey = (currentApiKeyIndex: number) => {
   if (geminiApiKeys.length === 0) {
     throw new Error("No valid GEMINI API keys configured.");
@@ -112,6 +133,15 @@ export const getNextApiKey = (currentApiKeyIndex: number) => {
   return geminiApiKeys[currentApiKeyIndex];
 };
 
+/**
+ * Handles errors from the Gemini API, including retries and API key rotation
+ * @param error - The error that occurred
+ * @param currentApiKeyIndex - Index of the API key that was used
+ * @param schema - The agent schema
+ * @param prompt - The prompt to send
+ * @param runAgent - Function to run the agent again
+ * @returns The response from the agent, or an error message
+ */
 export async function handleError(
   error: unknown,
   currentApiKeyIndex: number,
@@ -149,6 +179,11 @@ export async function handleError(
 }
 
 // ---------------------- Logging helper ----------------------
+/**
+ * Logs errors with context
+ * @param error - The error to log
+ * @param context - Description of where the error occurred
+ */
 export function setup_HandleError(error: unknown, context: string): void {
   if (error instanceof Error) {
     if (error.message.includes("net::ERR_ABORTED")) {
