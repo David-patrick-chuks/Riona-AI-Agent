@@ -1,11 +1,39 @@
 
 # Riona AI Agent
 
+[![GitHub stars](https://img.shields.io/github/stars/David-patrick-chuks/Riona-AI-Agent?style=social)](https://github.com/David-patrick-chuks/Riona-AI-Agent/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/David-patrick-chuks/Riona-AI-Agent?style=social)](https://github.com/David-patrick-chuks/Riona-AI-Agent/network/members)
+[![GitHub license](https://img.shields.io/github/license/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/issues)
+[![GitHub contributors](https://img.shields.io/github/contributors/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/graphs/contributors)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![Code style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
+
 [Website](https://www.agentriona.xyz) | [Roadmap](ROADMAP.md) | [Twitter](https://twitter.com/david_patrick01) | [Contact](mailto:davidchuksdev@gmail.com)
 
 <p align="center">
   <img src="riona.png" alt="Riona AI Agent banner" width="100%" />
 </p>
+
+## Table of Contents
+- [About](#about)
+- [Overview](#overview)
+- [Quick Links](#quick-links)
+- [Feature Summary](#feature-summary)
+- [Planned Expansion](#planned-expansion)
+- [Installation](#installation)
+- [MongoDB Setup](#mongodb-setup)
+- [Usage](#usage)
+- [Dashboard](#dashboard)
+- [Development](#development)
+- [Guides](#guides)
+- [reCAPTCHA Model](#recaptcha-model)
+- [Configuration Reference](#configuration-reference)
+- [Contributing](#contributing)
+- [License](#license)
+- [Community & Contact](#community--contact)
+
+## About
 
 Riona AI Agent is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, account workflows, scheduling, engagement actions, and training inputs so you can run a social media operator from one codebase.
 
@@ -225,37 +253,52 @@ This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is
 - `npm run recaptcha:build`
 - `npm run recaptcha:serve`
 
-## IG Run Profiles
+See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.md) for more details.
 
-Set `IG_RUN_PROFILE` to tune behavior:
-- `safe`: slower, fewer actions
-- `standard`: balanced (default)
-- `aggressive`: faster, higher limits
+## Configuration Reference
 
-Overrides:
-- `IG_DAILY_MAX_ACTIONS`
-- `IG_MAX_POSTS_PER_RUN`
-- `IG_ACTION_DELAY_MIN_MS`
-- `IG_ACTION_DELAY_MAX_MS`
-- `IG_AGENT_INTERVAL_MS`
+### Instagram
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `IGusername` | string | | Instagram username |
+| `IGpassword` | string | | Instagram password |
+| `IG_RUN_PROFILE` | string | `standard` | Run profile: `safe`, `standard`, `aggressive` |
+| `IG_AGENT_ENABLED` | boolean | `false` | Auto-run Instagram agent loop |
+| `IG_AGENT_INTERVAL_MS` | number | `30000` | Agent loop interval in ms |
+| `IG_DAILY_MAX_ACTIONS` | number | `0` | Daily max IG actions (0 = unlimited) |
+| `IG_MAX_POSTS_PER_RUN` | number | | Max posts per run (overrides profile) |
+| `IG_ACTION_DELAY_MIN_MS` | number | | Min action delay (overrides profile) |
+| `IG_ACTION_DELAY_MAX_MS` | number | | Max action delay (overrides profile) |
+| `IG_COOLDOWN_MINUTES` | number | | Cooldown duration in minutes |
+| `IG_COMMENT_ALLOWLIST` | string | | Comma-separated allowed comment terms |
+| `IG_COMMENT_DENYLIST` | string | | Comma-separated blocked comment terms |
+| `IG_COMMENT_SENTIMENT` | string | `any` | Sentiment filter: `any`, `positive`, `neutral` |
+| `IG_AD_MARKERS` | string | `sponsored,paid partnership,paid partnership with` | Comma-separated ad markers |
+| `IG_AD_BUTTON_MARKERS` | string | `learn more,shop now,sign up,install now,get offer,subscribe,book now` | Comma-separated ad button markers |
 
-## Cooldown Mode
+### X/Twitter
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Xusername` | string | | X/Twitter username |
+| `Xpassword` | string | | X/Twitter password |
 
-If IG triggers a challenge or login error, the agent will enter cooldown and skip interactions.
-Configure via:
-- `IG_COOLDOWN_MINUTES`
+### AI & APIs
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `GEMINI_API_KEY` | string | | Primary Gemini API key |
+| `GEMINI_API_KEY_1` | string | | Secondary Gemini API key |
+| `GEMINI_API_KEY_2` | string | | Tertiary Gemini API key |
 
-Manual trigger:
-```
-POST /api/cooldown { "minutes": 60 }
-```
+### Database
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MONGODB_URI` | string | | MongoDB connection URI |
+| `MONGODB_REQUIRED` | boolean | `false` | Require MongoDB connection |
 
-## Comment Filters
-
-Use allow/deny lists and a simple sentiment gate:
-- `IG_COMMENT_ALLOWLIST`
-- `IG_COMMENT_DENYLIST`
-- `IG_COMMENT_SENTIMENT` = `any | positive | neutral`
+### Logging & General
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LOGGER` | string | `console` | Logging backend: `winston` or `console` |
 
 ## Multi-Account Support
 
