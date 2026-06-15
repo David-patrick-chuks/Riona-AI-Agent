@@ -1,14 +1,24 @@
 import { getNumberEnv } from '../utils/env';
 
-type IgProfile = {
+/**
+ * Instagram automation profile configuration
+ */
+export type IgProfile = {
+  /** Profile name: safe, standard, or aggressive */
   name: 'safe' | 'standard' | 'aggressive';
+  /** Interval between agent runs in milliseconds */
   intervalMs: number;
+  /** Maximum number of actions per day */
   dailyMaxActions: number;
+  /** Maximum number of posts per run */
   maxPostsPerRun: number;
+  /** Minimum delay between actions in milliseconds */
   minDelayMs: number;
+  /** Maximum delay between actions in milliseconds */
   maxDelayMs: number;
 };
 
+/** Predefined Instagram profiles with their default settings */
 const PROFILES: Record<IgProfile['name'], IgProfile> = {
   safe: {
     name: 'safe',
@@ -36,6 +46,10 @@ const PROFILES: Record<IgProfile['name'], IgProfile> = {
   },
 };
 
+/**
+ * Gets the Instagram profile configuration, combining profile defaults with environment variable overrides
+ * @returns The Instagram profile configuration
+ */
 export const getIgProfile = (): IgProfile => {
   const raw = (process.env.IG_RUN_PROFILE || 'standard').toLowerCase();
   const base = (PROFILES as any)[raw] || PROFILES.standard;
