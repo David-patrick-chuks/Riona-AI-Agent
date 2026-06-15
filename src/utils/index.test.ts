@@ -8,7 +8,7 @@ describe('utils', () => {
   const dataPath = path.join(__dirname, '../data/igActionData.json');
 
   afterEach(async () => {
-    try { await fs.unlink(cookiesPath); } catch {}
+    try { await fs.unlink(cookiesPath); } catch { /* ignore error */ }
     try {
       const files = await fs.readdir(cookiesDir);
       for (const file of files) {
@@ -16,8 +16,8 @@ describe('utils', () => {
           await fs.unlink(path.join(cookiesDir, file));
         }
       }
-    } catch {}
-    try { await fs.unlink(dataPath); } catch {}
+    } catch { /* ignore error */ }
+    try { await fs.unlink(dataPath); } catch { /* ignore error */ }
   });
 
   test('daily IG action counter increments', async () => {

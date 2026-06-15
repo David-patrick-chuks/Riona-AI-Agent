@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
 import { getPosterClient } from '../client/InstagramPoster';
 import logger from '../config/logger';
@@ -19,7 +19,7 @@ const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 // JWT Auth middleware
-function requireAuth(req: Request, res: Response, next: Function) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = getTokenFromRequest(req);
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   const payload = verifyToken(token);

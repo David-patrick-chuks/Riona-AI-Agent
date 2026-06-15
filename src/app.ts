@@ -444,6 +444,7 @@ const runInstagramOnce = async () => {
 const runAgents = async () => {
   const profile = getIgProfile();
   const intervalMs = profile.intervalMs;
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     logger.info("Starting Instagram agent iteration...");
     let didRelogin = false;
