@@ -17,6 +17,7 @@
 - `IG_MAX_POSTS_PER_RUN`
 - `IG_ACTION_DELAY_MIN_MS`
 - `IG_ACTION_DELAY_MAX_MS`
+- `IG_COOLDOWN_MINUTES` (cooldown duration after errors)
 
 ## Multi-account
 - `src/config/accounts.json` (see `src/config/accounts.example.json`)

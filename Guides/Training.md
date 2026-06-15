@@ -39,3 +39,12 @@ JSON character found.
 ## Output
 Training scripts typically write structured data to `src/data/` or log
 results to the console. Review and curate outputs before use.
+
+## ReCAPTCHA Model Training
+The project includes a reCAPTCHA solving model in the `riona-recaptcha-model/` directory.
+- `npm run recaptcha:dev` - Start reCAPTCHA model dev server
+- `npm run recaptcha:train` - Train reCAPTCHA model
+- `npm run recaptcha:collect` - Collect reCAPTCHA training data
+- `npm run recaptcha:build` - Build reCAPTCHA model
+- `npm run recaptcha:serve` - Serve trained reCAPTCHA model
+See the [riona-recaptcha-model README](../riona-recaptcha-model/README.md) for full details.
