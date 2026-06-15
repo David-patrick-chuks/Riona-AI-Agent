@@ -32,7 +32,8 @@ const API_URL = `http://localhost:${CONFIG.PORT}/predict`;
         const formData = new FormData();
         for (const file of allFiles) {
             const buffer = fs.readFileSync(file.path);
-            const blob = new Blob([buffer]);
+            const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+            const blob = new Blob([arrayBuffer as ArrayBuffer]);
             formData.append('images', blob as any, path.basename(file.path));
         }
 
