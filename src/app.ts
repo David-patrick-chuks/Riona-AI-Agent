@@ -143,6 +143,12 @@ app.get('/dashboard', (_req, res) => {
       flex-wrap: wrap;
       margin-top: 12px;
     }
+    .toolbar input {
+      min-width: 120px;
+      background: white;
+      color: var(--ink);
+      border: 1px solid #ffc4dd;
+    }
     .ok { color: #0f7b47; }
     .bad { color: #b42318; }
     @media (max-width: 720px) {
@@ -221,6 +227,21 @@ app.get('/dashboard', (_req, res) => {
     </div>
 
     <div class="card" style="margin-top: 16px;">
+      <div class="label">Control Panel</div>
+      <div class="muted">Run common admin actions against the current authenticated session.</div>
+      <div class="toolbar">
+        <button id="interact-btn" type="button">Run Interact</button>
+        <button id="clear-cookies-btn" class="secondary" type="button">Clear Cookies</button>
+        <button id="exit-btn" class="secondary" type="button">Exit Client</button>
+      </div>
+      <div class="toolbar">
+        <input id="cooldown-minutes" type="number" min="1" step="1" value="60" />
+        <button id="cooldown-btn" type="button">Start Cooldown</button>
+      </div>
+      <pre id="control-result">No admin action run yet.</pre>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
       <div class="label">Action Feed</div>
       <div class="muted">Latest admin and automation activity</div>
       <div style="overflow:auto; margin-top: 12px;">
@@ -244,9 +265,33 @@ app.get('/dashboard', (_req, res) => {
   </div>
   <script>
     const authResult = document.getElementById('auth-result');
+    const controlResult = document.getElementById('control-result');
     const sessionState = document.getElementById('session-state');
     const sessionMeta = document.getElementById('session-meta');
     const actionsTable = document.getElementById('actions-table');
+    let refreshTimer = null;
+
+    const escapeHtml = (value) => String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+    const requestJson = async (url, options = {}) => {
+      const response = await fetch(url, options);
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_err) {
+        payload = null;
+      }
+      if (!response.ok) {
+        const message = payload?.error || payload?.message || 'Request failed';
+        throw new Error(message);
+      }
+      return payload;
+    };
 
     const renderHealth = async () => {
       try {
@@ -296,12 +341,12 @@ app.get('/dashboard', (_req, res) => {
         const rows = (actionsPayload.actions || []).map((entry) => {
           const details = entry.error || JSON.stringify(entry.details || {});
           return '<tr>' +
-            '<td>' + new Date(entry.createdAt).toLocaleString() + '</td>' +
-            '<td>' + entry.platform + '</td>' +
-            '<td>' + entry.action + '</td>' +
+            '<td>' + escapeHtml(new Date(entry.createdAt).toLocaleString()) + '</td>' +
+            '<td>' + escapeHtml(entry.platform) + '</td>' +
+            '<td>' + escapeHtml(entry.action) + '</td>' +
             '<td class="' + (entry.status === 'success' ? 'ok' : 'bad') + '">' + entry.status + '</td>' +
-            '<td>' + (entry.account || 'default') + '</td>' +
-            '<td>' + (details || '-') + '</td>' +
+            '<td>' + escapeHtml(entry.account || 'default') + '</td>' +
+            '<td>' + escapeHtml(details || '-') + '</td>' +
           '</tr>';
         }).join('');
 
@@ -316,6 +361,16 @@ app.get('/dashboard', (_req, res) => {
       await Promise.all([renderHealth(), renderSession(), renderActions()]);
     };
 
+    const runControlAction = async (url, options = {}) => {
+      try {
+        const payload = await requestJson(url, options);
+        controlResult.textContent = JSON.stringify(payload, null, 2);
+      } catch (err) {
+        controlResult.textContent = err instanceof Error ? err.message : 'Action failed.';
+      }
+      await refreshAll();
+    };
+
     document.getElementById('login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const payload = {
@@ -325,15 +380,14 @@ app.get('/dashboard', (_req, res) => {
       };
 
       try {
-        const response = await fetch('/api/login', {
+        const data = await requestJson('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        const data = await response.json();
         authResult.textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        authResult.textContent = 'Login request failed.';
+        authResult.textContent = err instanceof Error ? err.message : 'Login request failed.';
       }
 
       await refreshAll();
@@ -342,16 +396,37 @@ app.get('/dashboard', (_req, res) => {
     document.getElementById('refresh-btn').addEventListener('click', refreshAll);
     document.getElementById('logout-btn').addEventListener('click', async () => {
       try {
-        const response = await fetch('/api/logout', { method: 'POST' });
-        const data = await response.json();
+        const data = await requestJson('/api/logout', { method: 'POST' });
         authResult.textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        authResult.textContent = 'Logout request failed.';
+        authResult.textContent = err instanceof Error ? err.message : 'Logout request failed.';
       }
       await refreshAll();
     });
 
+    document.getElementById('interact-btn').addEventListener('click', () => {
+      void runControlAction('/api/interact', { method: 'POST' });
+    });
+
+    document.getElementById('clear-cookies-btn').addEventListener('click', () => {
+      void runControlAction('/api/clear-cookies', { method: 'DELETE' });
+    });
+
+    document.getElementById('exit-btn').addEventListener('click', () => {
+      void runControlAction('/api/exit', { method: 'POST' });
+    });
+
+    document.getElementById('cooldown-btn').addEventListener('click', () => {
+      const minutes = Number(document.getElementById('cooldown-minutes').value || 60);
+      void runControlAction('/api/cooldown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minutes }),
+      });
+    });
+
     refreshAll();
+    refreshTimer = setInterval(refreshAll, 15000);
   </script>
 </body>
 </html>`);
