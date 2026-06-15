@@ -11,7 +11,11 @@ import * as readlineSync from "readline-sync";
 let currentAgentApiKeyIndex = 0;
 const triedAgentApiKeys = new Set<number>();
 
-// Function to get the next API key specifically for the agent
+/**
+ * Gets the next API key for the agent with rotation
+ * @returns Next available Gemini API key
+ * @throws Error if all keys have been tried
+ */
 const getNextAgentApiKey = () => {
   triedAgentApiKeys.add(currentAgentApiKeyIndex);
 
@@ -29,6 +33,13 @@ const getNextAgentApiKey = () => {
   return geminiApiKeys[currentAgentApiKeyIndex];
 };
 
+/**
+ * Runs the AI agent with the given schema and prompt
+ * @param schema - JSON schema for the response
+ * @param prompt - Prompt to send to the model
+ * @param apiKeyIndex - Index of API key to use
+ * @returns Parsed JSON response from the model
+ */
 export async function runAgent(
   schema: InstagramCommentSchema,
   prompt: string,
@@ -92,6 +103,11 @@ export async function runAgent(
 }
 
 // ===== ZMIENIONE: Ładowanie Adrian's Style =====
+/**
+ * Chooses a character/style for the agent
+ * First tries to load adrian-style.ts, then falls back to JSON characters
+ * @returns Character/style configuration object
+ */
 export function chooseCharacter(): any {
   // Try to load Adrian's custom style first
   try {
@@ -127,6 +143,11 @@ export function chooseCharacter(): any {
   }
 }
 
+/**
+ * Initializes the agent by selecting a character
+ * Exits the process if initialization fails
+ * @returns Character/style configuration
+ */
 export function initAgent(): any {
   try {
     const character = chooseCharacter();
