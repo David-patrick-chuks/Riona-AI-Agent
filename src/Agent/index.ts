@@ -72,7 +72,13 @@ export async function runAgent(
     }
 
     const responseText = result.text;
-    const data = JSON.parse(responseText);
+    let data: unknown;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      logger.error("Failed to parse AI response as JSON:", parseError);
+      return "Error: Invalid JSON response from AI model.";
+    }
     return data;
   } catch (error: any) {
     // Rotate API key on 429

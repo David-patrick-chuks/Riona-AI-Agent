@@ -144,16 +144,22 @@ router.get('/me', (req: Request, res: Response) => {
   return res.json({ username: payload.username, account: (payload as any).account || 'default' });
 });
 
-// Endpoint to clear Instagram cookies
+// All routes below require authentication
+router.use(requireAuth);
+
+// Endpoint to clear Instagram cookies (authenticated)
 router.delete('/clear-cookies', async (req, res) => {
-  const cookiesPath = path.join(__dirname, '../../cookies/Instagramcookies.json');
+  const account = (req as any).user?.account || 'default';
+  const { getInstagramCookiesPath } = await import('../utils');
+  const cookiesPath = path.join(process.cwd(), getInstagramCookiesPath(account).replace(/^\.\//, ''));
   try {
     await fs.unlink(cookiesPath);
     await logAction({
       platform: 'instagram',
       action: 'clear-cookies',
       status: 'success',
-      account: 'default',
+      account,
+      username: (req as any).user?.username,
     });
     res.json({ success: true, message: 'Instagram cookies cleared.' });
   } catch (err: any) {
@@ -162,7 +168,8 @@ router.delete('/clear-cookies', async (req, res) => {
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'success',
-        account: 'default',
+        account,
+        username: (req as any).user?.username,
         details: { message: 'No cookies to clear.' },
       });
       res.json({ success: true, message: 'No cookies to clear.' });
@@ -171,16 +178,14 @@ router.delete('/clear-cookies', async (req, res) => {
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'error',
-        account: 'default',
+        account,
+        username: (req as any).user?.username,
         error: getErrorMessage(err),
       });
       res.status(500).json({ success: false, message: 'Failed to clear cookies.', error: err.message });
     }
   }
 });
-
-// All routes below require authentication
-router.use(requireAuth);
 
 // Interact with posts endpoint
 router.post('/interact', async (req: Request, res: Response) => {
@@ -379,8 +384,16 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
 // Scrape followers endpoint
 router.post('/scrape-followers', async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.body;
+  const account = (req as any).user.account || 'default';
+  const acct = getAccount(account);
   try {
-    const result = await scrapeFollowersHandler(targetAccount, maxFollowers);
+    const result = await scrapeFollowersHandler(
+      targetAccount,
+      maxFollowers,
+      acct?.username || (req as any).user.username,
+      acct?.password,
+      account
+    );
     await logAction({
       platform: 'instagram',
       action: 'scrape-followers',
@@ -417,10 +430,15 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
 // GET handler for scrape-followers to support file download
 router.get('/scrape-followers', async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.query;
+  const account = (req as any).user.account || 'default';
+  const acct = getAccount(account);
   try {
     const result = await scrapeFollowersHandler(
       String(targetAccount),
-      Number(maxFollowers)
+      Number(maxFollowers),
+      acct?.username || (req as any).user.username,
+      acct?.password,
+      account
     );
     await logAction({
       platform: 'instagram',
@@ -478,6 +496,13 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
 });
 
 // Exit endpoint
+router.post('/exit-interactions', async (_req: Request, res: Response) => {
+  const { setShouldExitInteractions } = await import('../api/agent');
+  setShouldExitInteractions(true);
+  return res.json({ success: true, message: 'Exiting interactions requested.' });
+});
+
+// Exit endpoint
 router.post('/exit', async (req: Request, res: Response) => {
   try {
     const account = (req as any).user?.account || 'default';
@@ -507,7 +532,10 @@ router.post('/exit', async (req: Request, res: Response) => {
 // Trigger cooldown manually
 router.post('/cooldown', async (req: Request, res: Response) => {
   try {
-    const minutes = Number(req.body?.minutes || 60);
+    const minutes = Number(req.body?.minutes ?? 60);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return res.status(400).json({ error: 'minutes must be a positive number' });
+    }
     const { setIgCooldown } = await import('../utils');
     await setIgCooldown(minutes);
     await logAction({

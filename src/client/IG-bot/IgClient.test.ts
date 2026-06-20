@@ -33,7 +33,7 @@ describe('IgClient', () => {
   });
 
   test('loginWithCredentials throws when credentials are missing', async () => {
-    const client = new IgClient();
+    const client = new IgClient('', '');
     (client as any).page = {};
     (client as any).browser = {};
 

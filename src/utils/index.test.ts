@@ -29,6 +29,18 @@ describe('utils', () => {
     expect(updated.count).toBeGreaterThanOrEqual(2);
   });
 
+  test('session cookies without expires are treated as valid', async () => {
+    await fs.mkdir(cookiesDir, { recursive: true });
+    await fs.writeFile(
+      cookiesPath,
+      JSON.stringify([{ name: 'sessionid', value: 'abc123' }]),
+      'utf-8'
+    );
+
+    const exists = await Instagram_cookiesExist();
+    expect(exists).toBe(true);
+  });
+
   test('invalid cookies JSON is backed up and treated as missing', async () => {
     await fs.mkdir(cookiesDir, { recursive: true });
     await fs.writeFile(cookiesPath, '{"bad_json":', 'utf-8');

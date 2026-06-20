@@ -1,17 +1,29 @@
 import { InstagramClient } from './IG-bot';
 import logger from '../config/logger';
+import { getAccount } from '../config/accounts';
+import { IGpassword, IGusername } from '../secret';
 
 type PosterEntry = { client: InstagramClient; creds: { username: string; password: string } };
 
 const posterClients = new Map<string, PosterEntry>();
+
+const resolveCredentials = (
+  username?: string,
+  password?: string,
+  accountKey: string = 'default'
+): { username: string; password: string } => {
+  const fromAccount = getAccount(accountKey);
+  const u = username || fromAccount?.username || process.env.IGusername || IGusername || '';
+  const p = password || fromAccount?.password || process.env.IGpassword || IGpassword || '';
+  return { username: u, password: p };
+};
 
 export const getPosterClient = async (
   username?: string,
   password?: string,
   accountKey: string = 'default'
 ): Promise<InstagramClient> => {
-  const u = username || process.env.IGusername || '';
-  const p = password || process.env.IGpassword || '';
+  const { username: u, password: p } = resolveCredentials(username, password, accountKey);
   if (!u || !p) {
     throw new Error('IGusername and IGpassword are required for posting.');
   }

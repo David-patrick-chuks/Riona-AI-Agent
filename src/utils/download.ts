@@ -9,16 +9,22 @@ export const download = function (uri: string, filename: string, callback: (err?
             callback(err);
             return;
         }
-        request(uri)
-            .pipe(fs.createWriteStream(filename))
-            .on('error', (err: Error) => {
-                logger.error(`Error downloading file from ${uri}: ${err.message}`);
-                callback(err);
-            })
-            .on('close', () => {
-                logger.info(`File downloaded successfully from ${uri} to ${filename}`);
-                callback();
-            });
+        const writeStream = fs.createWriteStream(filename);
+        const reqStream = request(uri);
+        reqStream.on('error', (streamErr: Error) => {
+            logger.error(`Error downloading file from ${uri}: ${streamErr.message}`);
+            writeStream.destroy();
+            callback(streamErr);
+        });
+        reqStream.pipe(writeStream);
+        writeStream.on('error', (writeErr: Error) => {
+            logger.error(`Error writing file ${filename}: ${writeErr.message}`);
+            callback(writeErr);
+        });
+        writeStream.on('finish', () => {
+            logger.info(`File downloaded successfully from ${uri} to ${filename}`);
+            callback();
+        });
     });
 };
 

@@ -12,7 +12,7 @@ import apiRoutes from "./routes/api";
 import { getIgClient, closeIgClient } from "./client/Instagram";
 import { getBoolEnv, getNumberEnv } from "./utils/env";
 import { getIgProfile } from "./config/igProfile";
-import { setIgCooldown } from "./utils";
+import { setIgCooldown, getIgCooldown } from "./utils";
 // import { main as twitterMain } from './client/Twitter'; //
 // import { main as githubMain } from './client/GitHub'; //
 
@@ -446,6 +446,13 @@ const runAgents = async () => {
   const intervalMs = profile.intervalMs;
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    const cooldown = await getIgCooldown();
+    if (cooldown.until > Date.now()) {
+      const waitMs = cooldown.until - Date.now();
+      logger.info(`IG cooldown active, waiting ${Math.ceil(waitMs / 60000)} minute(s)...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+
     logger.info("Starting Instagram agent iteration...");
     let didRelogin = false;
     try {

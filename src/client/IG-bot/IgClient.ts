@@ -6,7 +6,7 @@ import UserAgent from "user-agents";
 import { Server } from "proxy-chain";
 import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
-import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown } from "../../utils";
+import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown, getInstagramCookiesPath } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
 import { setLastRunSummary } from "../../utils/igRunSummary";
 import { getCommentFilterConfig, shouldSkipComment } from "../../utils/commentFilters";
@@ -27,15 +27,30 @@ puppeteerExtra.use(
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const extractCommentFromAgentResult = (result: unknown): string => {
+    if (typeof result === "string") return "";
+    if (Array.isArray(result) && result[0] && typeof result[0] === "object" && "comment" in result[0]) {
+        return String((result[0] as { comment?: string }).comment ?? "");
+    }
+    if (result && typeof result === "object" && "comment" in result) {
+        return String((result as { comment?: string }).comment ?? "");
+    }
+    return "";
+};
+
 export class IgClient {
     private browser: puppeteer.Browser | null = null;
     private page: puppeteer.Page | null = null;
     private username: string;
     private password: string;
+    private accountKey: string;
+    private cookiesPath: string;
 
-    constructor(username?: string, password?: string) {
-        this.username = username || '';
-        this.password = password || '';
+    constructor(username?: string, password?: string, accountKey: string = "default") {
+        this.username = username ?? IGusername ?? "";
+        this.password = password ?? IGpassword ?? "";
+        this.accountKey = accountKey || "default";
+        this.cookiesPath = getInstagramCookiesPath(this.accountKey);
     }
 
     async init() {
@@ -63,7 +78,7 @@ export class IgClient {
         await this.page.setUserAgent(userAgent.toString());
         await this.page.setViewport({ width, height });
 
-        if (await Instagram_cookiesExist()) {
+        if (await Instagram_cookiesExist(this.accountKey)) {
             await this.loginWithCookies();
         } else {
             await this.loginWithCredentials();
@@ -72,7 +87,7 @@ export class IgClient {
 
     private async loginWithCookies() {
         if (!this.page) throw new Error("Page not initialized");
-        const cookies = await loadCookies("./cookies/Instagramcookies.json");
+        const cookies = await loadCookies(this.cookiesPath);
         if (cookies.length > 0) {
             await this.page.setCookie(...cookies);
         } else {
@@ -115,7 +130,7 @@ export class IgClient {
             await this.page.click('button[type="submit"]');
             await this.page.waitForNavigation({ waitUntil: "networkidle2" });
             const cookies = await this.page.cookies();
-            await saveCookies("./cookies/Instagramcookies.json", cookies);
+            await saveCookies(this.cookiesPath, cookies);
             logger.info("Successfully logged in and saved cookies.");
             await this.handleNotificationPopup();
         } catch (error) {
@@ -536,7 +551,7 @@ export class IgClient {
                     const prompt = `human-like Instagram comment based on to the following post: "${caption}". make sure the reply\n            Matchs the tone of the caption (casual, funny, serious, or sarcastic).\n            Sound organic—avoid robotic phrasing, overly perfect grammar, or anything that feels AI-generated.\n            Use relatable language, including light slang, emojis (if appropriate), and subtle imperfections like minor typos or abbreviations (e.g., 'lol' or 'omg').\n            If the caption is humorous or sarcastic, play along without overexplaining the joke.\n            If the post is serious (e.g., personal struggles, activism), respond with empathy and depth.\n            Avoid generic praise ('Great post!'); instead, react specifically to the content (e.g., 'The way you called out pineapple pizza haters 😂👏').\n            *Keep it concise (1-2 sentences max) and compliant with Instagram's guidelines (no spam, harassment, etc.).*`;
                     const schema = getInstagramCommentSchema();
                     const result = await runAgent(schema, prompt);
-                    const comment = (result[0]?.comment ?? "") as string;
+                    const comment = extractCommentFromAgentResult(result);
                     const filterCfg = getCommentFilterConfig();
                     if (shouldSkipComment(comment, filterCfg)) {
                         console.log(`Comment blocked by filters for post ${postIndex}.`);
@@ -556,6 +571,7 @@ export class IgClient {
                                 !button.hasAttribute("disabled")
                         ) || null;
                     }, postSelector);
+                    try {
                     // Only click if postButton is an ElementHandle and not null
                     const postButtonElement = postButton && postButton.asElement ? postButton.asElement() : null;
                     if (postButtonElement) {
@@ -570,6 +586,11 @@ export class IgClient {
                         await delay(2000);
                     } else {
                         console.log("Post button not found.");
+                    }
+                    } finally {
+                        if (postButton) {
+                            await postButton.dispose();
+                        }
                     }
                     }
                 } else {
@@ -601,7 +622,8 @@ export class IgClient {
             } catch (error) {
                 console.error(`Error interacting with post ${postIndex}:`, error);
                 summary.errors++;
-                break;
+                postIndex++;
+                continue;
             }
         }
         const finishedAt = new Date();
@@ -633,7 +655,8 @@ export class IgClient {
             const followers: string[] = [];
             let previousHeight = 0;
             let currentHeight = 0;
-            maxFollowers = maxFollowers + 4;
+            const limit = Number.isFinite(maxFollowers) && maxFollowers > 0 ? maxFollowers + 4 : 4;
+            maxFollowers = limit;
             // Scroll and collect followers until we reach the desired amount or can't scroll anymore
             console.log(maxFollowers);
             while (followers.length < maxFollowers) {
@@ -697,12 +720,4 @@ export class IgClient {
             this.page = null;
         }
     }
-}
-
-export async function scrapeFollowersHandler(targetAccount: string, maxFollowers: number) {
-    const client = new IgClient();
-    await client.init();
-    const followers = await client.scrapeFollowers(targetAccount, maxFollowers);
-    await client.close();
-    return followers;
 }

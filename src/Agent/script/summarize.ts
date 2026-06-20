@@ -8,7 +8,7 @@ dotenv.config();
 
 
 let currentApiKeyIndex = 0; // Keeps track of the current API key in use
-let triedApiKeys = new Set<number>(); // Keep track of which keys we've tried in one request cycle
+const triedApiKeys = new Set<number>(); // Keep track of which keys we've tried in one request cycle
 
 // Function to get the next API key in the list
 const getNextApiKey = () => {
@@ -79,7 +79,9 @@ const getYouTubeTranscriptSchema = (): JsonSchema => {
     };
 };
 
-export async function generateTrainingPrompt(transcript: string, prompt: string = MainPrompt): Promise<any> {
+const MAX_503_RETRIES = 5;
+
+export async function generateTrainingPrompt(transcript: string, prompt: string = MainPrompt, retryCount = 0): Promise<any> {
     let geminiApiKey = geminiApiKeys[currentApiKeyIndex];
     let currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
 
@@ -135,9 +137,13 @@ export async function generateTrainingPrompt(transcript: string, prompt: string 
                     }
                 }
             } else if (error.message.includes("503 Service Unavailable")) {
+                if (retryCount >= MAX_503_RETRIES) {
+                    logger.error("Service unavailable after maximum retries.");
+                    return "Error: Service unavailable after maximum retries.";
+                }
                 logger.error("Service is temporarily unavailable. Retrying...");
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                return generateTrainingPrompt(transcript, prompt);
+                await new Promise(resolve => setTimeout(resolve, 5000 * (retryCount + 1)));
+                return generateTrainingPrompt(transcript, prompt, retryCount + 1);
             } else if (error.message.includes("All API keys have reached their rate limits")) {
                 logger.error(error.message);
                 return `Error: ${error.message}`;

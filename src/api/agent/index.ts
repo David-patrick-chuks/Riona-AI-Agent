@@ -8,6 +8,10 @@ export function getShouldExitInteractions() {
   return shouldExitInteractions;
 }
 
+export function setShouldExitInteractions(value: boolean) {
+  shouldExitInteractions = value;
+}
+
 router.post('/exit-interactions', async (_req: Request, res: Response) => {
   shouldExitInteractions = true;
   res.json({ success: true, message: 'Exiting interactions requested.' });

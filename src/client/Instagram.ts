@@ -1,5 +1,6 @@
 import { IgClient } from './IG-bot/IgClient';
 import logger from '../config/logger';
+import { IGpassword, IGusername } from '../secret';
 
 /**
  * Instagram client entry stored in the map
@@ -15,6 +16,10 @@ type ClientEntry = {
  * Map of account keys to Instagram clients
  */
 const igClients = new Map<string, ClientEntry>();
+const initPromises = new Map<string, Promise<IgClient>>();
+
+const isInitialized = (entry: ClientEntry | undefined): boolean =>
+    !!entry && entry.lastInitError === null && entry.lastInitAt !== null;
 
 /**
  * Gets a snapshot of all Instagram clients and their statuses
@@ -24,7 +29,7 @@ export const getIgClientsSnapshot = () => {
     const out: Record<string, { initialized: boolean; lastInitAt: string | null; lastInitError: string | null }> = {};
     for (const [key, entry] of igClients.entries()) {
         out[key] = {
-            initialized: !!entry,
+            initialized: isInitialized(entry),
             lastInitAt: entry.lastInitAt,
             lastInitError: entry.lastInitError,
         };
@@ -43,20 +48,45 @@ export const getIgClientsSnapshot = () => {
 export const getIgClient = async (username?: string, password?: string, accountKey: string = 'default'): Promise<IgClient> => {
     const key = accountKey || 'default';
     const entry = igClients.get(key);
-    if (!entry || (username && password && (entry.creds.username !== username || entry.creds.password !== password))) {
-        const client = new IgClient(username, password);
-        const creds = { username: username || '', password: password || '' };
+    const needsReinit =
+        !entry ||
+        entry.lastInitError !== null ||
+        (username && password && (entry.creds.username !== username || entry.creds.password !== password));
+
+    if (!needsReinit && entry) {
+        return entry.client;
+    }
+
+    const pending = initPromises.get(key);
+    if (pending) {
+        return pending;
+    }
+
+    const initPromise = (async () => {
+        if (entry) {
+            await entry.client.close().catch(() => undefined);
+            igClients.delete(key);
+        }
+
+        const resolvedUsername = username || entry?.creds.username || IGusername;
+        const resolvedPassword = password || entry?.creds.password || IGpassword;
+        const client = new IgClient(resolvedUsername, resolvedPassword, key);
+        const creds = { username: resolvedUsername, password: resolvedPassword };
         try {
             await client.init();
             igClients.set(key, { client, creds, lastInitError: null, lastInitAt: new Date().toISOString() });
+            return client;
         } catch (error) {
             logger.error("Failed to initialize Instagram client", error);
             igClients.set(key, { client, creds, lastInitError: error instanceof Error ? error.message : String(error), lastInitAt: null });
             throw error;
+        } finally {
+            initPromises.delete(key);
         }
-        return client;
-    }
-    return entry.client;
+    })();
+
+    initPromises.set(key, initPromise);
+    return initPromise;
 };
 
 /**
@@ -67,7 +97,7 @@ export const getIgClient = async (username?: string, password?: string, accountK
 export const getIgClientStatus = (accountKey: string = 'default') => {
     const entry = igClients.get(accountKey);
     return {
-        initialized: !!entry,
+        initialized: isInitialized(entry),
         lastInitAt: entry?.lastInitAt || null,
         lastInitError: entry?.lastInitError || null,
     };
@@ -85,4 +115,13 @@ export const closeIgClient = async (accountKey: string = 'default') => {
     }
 };
 
-export { scrapeFollowersHandler } from './IG-bot/IgClient'; 
+export async function scrapeFollowersHandler(
+    targetAccount: string,
+    maxFollowers: number,
+    username?: string,
+    password?: string,
+    accountKey: string = 'default'
+) {
+    const client = await getIgClient(username, password, accountKey);
+    return client.scrapeFollowers(targetAccount, maxFollowers);
+}

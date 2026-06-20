@@ -139,10 +139,9 @@ const logger: Logger =
     process.env.LOGGER === "console" ? createConsoleLogger() : createWinstonLogger();
 
 export function setupErrorHandlers(): void {
-    // Catch unhandled promise rejections
+    // Catch unhandled promise rejections (log but do not terminate the server)
     process.on("unhandledRejection", (error: unknown) => {
         setup_HandleError(error, "Unhandled Rejection");
-        process.exit(1);
     });
 
     // Catch uncaught exceptions

@@ -42,6 +42,16 @@ export const geminiApiKeys = [...primaryKey, ...numberedKeys];
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 const JWT_EXPIRES_IN = '2h';
 
+export function validateRequiredSecrets(): void {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'supersecretkey') {
+    throw new Error('JWT_SECRET must be set to a strong value in production');
+  }
+  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'supersecretkey') {
+    throw new Error('SESSION_SECRET must be set to a strong value in production');
+  }
+}
+
 export function signToken(payload: object) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }

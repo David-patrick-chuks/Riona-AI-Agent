@@ -3,13 +3,28 @@ import path from "path";
 import { geminiApiKeys } from "../secret";
 import logger from "../config/logger";
 
+/** Cookie file path for a given account key (legacy default path kept for "default"). */
+export function getInstagramCookiesPath(accountKey: string = "default"): string {
+  const key = accountKey || "default";
+  if (key === "default") {
+    return "./cookies/Instagramcookies.json";
+  }
+  return `./cookies/Instagramcookies-${key}.json`;
+}
+
+const isCookieValid = (cookie: { expires?: number } | undefined, now: number): boolean => {
+  if (!cookie) return false;
+  if (cookie.expires === undefined || cookie.expires === -1) return true;
+  return cookie.expires > now;
+};
+
 /**
  * Checks if valid Instagram cookies exist and are not expired
  * @returns True if valid cookies exist, false otherwise
  */
-export async function Instagram_cookiesExist(): Promise<boolean> {
+export async function Instagram_cookiesExist(accountKey: string = "default"): Promise<boolean> {
   try {
-    const cookiesPath = "./cookies/Instagramcookies.json";
+    const cookiesPath = getInstagramCookiesPath(accountKey);
     await fs.access(cookiesPath);
 
     const cookiesData = await fs.readFile(cookiesPath, "utf-8");
@@ -31,8 +46,8 @@ export async function Instagram_cookiesExist(): Promise<boolean> {
 
     const currentTimestamp = Math.floor(Date.now() / 1000);
 
-    if (primaryCookie && primaryCookie.expires > currentTimestamp) return true;
-    if (fallbackCookie && fallbackCookie.expires > currentTimestamp) return true;
+    if (isCookieValid(primaryCookie, currentTimestamp)) return true;
+    if (isCookieValid(fallbackCookie, currentTimestamp)) return true;
 
     return false;
   } catch (error) {
@@ -115,22 +130,19 @@ const triedApiKeys = new Set<number>();
  * @returns The next API key string
  * @throws Error if no keys are configured or all have been tried
  */
-export const getNextApiKey = (currentApiKeyIndex: number) => {
+export const getNextApiKey = (currentApiKeyIndex: number): { key: string; index: number } => {
   if (geminiApiKeys.length === 0) {
     throw new Error("No valid GEMINI API keys configured.");
   }
-  // track current
   triedApiKeys.add(currentApiKeyIndex);
 
-  // move circularly
-  currentApiKeyIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length;
+  const nextIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length;
 
-  // if all tried, reset & throw
   if (triedApiKeys.size >= geminiApiKeys.length) {
     triedApiKeys.clear();
     throw new Error("All API keys have reached their rate limits. Please try again later.");
   }
-  return geminiApiKeys[currentApiKeyIndex];
+  return { key: geminiApiKeys[nextIndex], index: nextIndex };
 };
 
 /**
@@ -142,19 +154,22 @@ export const getNextApiKey = (currentApiKeyIndex: number) => {
  * @param runAgent - Function to run the agent again
  * @returns The response from the agent, or an error message
  */
+const MAX_503_RETRIES = 5;
+
 export async function handleError(
   error: unknown,
   currentApiKeyIndex: number,
   schema: any,
   prompt: string,
-  runAgent: (schema: any, prompt: string, apiKeyIndex?: number) => Promise<string>
+  runAgent: (schema: any, prompt: string, apiKeyIndex?: number) => Promise<string>,
+  retryCount = 0
 ): Promise<string> {
   if (error instanceof Error) {
     if (error.message.includes("429 Too Many Requests")) {
       logger.error(`---GEMINI_API_KEY_${currentApiKeyIndex + 1} limit exhausted, switching to the next API key...`);
       try {
-        getNextApiKey(currentApiKeyIndex);
-        return runAgent(schema, prompt);
+        const { index: nextIndex } = getNextApiKey(currentApiKeyIndex);
+        return runAgent(schema, prompt, nextIndex);
       } catch (keyError) {
         if (keyError instanceof Error) {
           logger.error("API key error:", keyError.message);
@@ -164,9 +179,30 @@ export async function handleError(
         return "Error: All API keys have reached their rate limits. Please try again later.";
       }
     } else if (error.message.includes("503 Service Unavailable")) {
+      if (retryCount >= MAX_503_RETRIES) {
+        logger.error("Service unavailable after maximum retries.");
+        return "Error: Service unavailable after maximum retries.";
+      }
       logger.error("Service is temporarily unavailable. Retrying...");
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      return runAgent(schema, prompt, currentApiKeyIndex);
+      await new Promise((resolve) => setTimeout(resolve, 5000 * (retryCount + 1)));
+      try {
+        return await runAgent(schema, prompt, currentApiKeyIndex);
+      } catch (retryError) {
+        if (
+          retryError instanceof Error &&
+          retryError.message.includes("503 Service Unavailable")
+        ) {
+          return handleError(
+            retryError,
+            currentApiKeyIndex,
+            schema,
+            prompt,
+            runAgent,
+            retryCount + 1
+          );
+        }
+        return handleError(retryError, currentApiKeyIndex, schema, prompt, runAgent, retryCount);
+      }
     } else if (error.message.includes("All API keys have reached their rate limits")) {
       logger.error(error.message);
       return `Error: ${error.message}`;
@@ -308,6 +344,10 @@ export const getIgCooldown = async (): Promise<{ until: number }> => {
 };
 
 export const setIgCooldown = async (minutes: number): Promise<void> => {
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    logger.warn(`Invalid cooldown minutes: ${minutes}`);
+    return;
+  }
   const dataPath = path.join(__dirname, "../data/igCooldown.json");
   const dataDir = path.dirname(dataPath);
   const until = Date.now() + minutes * 60 * 1000;

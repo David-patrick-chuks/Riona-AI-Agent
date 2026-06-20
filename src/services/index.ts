@@ -1,25 +1,32 @@
 import logger from "../config/logger";
-
+import mongoose from "mongoose";
+import { closeIgClient } from "../client/Instagram";
 
 // Graceful shutdown function
 export const shutdown = (server: any) => {
     try {
       logger.info("Shutting down gracefully...");
-      // Attempt to close the server
-      server.close(() => {
-        logger.info("Closed all connections gracefully.");
-        // Optional: clean up other resources (like DB connections)
-        process.exit(0); // Exit the process after everything is closed
+      const cleanup = async () => {
+        await closeIgClient("default").catch(() => undefined);
+        if (mongoose.connection.readyState === 1) {
+          await mongoose.disconnect().catch(() => undefined);
+        }
+      };
+
+      void cleanup().finally(() => {
+        server.close(() => {
+          logger.info("Closed all connections gracefully.");
+          process.exit(0);
+        });
       });
-      // If server hasn't closed after 10 seconds, force shutdown
+
       setTimeout(() => {
         logger.error("Forcing shutdown after timeout.");
-        process.exit(1); // Force exit with an error code if shutdown times out
+        process.exit(1);
       }, 10000);
   
     } catch (error: any) {
-      // Handle any error that occurs during the shutdown process
       logger.error(`Error during shutdown: ${error.message}`);
-      process.exit(1); // Exit with error code if shutdown fails
+      process.exit(1);
     }
   };

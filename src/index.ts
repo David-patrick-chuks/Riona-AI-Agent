@@ -3,8 +3,10 @@ import logger from "./config/logger";
 import { shutdown } from "./services";
 import app from "./app";
 import { initAgent } from "./Agent/index";
+import { validateRequiredSecrets } from "./secret";
 
 dotenv.config();
+validateRequiredSecrets();
 
 async function startServer() {
   try {

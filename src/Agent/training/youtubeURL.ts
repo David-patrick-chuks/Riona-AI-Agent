@@ -26,7 +26,7 @@ async function getYouTubeTranscript(url: string): Promise<string> {
       parsedUrl.hostname === "youtube.com"
     ) {
       if (parsedUrl.pathname.includes("/shorts/")) {
-        videoId = parsedUrl.pathname.split("/shorts/")[1];
+        videoId = parsedUrl.pathname.split("/shorts/")[1]?.split(/[?#]/)[0] ?? null;
       } else {
         videoId = parsedUrl.searchParams.get("v");
       }
@@ -53,9 +53,9 @@ async function getYouTubeTranscript(url: string): Promise<string> {
     return transcript.map((item) => item.text).join(" ");
   } catch (error) {
     if (error instanceof Error) {
-      return `Error fetching transcript: ${error.message}`;
+      throw new Error(`Error fetching transcript: ${error.message}`);
     }
-    return "An unknown error occurred.";
+    throw new Error("An unknown error occurred while fetching transcript.");
   }
 }
 
@@ -67,7 +67,7 @@ async function getYouTubeTranscript(url: string): Promise<string> {
 export async function Train_Agent_with_Youtube_URL(url: string) {
   try {
     const transcript = await getYouTubeTranscript(url);
-    if (!transcript) {
+    if (!transcript || transcript.startsWith("No captions available")) {
       throw new Error("Failed to retrieve transcript from YouTube.");
     }
     const source = await generateTrainingPrompt(transcript);

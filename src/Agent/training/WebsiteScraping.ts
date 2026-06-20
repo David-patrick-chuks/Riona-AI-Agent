@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import puppeteer, { Browser } from "puppeteer";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 import { saveScrapedData } from "../../utils";
@@ -14,40 +14,31 @@ function cleanHTML(inputHtml: string): string {
 
 // Function to scrape and clean content from a given URL using Puppeteer
 async function scrapeAndCleanContent(url: string): Promise<string | null> {
+  let browser: Browser | null = null;
   try {
-    // Launch a Puppeteer browser instance with additional options
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
 
-    // Set a longer timeout for medical websites
     await page.setDefaultNavigationTimeout(30000);
-
-    // Navigate to the specified URL
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    // Extract the text content from the website
     const htmlContent = await page.evaluate(() => document.body.innerHTML);
-
-    // Close the browser
-    await browser.close();
-
-    // Clean the extracted text content
-    const cleanedContent = cleanHTML(htmlContent);
-
-    return cleanedContent;
+    return cleanHTML(htmlContent);
   } catch (error) {
     console.error(`Error scraping and cleaning content from ${url}:`, error);
     return null;
+  } finally {
+    if (browser) await browser.close();
   }
 }
 
-// Function to get all links from a given URL
 async function getAllLinks(url: string): Promise<string[]> {
+  let browser: Browser | null = null;
   try {
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
@@ -56,7 +47,6 @@ async function getAllLinks(url: string): Promise<string[]> {
     await page.setDefaultNavigationTimeout(30000);
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    // Extract all links from the page
     const links = await page.evaluate(() =>
       Array.from(document.querySelectorAll("a"))
         .map((anchor) => anchor.href)
@@ -65,21 +55,23 @@ async function getAllLinks(url: string): Promise<string[]> {
         )
     );
 
-    await browser.close();
     return links;
   } catch (error) {
     console.error(`Error getting links from ${url}:`, error);
     return [];
+  } finally {
+    if (browser) await browser.close();
   }
 }
 
-// Function to scrape and clean content from all routes on a website
+const MAX_CRAWL_PAGES = Number(process.env.TRAIN_MAX_CRAWL_PAGES || 50);
+
 async function scrapeAllRoutes(baseUrl: string): Promise<void> {
   const visitedLinks = new Set<string>();
   const linksToVisit = [baseUrl];
   let processedCount = 0;
 
-  while (linksToVisit.length > 0) {
+  while (linksToVisit.length > 0 && processedCount < MAX_CRAWL_PAGES) {
     const currentLink = linksToVisit.pop();
     if (currentLink && !visitedLinks.has(currentLink)) {
       visitedLinks.add(currentLink);

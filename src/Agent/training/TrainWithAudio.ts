@@ -1,13 +1,17 @@
 import { GoogleGenAI, createPartFromUri, createUserContent } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
+import { geminiApiKeys } from "../../secret";
 
 dotenv.config();
 
-const apiKey = process.env.GEMINI_API_KEY_41 as string;
+const apiKey = geminiApiKeys[0];
 if (!apiKey) {
-    throw new Error("API key is missing");
+    throw new Error("At least one GEMINI API key is required (GEMINI_API_KEY or GEMINI_API_KEY_1)");
 }
+
+const POLL_INTERVAL_MS = 10_000;
+const MAX_POLL_ATTEMPTS = 60;
 
 export class AIAudioFileService {
 
@@ -23,9 +27,9 @@ export class AIAudioFileService {
      * @param mimeType - The MIME type of the file.
      */
     async processFile(filePath: string, displayName: string, mimeType: string): Promise<string> {
+        const dryRun = (process.env.TRAIN_DRY_RUN || 'false').toLowerCase() === 'true';
         try {
             const maxMb = Number(process.env.TRAIN_MAX_FILE_MB || 10);
-            const dryRun = (process.env.TRAIN_DRY_RUN || 'false').toLowerCase() === 'true';
             const stat = fs.statSync(filePath);
             if (stat.size > maxMb * 1024 * 1024) {
                 throw new Error(`File exceeds max size of ${maxMb}MB`);
@@ -38,10 +42,18 @@ export class AIAudioFileService {
                 config: { mimeType, displayName },
             });
 
-            // Poll until the file is processed (state becomes ACTIVE), if state is present
+            let pollAttempts = 0;
             while (file.state && file.state.toString() !== "ACTIVE") {
+                const state = file.state.toString();
+                if (state === "FAILED" || state === "ERROR") {
+                    throw new Error(`File processing failed with state: ${state}`);
+                }
+                if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+                    throw new Error("Timed out waiting for uploaded file to become ACTIVE");
+                }
+                pollAttempts++;
                 process.stdout.write(".");
-                await new Promise((resolve) => setTimeout(resolve, 10_000));
+                await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
                 if (!file.name) {
                     throw new Error("Uploaded file is missing a name.");
                 }
@@ -75,8 +87,7 @@ export class AIAudioFileService {
                 throw new Error(`Unknown error occurred during file processing.`);
             }
         } finally {
-            // Delete the temporary file from the local server
-            if (fs.existsSync(filePath)) {
+            if (!dryRun && fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
             }
         }
