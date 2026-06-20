@@ -52,6 +52,7 @@ Riona is built to automate social activity while keeping control surfaces explic
 
 - Live website: `https://www.agentriona.xyz`
 - Project roadmap: `ROADMAP.md`
+- CA: `AuTUKS9PCP8YQuBdqSXfBRoz79USEKX8EnTkx6Wnpump`
 
 If you'd like to support the project, see the private donations file maintained locally.
 
