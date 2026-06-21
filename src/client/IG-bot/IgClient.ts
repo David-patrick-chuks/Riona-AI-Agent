@@ -747,11 +747,13 @@ export class IgClient {
       const followers: string[] = [];
       let previousHeight = 0;
       let currentHeight = 0;
-      const limit = Number.isFinite(maxFollowers) && maxFollowers > 0 ? maxFollowers + 4 : 4;
-      maxFollowers = limit;
+      // The first ~4 links in the modal are typically non-follower elements (profile links, navigation)
+      // So we collect extra entries and filter them out at the end
+      const nonFollowerOffset = 4;
+      const requestedCount = Number.isFinite(maxFollowers) && maxFollowers > 0 ? maxFollowers : 0;
+      const collectLimit = requestedCount + nonFollowerOffset;
       // Scroll and collect followers until we reach the desired amount or can't scroll anymore
-      console.log(maxFollowers);
-      while (followers.length < maxFollowers) {
+      while (followers.length < collectLimit) {
         // Get all follower links in the current view
         const newFollowers = await page.evaluate(() => {
           const followerElements = document.querySelectorAll('div a[role="link"]');
@@ -763,9 +765,8 @@ export class IgClient {
 
         // Add new unique followers to our list
         for (const follower of newFollowers) {
-          if (!followers.includes(follower) && followers.length < maxFollowers) {
+          if (!followers.includes(follower) && followers.length < collectLimit) {
             followers.push(follower);
-            console.log(`Found follower: ${follower}`);
           }
         }
 
@@ -794,8 +795,10 @@ export class IgClient {
         previousHeight = currentHeight;
       }
 
-      console.log(`Successfully scraped ${followers.length - 4} followers`);
-      return followers.slice(4, maxFollowers);
+      // Skip the first few non-follower links and return the requested count
+      const actualFollowers = followers.slice(nonFollowerOffset, nonFollowerOffset + requestedCount);
+      console.log(`Successfully scraped ${actualFollowers.length} followers for ${targetAccount}`);
+      return actualFollowers;
     } catch (error) {
       console.error(`Error scraping followers for ${targetAccount}:`, error);
       throw error;
