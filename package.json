@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "scripts": {
     "start": "npx tsc && npm run postbuild && node build/index.js",
-    "postbuild": "copyfiles -u 3 src/Agent/characters/*.json build/Agent/characters",
+    "postbuild": "copyfiles -u 3 src/Agent/characters/*.json build/Agent/characters && copyfiles -u 2 src/db/schema.sql build/db",
     "train:link": "tsc && node build/Agent/training/WebsiteScraping.js",
     "train:audio": "tsc && node build/Agent/training/TrainWithAudio.js",
     "train:youtube": "tsc && node build/Agent/training/youtubeURL.js",

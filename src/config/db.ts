@@ -10,8 +10,20 @@ export const isDbConnected = (): boolean => pool !== null;
 
 export const getPool = (): Pool | null => pool;
 
+const getSchemaPath = (): string => {
+  const candidates = [
+    path.join(process.cwd(), 'src', 'db', 'schema.sql'),
+    path.join(__dirname, '../db/schema.sql'),
+  ];
+  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!found) {
+    throw new Error(`schema.sql not found. Checked: ${candidates.join(', ')}`);
+  }
+  return found;
+};
+
 const applySchema = async (client: Pool): Promise<void> => {
-  const schemaPath = path.join(__dirname, '../db/schema.sql');
+  const schemaPath = getSchemaPath();
   const sql = fs.readFileSync(schemaPath, 'utf-8');
   await client.query(sql);
 };
