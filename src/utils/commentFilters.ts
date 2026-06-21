@@ -1,3 +1,5 @@
+import logger from '../config/logger';
+
 export type CommentFilterConfig = {
   allow?: string[];
   deny?: string[];
@@ -6,34 +8,44 @@ export type CommentFilterConfig = {
   maxLength?: number;
 };
 
+export type CommentSentiment = NonNullable<CommentFilterConfig['sentiment']>;
+
+const VALID_SENTIMENTS: CommentSentiment[] = ['positive', 'neutral', 'any'];
+
 const normalize = (s: string) => s.toLowerCase();
 
-const parseList = (value: string): string[] =>
-  value
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-const parseSentiment = (value: string): 'positive' | 'neutral' | 'any' => {
-  const normalized = value.toLowerCase();
-  if (normalized === 'positive' || normalized === 'neutral' || normalized === 'any') {
-    return normalized;
+export const parseCommentSentiment = (raw?: string): CommentSentiment => {
+  const value = (raw || 'any').trim().toLowerCase();
+  if (VALID_SENTIMENTS.includes(value as CommentSentiment)) {
+    return value as CommentSentiment;
   }
   return 'any';
 };
 
-const parseNumber = (value?: string): number | undefined => {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
-};
-
 export const getCommentFilterConfig = (): CommentFilterConfig => {
-  const allow = parseList(process.env.IG_COMMENT_ALLOWLIST || '');
-  const deny = parseList(process.env.IG_COMMENT_DENYLIST || '');
-  const sentiment = parseSentiment(process.env.IG_COMMENT_SENTIMENT || 'any');
-  const minLength = parseNumber(process.env.IG_COMMENT_MIN_LENGTH);
-  const maxLength = parseNumber(process.env.IG_COMMENT_MAX_LENGTH);
+  const allow = (process.env.IG_COMMENT_ALLOWLIST || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const deny = (process.env.IG_COMMENT_DENYLIST || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const rawSentiment = process.env.IG_COMMENT_SENTIMENT;
+  const sentiment = parseCommentSentiment(rawSentiment);
+  if (rawSentiment && sentiment === 'any' && rawSentiment.trim().toLowerCase() !== 'any') {
+    logger.warn(
+      `Invalid IG_COMMENT_SENTIMENT "${rawSentiment}". Expected any, positive, or neutral. Using "any".`,
+    );
+  }
+
+  const minLength = process.env.IG_COMMENT_MIN_LENGTH
+    ? parseInt(process.env.IG_COMMENT_MIN_LENGTH, 10)
+    : undefined;
+  const maxLength = process.env.IG_COMMENT_MAX_LENGTH
+    ? parseInt(process.env.IG_COMMENT_MAX_LENGTH, 10)
+    : undefined;
+
   return { allow, deny, sentiment, minLength, maxLength };
 };
 
