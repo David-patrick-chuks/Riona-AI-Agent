@@ -361,38 +361,43 @@ router.post('/post-photo', actionLimiter, async (req: Request, res: Response) =>
 });
 
 // Post photo from file (multipart, rate limited)
-router.post('/post-photo-file', actionLimiter, upload.single('image'), async (req: Request, res: Response) => {
-  try {
-    const file = req.file;
-    const caption = req.body?.caption || '';
-    if (!file || !file.buffer) {
-      return res.status(400).json({ error: 'image file is required' });
+router.post(
+  '/post-photo-file',
+  actionLimiter,
+  upload.single('image'),
+  async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+      const caption = req.body?.caption || '';
+      if (!file || !file.buffer) {
+        return res.status(400).json({ error: 'image file is required' });
+      }
+      const account = (req as any).user.account || 'default';
+      const client = await getPosterClient(undefined, undefined, account);
+      const result = await client.postPhotoBuffer(file.buffer, caption);
+      await logAction({
+        platform: 'instagram',
+        action: 'post-photo-file',
+        status: 'success',
+        account,
+        username: (req as any).user.username,
+        details: { filename: file.originalname, size: file.size },
+      });
+      return res.json({ success: true, result });
+    } catch (error) {
+      logger.error('Post photo file error:', error);
+      await logAction({
+        platform: 'instagram',
+        action: 'post-photo-file',
+        status: 'error',
+        account: (req as any).user.account || 'default',
+        username: (req as any).user.username,
+        error: getErrorMessage(error),
+      });
+      return res.status(500).json({ error: 'Failed to post photo file' });
     }
-    const account = (req as any).user.account || 'default';
-    const client = await getPosterClient(undefined, undefined, account);
-    const result = await client.postPhotoBuffer(file.buffer, caption);
-    await logAction({
-      platform: 'instagram',
-      action: 'post-photo-file',
-      status: 'success',
-      account,
-      username: (req as any).user.username,
-      details: { filename: file.originalname, size: file.size },
-    });
-    return res.json({ success: true, result });
-  } catch (error) {
-    logger.error('Post photo file error:', error);
-    await logAction({
-      platform: 'instagram',
-      action: 'post-photo-file',
-      status: 'error',
-      account: (req as any).user.account || 'default',
-      username: (req as any).user.username,
-      error: getErrorMessage(error),
-    });
-    return res.status(500).json({ error: 'Failed to post photo file' });
-  }
-});
+  },
+);
 
 // Schedule photo post endpoint (cron syntax)
 router.post('/schedule-post', async (req: Request, res: Response) => {
