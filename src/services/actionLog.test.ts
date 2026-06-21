@@ -1,53 +1,53 @@
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
-import mongoose from "mongoose";
-import { getActionSummary, listActionLogs, logAction } from "./actionLog";
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { closeDB } from '../config/db';
+import { getActionSummary, listActionLogs, logAction } from './actionLog';
 
-describe("action log service", () => {
+describe('action log service', () => {
   const originalPath = process.env.ACTION_LOG_PATH;
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "riona-action-log-"));
-    process.env.ACTION_LOG_PATH = path.join(tempDir, "actionLogs.json");
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'riona-action-log-'));
+    process.env.ACTION_LOG_PATH = path.join(tempDir, 'actionLogs.json');
   });
 
   afterEach(async () => {
     process.env.ACTION_LOG_PATH = originalPath;
-    await mongoose.disconnect();
+    await closeDB();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  test("writes and reads action logs from file fallback", async () => {
+  test('writes and reads action logs from file fallback', async () => {
     await logAction({
-      platform: "instagram",
-      action: "login",
-      status: "success",
-      account: "default",
-      username: "riona",
+      platform: 'instagram',
+      action: 'login',
+      status: 'success',
+      account: 'default',
+      username: 'riona',
     });
 
     const entries = await listActionLogs({ limit: 10 });
     expect(entries).toHaveLength(1);
-    expect(entries[0].platform).toBe("instagram");
-    expect(entries[0].action).toBe("login");
-    expect(entries[0].status).toBe("success");
+    expect(entries[0].platform).toBe('instagram');
+    expect(entries[0].action).toBe('login');
+    expect(entries[0].status).toBe('success');
   });
 
-  test("summarizes recent actions", async () => {
+  test('summarizes recent actions', async () => {
     await logAction({
-      platform: "instagram",
-      action: "login",
-      status: "success",
-      account: "default",
+      platform: 'instagram',
+      action: 'login',
+      status: 'success',
+      account: 'default',
     });
     await logAction({
-      platform: "instagram",
-      action: "interact",
-      status: "error",
-      account: "default",
-      error: "challenge required",
+      platform: 'instagram',
+      action: 'interact',
+      status: 'error',
+      account: 'default',
+      error: 'challenge required',
     });
 
     const summary = await getActionSummary({ limit: 10 });
@@ -56,5 +56,23 @@ describe("action log service", () => {
     expect(summary.error).toBe(1);
     expect(summary.byAction.login).toBe(1);
     expect(summary.byAction.interact).toBe(1);
+  });
+
+  test('concurrent file logs do not lose entries', async () => {
+    await Promise.all([
+      logAction({ platform: 'instagram', action: 'login', status: 'success', account: 'default' }),
+      logAction({
+        platform: 'instagram',
+        action: 'interact',
+        status: 'success',
+        account: 'default',
+      }),
+      logAction({ platform: 'instagram', action: 'exit', status: 'success', account: 'default' }),
+    ]);
+
+    const entries = await listActionLogs({ limit: 10 });
+    expect(entries).toHaveLength(3);
+    const actions = entries.map((entry) => entry.action).sort();
+    expect(actions).toEqual(['exit', 'interact', 'login']);
   });
 });

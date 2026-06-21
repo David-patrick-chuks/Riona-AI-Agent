@@ -7,6 +7,7 @@ export type IgRunSummary = {
   comments: number;
   skippedSponsored: number;
   errors: number;
+  reason?: string;
 };
 
 let lastRunSummary: IgRunSummary | null = null;

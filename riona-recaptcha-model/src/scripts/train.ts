@@ -1,5 +1,5 @@
 import trainer from '@/services/trainer.service';
 
 (async () => {
-    await trainer.run();
+  await trainer.run();
 })();

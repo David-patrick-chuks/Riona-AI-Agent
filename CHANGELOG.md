@@ -7,11 +7,13 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ## [Unreleased]
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Fixed
-- 
 
+-

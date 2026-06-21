@@ -1,7 +1,7 @@
-const tf = require("@tensorflow/tfjs");
-const fs = require("fs").promises;
-const path = require("path");
-const { createCanvas, loadImage } = require("canvas");
+const tf = require('@tensorflow/tfjs');
+const fs = require('fs').promises;
+const path = require('path');
+const { createCanvas, loadImage } = require('canvas');
 
 /**
  * Configuration constants for the image classification model.
@@ -32,7 +32,7 @@ async function loadImagesFromDir(dirPath, label) {
       try {
         const img = await loadImage(imgPath);
         const canvas = createCanvas(CONFIG.IMAGE_SIZE, CONFIG.IMAGE_SIZE);
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, CONFIG.IMAGE_SIZE, CONFIG.IMAGE_SIZE);
         const imageTensor = tf.browser
           .fromPixels(canvas)
@@ -59,20 +59,20 @@ async function loadImagesFromDir(dirPath, label) {
  * @returns {Promise<Object>} Dataset containing input tensors (xs), labels (ys), and samples.
  */
 async function loadDataset() {
-  console.log("🧪 Loading dataset...");
+  console.log('🧪 Loading dataset...');
   try {
-    const correct = await loadImagesFromDir("./data/correct", 1);
-    const incorrect = await loadImagesFromDir("./data/incorrect", 0);
+    const correct = await loadImagesFromDir('./data/correct', 1);
+    const incorrect = await loadImagesFromDir('./data/incorrect', 0);
     const all = correct.concat(incorrect);
     console.log(`📊 Total samples: ${all.length}`);
 
     const xs = tf.stack(all.map((i) => i.tensor));
     const ys = tf.tensor(all.map((i) => i.label)).reshape([all.length, 1]);
 
-    console.log("✅ Dataset tensors prepared.");
+    console.log('✅ Dataset tensors prepared.');
     return { xs, ys, samples: all };
   } catch (err) {
-    console.error("❌ Failed to load dataset:", err.message);
+    console.error('❌ Failed to load dataset:', err.message);
     throw err;
   }
 }
@@ -82,7 +82,7 @@ async function loadDataset() {
  * @returns {tf.Sequential} Compiled TensorFlow.js model.
  */
 function createModel() {
-  console.log("⚙️ Creating model...");
+  console.log('⚙️ Creating model...');
   const model = tf.sequential();
 
   model.add(
@@ -90,27 +90,25 @@ function createModel() {
       inputShape: [CONFIG.IMAGE_SIZE, CONFIG.IMAGE_SIZE, 3],
       filters: 16,
       kernelSize: 3,
-      activation: "relu",
+      activation: 'relu',
     })
   );
   model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
-  model.add(
-    tf.layers.conv2d({ filters: 32, kernelSize: 3, activation: "relu" })
-  );
+  model.add(tf.layers.conv2d({ filters: 32, kernelSize: 3, activation: 'relu' }));
   model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
   model.add(tf.layers.flatten());
   model.add(tf.layers.dropout({ rate: 0.3 }));
-  model.add(tf.layers.dense({ units: 64, activation: "relu" }));
+  model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
   model.add(tf.layers.dropout({ rate: 0.2 }));
-  model.add(tf.layers.dense({ units: 1, activation: "sigmoid" }));
+  model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
 
   model.compile({
-    loss: "binaryCrossentropy",
+    loss: 'binaryCrossentropy',
     optimizer: tf.train.adam(0.001),
-    metrics: ["accuracy"],
+    metrics: ['accuracy'],
   });
 
-  console.log("✅ Model ready.");
+  console.log('✅ Model ready.');
   return model;
 }
 
@@ -120,25 +118,17 @@ function createModel() {
  * @param {Array} samples - Array of sample objects with tensors, labels, and file names.
  */
 async function evaluateModel(model, samples) {
-  console.log("\n🧠 Evaluating model on training samples:");
+  console.log('\n🧠 Evaluating model on training samples:');
   for (const sample of samples) {
-    const input = sample.tensor.reshape([
-      1,
-      CONFIG.IMAGE_SIZE,
-      CONFIG.IMAGE_SIZE,
-      3,
-    ]);
+    const input = sample.tensor.reshape([1, CONFIG.IMAGE_SIZE, CONFIG.IMAGE_SIZE, 3]);
     const prediction = model.predict(input);
     const score = (await prediction.data())[0];
 
-    const expected = sample.label === 1 ? "CORRECT" : "INCORRECT";
-    const predicted =
-      score >= CONFIG.CLASSIFICATION_THRESHOLD ? "CORRECT ✅" : "INCORRECT ❌";
+    const expected = sample.label === 1 ? 'CORRECT' : 'INCORRECT';
+    const predicted = score >= CONFIG.CLASSIFICATION_THRESHOLD ? 'CORRECT ✅' : 'INCORRECT ❌';
 
     console.log(
-      `📷 ${sample.file}: score=${score.toFixed(
-        4
-      )} → expected=${expected} → predicted=${predicted}`
+      `📷 ${sample.file}: score=${score.toFixed(4)} → expected=${expected} → predicted=${predicted}`
     );
 
     input.dispose();
@@ -152,32 +142,32 @@ async function evaluateModel(model, samples) {
  */
 async function saveModel(model) {
   try {
-    console.log("💾 Saving model...");
+    console.log('💾 Saving model...');
     await model.save(
       tf.io.withSaveHandler(async (data) => {
         const modelJson = JSON.stringify({
           modelTopology: data.modelTopology,
-          format: "layers-model",
-          generatedBy: "TensorFlow.js",
+          format: 'layers-model',
+          generatedBy: 'TensorFlow.js',
           convertedBy: null,
         });
 
-        await fs.mkdir("./model", { recursive: true });
-        await fs.writeFile("./model/model.json", modelJson);
-        await fs.writeFile("./model/weights.bin", Buffer.from(data.weightData));
+        await fs.mkdir('./model', { recursive: true });
+        await fs.writeFile('./model/model.json', modelJson);
+        await fs.writeFile('./model/weights.bin', Buffer.from(data.weightData));
 
-        console.log("✅ Model saved to ./model");
+        console.log('✅ Model saved to ./model');
         return {
           modelArtifactsInfo: {
             dateSaved: new Date(),
-            modelTopologyType: "JSON",
+            modelTopologyType: 'JSON',
             weightDataBytes: data.weightData.byteLength,
           },
         };
       })
     );
   } catch (err) {
-    console.error("❌ Failed to save model:", err.message);
+    console.error('❌ Failed to save model:', err.message);
     throw err;
   }
 }
@@ -190,7 +180,7 @@ async function main() {
     const { xs, ys, samples } = await loadDataset();
     const model = createModel();
 
-    console.log("🚀 Starting training...");
+    console.log('🚀 Starting training...');
     await model.fit(xs, ys, {
       // epochs: 20,
       // batchSize: 4,
@@ -216,9 +206,9 @@ async function main() {
     xs.dispose();
     ys.dispose();
     samples.forEach((sample) => sample.tensor.dispose());
-    console.log("🧹 Cleaned up tensors.");
+    console.log('🧹 Cleaned up tensors.');
   } catch (err) {
-    console.error("❌ Fatal error:", err.message);
+    console.error('❌ Fatal error:', err.message);
     process.exit(1);
   }
 }

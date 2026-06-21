@@ -21,6 +21,7 @@ describe('getNextApiKey', () => {
     process.env.GEMINI_API_KEY_2 = 'key2';
     const { getNextApiKey } = loadUtils();
     const next = getNextApiKey(0);
-    expect(next).toBe('key2');
+    expect(next.key).toBe('key2');
+    expect(next.index).toBe(1);
   });
 });

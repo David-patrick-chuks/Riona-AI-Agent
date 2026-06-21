@@ -1,8 +1,19 @@
-import express, { Request, Response } from 'express';
-import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
-import { getPosterClient } from '../client/InstagramPoster';
+import express, { Request, Response, NextFunction } from 'express';
+import {
+  getIgClient,
+  closeIgClient,
+  scrapeFollowersHandler,
+  getIgClientStatus,
+  getIgClientsSnapshot,
+} from '../client/Instagram';
+import {
+  getPosterClient,
+  schedulePhotoPost,
+  cancelScheduledPost,
+  listScheduledPosts,
+} from '../client/InstagramPoster';
 import logger from '../config/logger';
-import mongoose from 'mongoose';
+import { isDbConnected } from '../config/db';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
 import { geminiApiKeys } from '../secret';
 import { getLastRunSummary } from '../utils/igRunSummary';
@@ -11,35 +22,60 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import {
+  loginLimiter,
+  actionLimiter,
+  dmLimiter,
+  scrapeLimiter,
+  generalLimiter,
+} from '../middleware/rateLimit';
+import { getMetrics } from '../services/metrics';
 
 const router = express.Router();
+
+// Apply general rate limiter to all API routes
+router.use(generalLimiter);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 // JWT Auth middleware
-function requireAuth(req: Request, res: Response, next: Function) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = getTokenFromRequest(req);
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   const payload = verifyToken(token);
   if (!payload || typeof payload !== 'object' || !('username' in payload)) {
     return res.status(401).json({ error: 'Invalid token' });
   }
-  (req as any).user = { username: payload.username, account: (payload as any).account || 'default' };
+  (req as any).user = {
+    username: payload.username,
+    account: (payload as any).account || 'default',
+  };
   next();
 }
 
 // Status endpoint
 router.get('/status', (_req: Request, res: Response) => {
-    const status = {
-        dbConnected: mongoose.connection.readyState === 1
-    };
-    return res.json(status);
+  const status = {
+    dbConnected: isDbConnected(),
+  };
+  return res.json(status);
 });
 
-// Health endpoint
+// Health endpoint — public minimal payload; full details when authenticated
 router.get('/health', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  if (!isAuthenticated) {
+    return res.json({
+      ok: true,
+      dbConnected: isDbConnected(),
+    });
+  }
+
   const accountQuery = typeof req.query.account === 'string' ? req.query.account : null;
   const allQuery = req.query.all === '1' || req.query.all === 'true';
   const accountsMap = getAccountsMap();
@@ -47,7 +83,8 @@ router.get('/health', (req: Request, res: Response) => {
 
   if (accountQuery) {
     return res.json({
-      dbConnected: mongoose.connection.readyState === 1,
+      ok: true,
+      dbConnected: isDbConnected(),
       account: accountQuery,
       accountConfigured: !!accountsMap?.[accountQuery],
       igClient: getIgClientStatus(accountQuery),
@@ -58,7 +95,10 @@ router.get('/health', (req: Request, res: Response) => {
   }
 
   if (allQuery) {
-    const perAccount: Record<string, { configured: boolean; igClient: ReturnType<typeof getIgClientStatus> }> = {};
+    const perAccount: Record<
+      string,
+      { configured: boolean; igClient: ReturnType<typeof getIgClientStatus> }
+    > = {};
     for (const key of accountKeys) {
       perAccount[key] = {
         configured: !!accountsMap?.[key],
@@ -66,7 +106,8 @@ router.get('/health', (req: Request, res: Response) => {
       };
     }
     return res.json({
-      dbConnected: mongoose.connection.readyState === 1,
+      ok: true,
+      dbConnected: isDbConnected(),
       igClient: getIgClientStatus('default'),
       igClients: getIgClientsSnapshot(),
       accounts: perAccount,
@@ -76,7 +117,8 @@ router.get('/health', (req: Request, res: Response) => {
   }
 
   return res.json({
-    dbConnected: mongoose.connection.readyState === 1,
+    ok: true,
+    dbConnected: isDbConnected(),
     igClient: getIgClientStatus('default'),
     igClients: getIgClientsSnapshot(),
     accounts: Array.from(accountKeys),
@@ -85,8 +127,29 @@ router.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Login endpoint
-router.post('/login', async (req: Request, res: Response) => {
+// Metrics endpoint — returns server performance metrics (auth required for detailed data)
+router.get('/metrics', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  const metrics = getMetrics();
+
+  if (!isAuthenticated) {
+    // Public: only basic uptime info
+    return res.json({
+      ok: true,
+      uptime: metrics.uptime,
+      uptimeFormatted: metrics.uptimeFormatted,
+    });
+  }
+
+  // Authenticated: full metrics
+  return res.json(metrics);
+});
+
+// Login endpoint (rate limited to prevent brute force)
+router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const { username, password, account } = req.body;
     const acct = account ? String(account) : undefined;
@@ -144,16 +207,25 @@ router.get('/me', (req: Request, res: Response) => {
   return res.json({ username: payload.username, account: (payload as any).account || 'default' });
 });
 
-// Endpoint to clear Instagram cookies
+// All routes below require authentication
+router.use(requireAuth);
+
+// Endpoint to clear Instagram cookies (authenticated)
 router.delete('/clear-cookies', async (req, res) => {
-  const cookiesPath = path.join(__dirname, '../../cookies/Instagramcookies.json');
+  const account = (req as any).user?.account || 'default';
+  const { getInstagramCookiesPath } = await import('../utils');
+  const cookiesPath = path.join(
+    process.cwd(),
+    getInstagramCookiesPath(account).replace(/^\.\//, ''),
+  );
   try {
     await fs.unlink(cookiesPath);
     await logAction({
       platform: 'instagram',
       action: 'clear-cookies',
       status: 'success',
-      account: 'default',
+      account,
+      username: (req as any).user?.username,
     });
     res.json({ success: true, message: 'Instagram cookies cleared.' });
   } catch (err: any) {
@@ -162,7 +234,8 @@ router.delete('/clear-cookies', async (req, res) => {
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'success',
-        account: 'default',
+        account,
+        username: (req as any).user?.username,
         details: { message: 'No cookies to clear.' },
       });
       res.json({ success: true, message: 'No cookies to clear.' });
@@ -171,19 +244,19 @@ router.delete('/clear-cookies', async (req, res) => {
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'error',
-        account: 'default',
+        account,
+        username: (req as any).user?.username,
         error: getErrorMessage(err),
       });
-      res.status(500).json({ success: false, message: 'Failed to clear cookies.', error: err.message });
+      res
+        .status(500)
+        .json({ success: false, message: 'Failed to clear cookies.', error: err.message });
     }
   }
 });
 
-// All routes below require authentication
-router.use(requireAuth);
-
-// Interact with posts endpoint
-router.post('/interact', async (req: Request, res: Response) => {
+// Interact with posts endpoint (rate limited)
+router.post('/interact', actionLimiter, async (req: Request, res: Response) => {
   try {
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
@@ -210,8 +283,8 @@ router.post('/interact', async (req: Request, res: Response) => {
   }
 });
 
-// Send direct message endpoint
-router.post('/dm', async (req: Request, res: Response) => {
+// Send direct message endpoint (strict rate limit to prevent spam)
+router.post('/dm', dmLimiter, async (req: Request, res: Response) => {
   try {
     const { username, message } = req.body;
     if (!username || !message) {
@@ -243,8 +316,8 @@ router.post('/dm', async (req: Request, res: Response) => {
   }
 });
 
-// Send messages from file endpoint
-router.post('/dm-file', async (req: Request, res: Response) => {
+// Send messages from file endpoint (strict rate limit to prevent spam)
+router.post('/dm-file', dmLimiter, async (req: Request, res: Response) => {
   try {
     const { file, message, mediaPath } = req.body;
     if (!file || !message) {
@@ -276,8 +349,8 @@ router.post('/dm-file', async (req: Request, res: Response) => {
   }
 });
 
-// Post photo endpoint (Instagram API client)
-router.post('/post-photo', async (req: Request, res: Response) => {
+// Post photo endpoint (Instagram API client, rate limited)
+router.post('/post-photo', actionLimiter, async (req: Request, res: Response) => {
   try {
     const { imageUrl, caption } = req.body;
     if (!imageUrl) {
@@ -309,39 +382,51 @@ router.post('/post-photo', async (req: Request, res: Response) => {
   }
 });
 
-// Post photo from file (multipart)
-router.post('/post-photo-file', upload.single('image'), async (req: Request, res: Response) => {
-  try {
-    const file = req.file;
-    const caption = req.body?.caption || '';
-    if (!file || !file.buffer) {
-      return res.status(400).json({ error: 'image file is required' });
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+// Post photo from file (multipart, rate limited)
+router.post(
+  '/post-photo-file',
+  actionLimiter,
+  upload.single('image'),
+  async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+      const caption = req.body?.caption || '';
+      if (!file || !file.buffer) {
+        return res.status(400).json({ error: 'image file is required' });
+      }
+      if (!file.mimetype || !ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+        return res.status(400).json({
+          error: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
+        });
+      }
+      const account = (req as any).user.account || 'default';
+      const client = await getPosterClient(undefined, undefined, account);
+      const result = await client.postPhotoBuffer(file.buffer, caption);
+      await logAction({
+        platform: 'instagram',
+        action: 'post-photo-file',
+        status: 'success',
+        account,
+        username: (req as any).user.username,
+        details: { filename: file.originalname, size: file.size },
+      });
+      return res.json({ success: true, result });
+    } catch (error) {
+      logger.error('Post photo file error:', error);
+      await logAction({
+        platform: 'instagram',
+        action: 'post-photo-file',
+        status: 'error',
+        account: (req as any).user.account || 'default',
+        username: (req as any).user.username,
+        error: getErrorMessage(error),
+      });
+      return res.status(500).json({ error: 'Failed to post photo file' });
     }
-    const account = (req as any).user.account || 'default';
-    const client = await getPosterClient(undefined, undefined, account);
-    const result = await client.postPhotoBuffer(file.buffer, caption);
-    await logAction({
-      platform: 'instagram',
-      action: 'post-photo-file',
-      status: 'success',
-      account,
-      username: (req as any).user.username,
-      details: { filename: file.originalname, size: file.size },
-    });
-    return res.json({ success: true, result });
-  } catch (error) {
-    logger.error('Post photo file error:', error);
-    await logAction({
-      platform: 'instagram',
-      action: 'post-photo-file',
-      status: 'error',
-      account: (req as any).user.account || 'default',
-      username: (req as any).user.username,
-      error: getErrorMessage(error),
-    });
-    return res.status(500).json({ error: 'Failed to post photo file' });
-  }
-});
+  },
+);
 
 // Schedule photo post endpoint (cron syntax)
 router.post('/schedule-post', async (req: Request, res: Response) => {
@@ -351,17 +436,16 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'imageUrl and cronTime are required' });
     }
     const account = (req as any).user.account || 'default';
-    const client = await getPosterClient(undefined, undefined, account);
-    await client.schedulePost(imageUrl, caption || '', cronTime);
+    const jobId = await schedulePhotoPost(imageUrl, caption || '', cronTime, account);
     await logAction({
       platform: 'instagram',
       action: 'schedule-post',
       status: 'success',
       account,
       username: (req as any).user.username,
-      details: { imageUrl, cronTime },
+      details: { imageUrl, cronTime, jobId },
     });
-    return res.json({ success: true, message: 'Post scheduled' });
+    return res.json({ success: true, message: 'Post scheduled', jobId });
   } catch (error) {
     logger.error('Schedule post error:', error);
     await logAction({
@@ -376,11 +460,57 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
   }
 });
 
-// Scrape followers endpoint
-router.post('/scrape-followers', async (req: Request, res: Response) => {
-  const { targetAccount, maxFollowers } = req.body;
+router.get('/scheduled-posts', async (req: Request, res: Response) => {
   try {
-    const result = await scrapeFollowersHandler(targetAccount, maxFollowers);
+    const account = (req as any).user.account || 'default';
+    const jobs = listScheduledPosts(account);
+    return res.json({ jobs });
+  } catch (error) {
+    logger.error('List scheduled posts error:', error);
+    return res.status(500).json({ error: 'Failed to list scheduled posts' });
+  }
+});
+
+router.delete('/scheduled-posts/:jobId', async (req: Request, res: Response) => {
+  try {
+    const account = (req as any).user.account || 'default';
+    const jobId = String(req.params.jobId);
+    const jobs = listScheduledPosts(account);
+    if (!jobs.some((job) => job.id === jobId)) {
+      return res.status(404).json({ error: 'Scheduled post not found for this account' });
+    }
+    const cancelled = cancelScheduledPost(jobId);
+    if (!cancelled) {
+      return res.status(404).json({ error: 'Scheduled post not found' });
+    }
+    await logAction({
+      platform: 'instagram',
+      action: 'cancel-scheduled-post',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { jobId },
+    });
+    return res.json({ success: true, jobId });
+  } catch (error) {
+    logger.error('Cancel scheduled post error:', error);
+    return res.status(500).json({ error: 'Failed to cancel scheduled post' });
+  }
+});
+
+// Scrape followers endpoint (rate limited - resource intensive)
+router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
+  const { targetAccount, maxFollowers } = req.body;
+  const account = (req as any).user.account || 'default';
+  const acct = getAccount(account);
+  try {
+    const result = await scrapeFollowersHandler(
+      targetAccount,
+      maxFollowers,
+      acct?.username || (req as any).user.username,
+      acct?.password,
+      account,
+    );
     await logAction({
       platform: 'instagram',
       action: 'scrape-followers',
@@ -414,13 +544,21 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
   }
 });
 
-// GET handler for scrape-followers to support file download
-router.get('/scrape-followers', async (req: Request, res: Response) => {
-  const { targetAccount, maxFollowers } = req.query;
+// GET handler for scrape-followers to support file download (rate limited)
+router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
+  const { targetAccount, maxFollowers: rawMaxFollowers } = req.query;
+  const parsedMaxFollowers = Number(rawMaxFollowers);
+  const maxFollowers =
+    Number.isFinite(parsedMaxFollowers) && parsedMaxFollowers > 0 ? parsedMaxFollowers : 100;
+  const account = (req as any).user.account || 'default';
+  const acct = getAccount(account);
   try {
     const result = await scrapeFollowersHandler(
       String(targetAccount),
-      Number(maxFollowers)
+      maxFollowers,
+      acct?.username || (req as any).user.username,
+      acct?.password,
+      account,
     );
     await logAction({
       platform: 'instagram',
@@ -428,7 +566,10 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       status: 'success',
       account: (req as any).user.account || 'default',
       username: (req as any).user.username,
-      details: { targetAccount: String(targetAccount), maxFollowers: Number(maxFollowers) || undefined },
+      details: {
+        targetAccount: String(targetAccount),
+        maxFollowers,
+      },
     });
     if (Array.isArray(result)) {
       const filename = `${targetAccount}_followers.txt`;
@@ -453,7 +594,8 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
 
 router.get('/actions', async (req: Request, res: Response) => {
   try {
-    const limit = Number(req.query.limit || 20);
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
     const account = typeof req.query.account === 'string' ? req.query.account : undefined;
     const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
     const logs = await listActionLogs({ limit, account, platform });
@@ -466,7 +608,8 @@ router.get('/actions', async (req: Request, res: Response) => {
 
 router.get('/actions/summary', async (req: Request, res: Response) => {
   try {
-    const limit = Number(req.query.limit || 50);
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 50;
     const account = typeof req.query.account === 'string' ? req.query.account : undefined;
     const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
     const summary = await getActionSummary({ limit, account, platform });
@@ -475,6 +618,13 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
   }
+});
+
+// Exit endpoint
+router.post('/exit-interactions', async (_req: Request, res: Response) => {
+  const { setShouldExitInteractions } = await import('../api/agent');
+  setShouldExitInteractions(true);
+  return res.json({ success: true, message: 'Exiting interactions requested.' });
 });
 
 // Exit endpoint
@@ -507,7 +657,10 @@ router.post('/exit', async (req: Request, res: Response) => {
 // Trigger cooldown manually
 router.post('/cooldown', async (req: Request, res: Response) => {
   try {
-    const minutes = Number(req.body?.minutes || 60);
+    const minutes = Number(req.body?.minutes ?? 60);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return res.status(400).json({ error: 'minutes must be a positive number' });
+    }
     const { setIgCooldown } = await import('../utils');
     await setIgCooldown(minutes);
     await logAction({
@@ -550,4 +703,4 @@ router.post('/logout', (req: Request, res: Response) => {
   return res.json({ message: 'Logged out successfully' });
 });
 
-export default router; 
+export default router;

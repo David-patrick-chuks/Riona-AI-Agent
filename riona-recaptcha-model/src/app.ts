@@ -30,28 +30,28 @@ app.use('/api/admin', adminRoutes);
 
 // Server Controller
 const server = {
-    app,
-    start: async (): Promise<void> => {
-        // 1. Connect Database
-        await connectDB();
+  app,
+  start: async (): Promise<void> => {
+    // 1. Connect Database
+    await connectDB();
 
-        // 2. Initialize Model
-        await controller.initModel();
+    // 2. Initialize Model
+    await controller.initModel();
 
-        // 3. Create HTTP Server for Socket.io
-        const httpServer = http.createServer(app);
-        reporterService.init(httpServer);
+    // 3. Create HTTP Server for Socket.io
+    const httpServer = http.createServer(app);
+    reporterService.init(httpServer);
 
-        // 4. Listen
-        return new Promise((resolve) => {
-            httpServer.listen(CONFIG.PORT, () => {
-                logger.info(`Server running on http://localhost:${CONFIG.PORT}`);
-                logger.info(`Admin Dashboard: http://localhost:${CONFIG.PORT}/admin`);
-                logger.info(`riona Dashboard: http://localhost:${CONFIG.PORT}/riona`);
-                resolve();
-            });
-        });
-    },
+    // 4. Listen
+    return new Promise((resolve) => {
+      httpServer.listen(CONFIG.PORT, () => {
+        logger.info(`Server running on http://localhost:${CONFIG.PORT}`);
+        logger.info(`Admin Dashboard: http://localhost:${CONFIG.PORT}/admin`);
+        logger.info(`riona Dashboard: http://localhost:${CONFIG.PORT}/riona`);
+        resolve();
+      });
+    });
+  },
 };
 
 export default server;

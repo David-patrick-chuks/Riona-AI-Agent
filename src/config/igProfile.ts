@@ -1,14 +1,24 @@
 import { getNumberEnv } from '../utils/env';
 
-type IgProfile = {
+/**
+ * Instagram automation profile configuration
+ */
+export type IgProfile = {
+  /** Profile name: safe, standard, or aggressive */
   name: 'safe' | 'standard' | 'aggressive';
+  /** Interval between agent runs in milliseconds */
   intervalMs: number;
+  /** Maximum number of actions per day */
   dailyMaxActions: number;
+  /** Maximum number of posts per run */
   maxPostsPerRun: number;
+  /** Minimum delay between actions in milliseconds */
   minDelayMs: number;
+  /** Maximum delay between actions in milliseconds */
   maxDelayMs: number;
 };
 
+/** Predefined Instagram profiles with their default settings */
 const PROFILES: Record<IgProfile['name'], IgProfile> = {
   safe: {
     name: 'safe',
@@ -36,16 +46,26 @@ const PROFILES: Record<IgProfile['name'], IgProfile> = {
   },
 };
 
+/**
+ * Gets the Instagram profile configuration, combining profile defaults with environment variable overrides
+ * @returns The Instagram profile configuration
+ */
 export const getIgProfile = (): IgProfile => {
   const raw = (process.env.IG_RUN_PROFILE || 'standard').toLowerCase();
   const base = (PROFILES as any)[raw] || PROFILES.standard;
+
+  let minDelayMs = getNumberEnv('IG_ACTION_DELAY_MIN_MS', base.minDelayMs);
+  let maxDelayMs = getNumberEnv('IG_ACTION_DELAY_MAX_MS', base.maxDelayMs);
+  if (minDelayMs > maxDelayMs) {
+    [minDelayMs, maxDelayMs] = [maxDelayMs, minDelayMs];
+  }
 
   return {
     ...base,
     intervalMs: getNumberEnv('IG_AGENT_INTERVAL_MS', base.intervalMs),
     dailyMaxActions: getNumberEnv('IG_DAILY_MAX_ACTIONS', base.dailyMaxActions),
     maxPostsPerRun: getNumberEnv('IG_MAX_POSTS_PER_RUN', base.maxPostsPerRun),
-    minDelayMs: getNumberEnv('IG_ACTION_DELAY_MIN_MS', base.minDelayMs),
-    maxDelayMs: getNumberEnv('IG_ACTION_DELAY_MAX_MS', base.maxDelayMs),
+    minDelayMs,
+    maxDelayMs,
   };
 };

@@ -150,14 +150,7 @@
     "emerging technologies"
   ],
   "style": {
-    "all": [
-      "friendly",
-      "concise",
-      "innovative",
-      "approachable",
-      "trustworthy",
-      "action-oriented"
-    ],
+    "all": ["friendly", "concise", "innovative", "approachable", "trustworthy", "action-oriented"],
     "chat": ["casual", "supportive", "clear and direct", "detail-oriented"],
     "post": ["optimistic", "impactful", "forward-thinking", "concise"]
   },
