@@ -3,6 +3,118 @@ import path from 'path';
 import { geminiApiKeys } from '../secret';
 import logger from '../config/logger';
 
+// ---------------------- Input validation constants ----------------------
+const INPUT_LENGTH_LIMITS = {
+  caption: 2200, // Instagram caption limit
+  message: 1000, // DM message limit
+  username: 30, // Instagram username limit
+  filename: 255, // Standard filesystem limit
+  default: 500,
+};
+
+// ---------------------- Filename sanitization ----------------------
+/**
+ * Sanitizes a filename to prevent path traversal and header injection attacks.
+ * Removes or replaces dangerous characters while preserving readability.
+ * @param filename - The original filename
+ * @param maxLength - Maximum allowed length (default: 255)
+ * @returns Sanitized filename safe for use in Content-Disposition headers and filesystem
+ */
+export function sanitizeFilename(filename: string, maxLength: number = 255): string {
+  if (!filename || typeof filename !== 'string') {
+    return 'download';
+  }
+
+  let sanitized = filename
+    // Remove path traversal sequences
+    .replace(/\.\./g, '')
+    // Remove directory separators
+    .replace(/[/\\]/g, '')
+    // Remove null bytes and control characters (ASCII 0-31 and 127)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    // Remove characters problematic in HTTP headers (CR, LF)
+    .replace(/[\r\n]/g, '')
+    // Remove characters that could cause issues in filenames
+    .replace(/[<>:"|?*]/g, '')
+    // Replace multiple spaces/underscores with single underscore
+    .replace(/[\s_]+/g, '_')
+    // Remove leading/trailing dots and spaces
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+    .trim();
+
+  // Ensure filename is not empty after sanitization
+  if (!sanitized) {
+    return 'download';
+  }
+
+  // Truncate to max length while preserving extension
+  if (sanitized.length > maxLength) {
+    const extMatch = sanitized.match(/\.[^.]+$/);
+    const ext = extMatch ? extMatch[0] : '';
+    const nameMaxLen = maxLength - ext.length;
+    sanitized = sanitized.slice(0, nameMaxLen) + ext;
+  }
+
+  return sanitized;
+}
+
+// ---------------------- Input length validation ----------------------
+/**
+ * Validates that an input string doesn't exceed the maximum allowed length.
+ * @param input - The input string to validate
+ * @param field - The field type (caption, message, username, etc.)
+ * @param customLimit - Optional custom limit override
+ * @returns Validation result with valid flag and optional error message
+ */
+export function validateInputLength(
+  input: string,
+  field: keyof typeof INPUT_LENGTH_LIMITS | string = 'default',
+  customLimit?: number,
+): { valid: boolean; error?: string; maxLength: number } {
+  const maxLength =
+    customLimit ??
+    (INPUT_LENGTH_LIMITS[field as keyof typeof INPUT_LENGTH_LIMITS] || INPUT_LENGTH_LIMITS.default);
+
+  if (input === undefined || input === null) {
+    return { valid: true, maxLength }; // Optional fields are valid when empty
+  }
+
+  if (typeof input !== 'string') {
+    return { valid: false, error: `${field} must be a string`, maxLength };
+  }
+
+  if (input.length > maxLength) {
+    return {
+      valid: false,
+      error: `${field} exceeds maximum length of ${maxLength} characters (got ${input.length})`,
+      maxLength,
+    };
+  }
+
+  return { valid: true, maxLength };
+}
+
+/**
+ * Truncates a string to the specified maximum length with optional suffix.
+ * @param input - The input string to truncate
+ * @param maxLength - Maximum allowed length
+ * @param suffix - Optional suffix to append when truncated (default: '...')
+ * @returns Truncated string
+ */
+export function truncateInput(input: string, maxLength: number, suffix: string = '...'): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
+  if (input.length <= maxLength) {
+    return input;
+  }
+
+  const truncateAt = maxLength - suffix.length;
+  return input.slice(0, Math.max(0, truncateAt)) + suffix;
+}
+
 const fileLocks = new Map<string, Promise<void>>();
 
 async function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {

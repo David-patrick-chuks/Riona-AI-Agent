@@ -30,6 +30,7 @@ import {
   generalLimiter,
 } from '../middleware/rateLimit';
 import { getMetrics } from '../services/metrics';
+import { sanitizeFilename, validateInputLength } from '../utils';
 
 const router = express.Router();
 
@@ -290,6 +291,15 @@ router.post('/dm', dmLimiter, async (req: Request, res: Response) => {
     if (!username || !message) {
       return res.status(400).json({ error: 'Username and message are required' });
     }
+    // Validate input lengths
+    const usernameValidation = validateInputLength(username, 'username');
+    if (!usernameValidation.valid) {
+      return res.status(400).json({ error: usernameValidation.error });
+    }
+    const messageValidation = validateInputLength(message, 'message');
+    if (!messageValidation.valid) {
+      return res.status(400).json({ error: messageValidation.error });
+    }
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessage(username, message);
@@ -323,6 +333,11 @@ router.post('/dm-file', dmLimiter, async (req: Request, res: Response) => {
     if (!file || !message) {
       return res.status(400).json({ error: 'File and message are required' });
     }
+    // Validate message length
+    const messageValidation = validateInputLength(message, 'message');
+    if (!messageValidation.valid) {
+      return res.status(400).json({ error: messageValidation.error });
+    }
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
     await igClient.sendDirectMessagesFromFile(file, message, mediaPath);
@@ -355,6 +370,13 @@ router.post('/post-photo', actionLimiter, async (req: Request, res: Response) =>
     const { imageUrl, caption } = req.body;
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl is required' });
+    }
+    // Validate caption length if provided
+    if (caption) {
+      const captionValidation = validateInputLength(caption, 'caption');
+      if (!captionValidation.valid) {
+        return res.status(400).json({ error: captionValidation.error });
+      }
     }
     const account = (req as any).user.account || 'default';
     const client = await getPosterClient(undefined, undefined, account);
@@ -401,6 +423,13 @@ router.post(
           error: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
         });
       }
+      // Validate caption length if provided
+      if (caption) {
+        const captionValidation = validateInputLength(caption, 'caption');
+        if (!captionValidation.valid) {
+          return res.status(400).json({ error: captionValidation.error });
+        }
+      }
       const account = (req as any).user.account || 'default';
       const client = await getPosterClient(undefined, undefined, account);
       const result = await client.postPhotoBuffer(file.buffer, caption);
@@ -434,6 +463,13 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
     const { imageUrl, caption, cronTime } = req.body;
     if (!imageUrl || !cronTime) {
       return res.status(400).json({ error: 'imageUrl and cronTime are required' });
+    }
+    // Validate caption length if provided
+    if (caption) {
+      const captionValidation = validateInputLength(caption, 'caption');
+      if (!captionValidation.valid) {
+        return res.status(400).json({ error: captionValidation.error });
+      }
     }
     const account = (req as any).user.account || 'default';
     const jobId = await schedulePhotoPost(imageUrl, caption || '', cronTime, account);
@@ -521,7 +557,9 @@ router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Respon
     });
     if (Array.isArray(result)) {
       if (req.query.download === '1') {
-        const filename = `${targetAccount}_followers.txt`;
+        // Sanitize filename to prevent path traversal and header injection
+        const safeAccountName = sanitizeFilename(String(targetAccount));
+        const filename = `${safeAccountName}_followers.txt`;
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Content-Type', 'text/plain');
         res.send(result.join('\n'));
@@ -572,7 +610,9 @@ router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Respons
       },
     });
     if (Array.isArray(result)) {
-      const filename = `${targetAccount}_followers.txt`;
+      // Sanitize filename to prevent path traversal and header injection
+      const safeAccountName = sanitizeFilename(String(targetAccount));
+      const filename = `${safeAccountName}_followers.txt`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'text/plain');
       res.send(result.join('\n'));
