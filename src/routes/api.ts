@@ -35,20 +35,297 @@ import { sanitizeFilename, validateInputLength } from '../utils';
 
 const router = express.Router();
 
+// Request ID middleware for tracing/debugging
+router.use((req: Request, _res: Response, next: NextFunction) => {
+  const requestId =
+    (req.headers['x-request-id'] as string) ||
+    `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  (req as any).requestId = requestId;
+  next();
+});
+
 // Apply general rate limiter to all API routes
 router.use(generalLimiter);
+
+// API Documentation endpoint - lists all available endpoints
+const apiEndpoints = [
+  // Public endpoints
+  {
+    method: 'GET',
+    path: '/api/ping',
+    auth: false,
+    description: 'Simple health check (returns "pong")',
+  },
+  {
+    method: 'GET',
+    path: '/api/version',
+    auth: false,
+    description: 'Server version and uptime info',
+  },
+  {
+    method: 'GET',
+    path: '/api/config',
+    auth: false,
+    description: 'Runtime config (detailed when authenticated)',
+  },
+  { method: 'GET', path: '/api/status', auth: false, description: 'Get system status' },
+  {
+    method: 'GET',
+    path: '/api/health',
+    auth: false,
+    description: 'Health check (detailed when authenticated)',
+  },
+  {
+    method: 'GET',
+    path: '/api/metrics',
+    auth: false,
+    description: 'Server metrics (detailed when authenticated)',
+  },
+  { method: 'GET', path: '/api/docs', auth: false, description: 'API documentation' },
+  {
+    method: 'POST',
+    path: '/api/login',
+    auth: false,
+    description: 'Login with Instagram credentials',
+    rateLimit: '5/15min',
+  },
+
+  // Auth check
+  { method: 'GET', path: '/api/me', auth: true, description: 'Get current user info' },
+
+  // Instagram actions
+  {
+    method: 'POST',
+    path: '/api/interact',
+    auth: true,
+    description: 'Interact with Instagram posts',
+    rateLimit: '10/min',
+  },
+  {
+    method: 'POST',
+    path: '/api/dm',
+    auth: true,
+    description: 'Send direct message',
+    rateLimit: '3/min',
+  },
+  {
+    method: 'POST',
+    path: '/api/dm-file',
+    auth: true,
+    description: 'Send DMs from file',
+    rateLimit: '3/min',
+  },
+  {
+    method: 'POST',
+    path: '/api/post-photo',
+    auth: true,
+    description: 'Post photo from URL',
+    rateLimit: '10/min',
+  },
+  {
+    method: 'POST',
+    path: '/api/post-photo-file',
+    auth: true,
+    description: 'Post photo from file upload',
+    rateLimit: '10/min',
+  },
+
+  // Scheduling
+  { method: 'POST', path: '/api/schedule-post', auth: true, description: 'Schedule a photo post' },
+  { method: 'GET', path: '/api/scheduled-posts', auth: true, description: 'List scheduled posts' },
+  {
+    method: 'DELETE',
+    path: '/api/scheduled-posts/:jobId',
+    auth: true,
+    description: 'Cancel scheduled post',
+  },
+
+  // Scraping
+  {
+    method: 'GET',
+    path: '/api/scrape-followers',
+    auth: true,
+    description: 'Scrape followers (download)',
+    rateLimit: '2/5min',
+  },
+  {
+    method: 'POST',
+    path: '/api/scrape-followers',
+    auth: true,
+    description: 'Scrape followers',
+    rateLimit: '2/5min',
+  },
+
+  // Action logs
+  {
+    method: 'GET',
+    path: '/api/actions',
+    auth: true,
+    description: 'List action logs with filtering',
+  },
+  { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
+  {
+    method: 'GET',
+    path: '/api/actions/export',
+    auth: true,
+    description: 'Export logs as CSV/JSON',
+  },
+  { method: 'GET', path: '/api/actions/stats', auth: true, description: 'Get action statistics' },
+  {
+    method: 'DELETE',
+    path: '/api/actions/cleanup',
+    auth: true,
+    description: 'Analyze old logs for cleanup',
+  },
+
+  // Session management
+  {
+    method: 'DELETE',
+    path: '/api/clear-cookies',
+    auth: true,
+    description: 'Clear Instagram cookies',
+  },
+  { method: 'POST', path: '/api/cooldown', auth: true, description: 'Trigger manual cooldown' },
+  { method: 'POST', path: '/api/exit', auth: true, description: 'Close Instagram client' },
+  {
+    method: 'POST',
+    path: '/api/exit-interactions',
+    auth: true,
+    description: 'Stop interaction loop',
+  },
+  { method: 'POST', path: '/api/logout', auth: true, description: 'Logout and clear session' },
+];
+
+// Track server start time for uptime calculation
+const serverStartTime = Date.now();
+
+// Simple ping endpoint for load balancers and uptime monitors
+router.get('/ping', (_req: Request, res: Response) => {
+  return res.send('pong');
+});
+
+// Version and build info endpoint
+router.get('/version', (_req: Request, res: Response) => {
+  return res.json({
+    name: 'Riona AI Agent',
+    version: process.env.npm_package_version || '1.0.0',
+    node: process.version,
+    platform: process.platform,
+    uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+    uptimeFormatted: formatUptime(Date.now() - serverStartTime),
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
+// Helper to format uptime
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
+// Runtime configuration endpoint (non-sensitive settings only)
+router.get('/config', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  // Public config
+  const publicConfig = {
+    rateLimits: {
+      general: { windowMs: 60000, max: 60 },
+      login: { windowMs: 900000, max: 5 },
+      action: { windowMs: 60000, max: 10 },
+      dm: { windowMs: 60000, max: 3 },
+      scrape: { windowMs: 300000, max: 2 },
+    },
+    limits: {
+      maxJsonPayload: process.env.MAX_JSON_PAYLOAD || '100kb',
+      maxFileUpload: '10MB',
+      maxCaptionLength: 2200,
+      maxMessageLength: 1000,
+    },
+  };
+
+  if (!isAuthenticated) {
+    return res.json(publicConfig);
+  }
+
+  // Authenticated: include more config details
+  return res.json({
+    ...publicConfig,
+    features: {
+      dbConnected: isDbConnected(),
+      igAgentEnabled: process.env.IG_AGENT_ENABLED === 'true',
+      corsOrigin: process.env.CORS_ORIGIN || '*',
+      logger: process.env.LOGGER || 'winston',
+    },
+    instagram: {
+      maxPostsPerRun: Number(process.env.IG_MAX_POSTS_PER_RUN) || 20,
+      actionDelayMin: Number(process.env.IG_ACTION_DELAY_MIN_MS) || 5000,
+      actionDelayMax: Number(process.env.IG_ACTION_DELAY_MAX_MS) || 10000,
+      cooldownMinutes: Number(process.env.IG_COOLDOWN_MINUTES) || 60,
+      dailyMaxActions: Number(process.env.IG_DAILY_MAX_ACTIONS) || 0,
+      runProfile: process.env.IG_RUN_PROFILE || 'standard',
+    },
+  });
+});
+
+// API documentation endpoint
+router.get('/docs', (_req: Request, res: Response) => {
+  const grouped = {
+    public: apiEndpoints.filter((e) => !e.auth),
+    authenticated: apiEndpoints.filter((e) => e.auth),
+  };
+
+  return res.json({
+    name: 'Riona AI Agent API',
+    version: '1.0.0',
+    totalEndpoints: apiEndpoints.length,
+    endpoints: grouped,
+    authentication: {
+      type: 'JWT Cookie',
+      header: 'Cookie: token=<jwt>',
+      login: 'POST /api/login with { username, password }',
+    },
+    rateLimits: {
+      general: '60 requests/minute',
+      login: '5 attempts/15 minutes',
+      actions: '10 requests/minute',
+      dm: '3 requests/minute',
+      scrape: '2 requests/5 minutes',
+    },
+    requestTracing: {
+      header: 'X-Request-ID',
+      description: 'Include this header for distributed tracing. Auto-generated if not provided.',
+    },
+  });
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+// Helper to create error response with request ID for tracing
+const errorResponse = (req: Request, error: string, details?: Record<string, unknown>) => ({
+  error,
+  requestId: (req as any).requestId,
+  ...details,
+});
+
 // JWT Auth middleware
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = getTokenFromRequest(req);
-  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  if (!token) return res.status(401).json(errorResponse(req, 'Not authenticated'));
   const payload = verifyToken(token);
   if (!payload || typeof payload !== 'object' || !('username' in payload)) {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json(errorResponse(req, 'Invalid token'));
   }
   (req as any).user = {
     username: payload.username,
