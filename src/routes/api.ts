@@ -22,18 +22,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
-import {
-  loginLimiter,
-  actionLimiter,
-  dmLimiter,
-  scrapeLimiter,
-  generalLimiter,
-} from '../middleware/rateLimit';
 
 const router = express.Router();
-
-// Apply general rate limiter to all API routes
-router.use(generalLimiter);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const getErrorMessage = (error: unknown) =>
@@ -126,8 +116,8 @@ router.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Login endpoint (rate limited to prevent brute force)
-router.post('/login', loginLimiter, async (req: Request, res: Response) => {
+// Login endpoint
+router.post('/login', async (req: Request, res: Response) => {
   try {
     const { username, password, account } = req.body;
     const acct = account ? String(account) : undefined;
@@ -233,8 +223,8 @@ router.delete('/clear-cookies', async (req, res) => {
   }
 });
 
-// Interact with posts endpoint (rate limited)
-router.post('/interact', actionLimiter, async (req: Request, res: Response) => {
+// Interact with posts endpoint
+router.post('/interact', async (req: Request, res: Response) => {
   try {
     const account = (req as any).user.account || 'default';
     const igClient = await getIgClient((req as any).user.username, undefined, account);
@@ -261,8 +251,8 @@ router.post('/interact', actionLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// Send direct message endpoint (strict rate limit to prevent spam)
-router.post('/dm', dmLimiter, async (req: Request, res: Response) => {
+// Send direct message endpoint
+router.post('/dm', async (req: Request, res: Response) => {
   try {
     const { username, message } = req.body;
     if (!username || !message) {
@@ -294,8 +284,8 @@ router.post('/dm', dmLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// Send messages from file endpoint (strict rate limit to prevent spam)
-router.post('/dm-file', dmLimiter, async (req: Request, res: Response) => {
+// Send messages from file endpoint
+router.post('/dm-file', async (req: Request, res: Response) => {
   try {
     const { file, message, mediaPath } = req.body;
     if (!file || !message) {
@@ -327,8 +317,8 @@ router.post('/dm-file', dmLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// Post photo endpoint (Instagram API client, rate limited)
-router.post('/post-photo', actionLimiter, async (req: Request, res: Response) => {
+// Post photo endpoint (Instagram API client)
+router.post('/post-photo', async (req: Request, res: Response) => {
   try {
     const { imageUrl, caption } = req.body;
     if (!imageUrl) {
@@ -360,8 +350,8 @@ router.post('/post-photo', actionLimiter, async (req: Request, res: Response) =>
   }
 });
 
-// Post photo from file (multipart, rate limited)
-router.post('/post-photo-file', actionLimiter, upload.single('image'), async (req: Request, res: Response) => {
+// Post photo from file (multipart)
+router.post('/post-photo-file', upload.single('image'), async (req: Request, res: Response) => {
   try {
     const file = req.file;
     const caption = req.body?.caption || '';
@@ -464,8 +454,8 @@ router.delete('/scheduled-posts/:jobId', async (req: Request, res: Response) => 
   }
 });
 
-// Scrape followers endpoint (rate limited - resource intensive)
-router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
+// Scrape followers endpoint
+router.post('/scrape-followers', async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.body;
   const account = (req as any).user.account || 'default';
   const acct = getAccount(account);
@@ -510,8 +500,8 @@ router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Respon
   }
 });
 
-// GET handler for scrape-followers to support file download (rate limited)
-router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
+// GET handler for scrape-followers to support file download
+router.get('/scrape-followers', async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.query;
   const account = (req as any).user.account || 'default';
   const acct = getAccount(account);
