@@ -24,14 +24,13 @@
         }
       }
     ]
-   
   ],
-  "postExamples": [ ],
+  "postExamples": [],
   "topics": [],
   "style": {
     "all": [],
     "chat": [],
-    "post": [ ]
+    "post": []
   },
   "adjectives": []
 }

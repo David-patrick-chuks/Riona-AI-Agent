@@ -1,5 +1,5 @@
 import server from '@/app';
 
 (async () => {
-    await server.start();
+  await server.start();
 })();

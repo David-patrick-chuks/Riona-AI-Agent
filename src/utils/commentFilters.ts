@@ -4,6 +4,8 @@ export type CommentFilterConfig = {
   allow?: string[];
   deny?: string[];
   sentiment?: 'positive' | 'neutral' | 'any';
+  minLength?: number;
+  maxLength?: number;
 };
 
 export type CommentSentiment = NonNullable<CommentFilterConfig['sentiment']>;
@@ -79,6 +81,12 @@ const sentimentScore = (text: string) => {
 
 export const shouldSkipComment = (comment: string, cfg: CommentFilterConfig): boolean => {
   if (!comment) return true;
+
+  const trimmed = comment.trim();
+  if (!trimmed) return true;
+
+  if (cfg.minLength && trimmed.length < cfg.minLength) return true;
+  if (cfg.maxLength && trimmed.length > cfg.maxLength) return true;
 
   if (cfg.allow && cfg.allow.length > 0 && !hasAny(comment, cfg.allow)) return true;
   if (cfg.deny && cfg.deny.length > 0 && hasAny(comment, cfg.deny)) return true;

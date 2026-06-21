@@ -30,15 +30,16 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 
 ## Phased Delivery
 
-| Phase | Goals | Status |
-| --- | --- | --- | --- |
-| Phase 1 | Twitter/X MVP, IG reliability pass, admin UI basics | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#8a4f00;border:1px solid #ffd9a8;font-size:12px;">In progress</span> |
-| Phase 2 | Analytics, observability, policy/rules engine, compliance guardrails | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
-| Phase 3 | Multi‑platform orchestration, model evaluation + A/B, scale & cost controls | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Phase   | Goals                                                                       | Status                                                                                                                                                              |
+| ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 1 | Twitter/X MVP, IG reliability pass, admin UI basics                         | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#8a4f00;border:1px solid #ffd9a8;font-size:12px;">In progress</span> |
+| Phase 2 | Analytics, observability, policy/rules engine, compliance guardrails        | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
+| Phase 3 | Multi‑platform orchestration, model evaluation + A/B, scale & cost controls | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
 
 ## Workstreams and Checklist
 
 ### 1) Platform Automation
+
 - [x] Instagram browser automation (Puppeteer + stealth)
 - [x] Instagram post by URL and file
 - [x] Instagram scheduling (cron)
@@ -52,6 +53,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] GitHub automation: issues, PRs, releases
 
 ### 2) AI and Training
+
 - [x] Gemini JSON‑schema generation for comments
 - [x] API key rotation on rate limit
 - [x] YouTube transcript ingestion
@@ -63,6 +65,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] Model/agent selection and A/B testing
 
 ### 3) Data and Storage
+
 - [x] MongoDB connection and models
 - [x] Tweet schema for rate limiting
 - [ ] Unified action log (IG/Twitter/GitHub)
@@ -70,6 +73,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] Audit trail for moderation and compliance
 
 ### 4) API and Dashboard
+
 - [x] REST API (login, interact, post, schedule)
 - [x] /dashboard summary UI
 - [x] Health endpoint
@@ -79,6 +83,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] API rate limiting and API keys for third‑party usage
 
 ### 5) Ops, Security, Reliability
+
 - [x] Env validation scripts
 - [x] Logging with Winston
 - [x] Docker‑based MongoDB setup docs
@@ -87,11 +92,12 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] CI coverage for integration tests
 - [ ] Chaos testing for IG loops
 - [ ] Legal/compliance guardrails and TOS risk toggles
- - [ ] Action audit logs and tamper‑evident storage
- - [ ] Automated rollback on error spikes
- - [ ] Rate‑limit aware backoff across providers
+- [ ] Action audit logs and tamper‑evident storage
+- [ ] Automated rollback on error spikes
+- [ ] Rate‑limit aware backoff across providers
 
 ### 6) reCAPTCHA ML Subproject
+
 - [x] Model architecture and training flow
 - [x] Admin UI and debug views
 - [x] Training data collection pipeline
@@ -99,7 +105,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [ ] Dataset versioning and quality checks
 - [ ] Model performance tracking and drift detection
 - [ ] Active learning loop for hard examples
- - [ ] Eval harness with fixed validation sets
+- [ ] Eval harness with fixed validation sets
 
 ## Timeline (High‑Level)
 
@@ -173,31 +179,31 @@ flowchart LR
 
 ## Delivery Criteria (Release Gates)
 
-| Gate | Criteria | Status |
-| --- | --- | --- |
-| Reliability | 7‑day crash‑free IG loop, < 3% challenge rate | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
-| Security | Secrets not stored in repo, JWT/session hardened | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
-| Quality | Integration tests for login/post/cron | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
-| Observability | Metrics + alerts for errors and cooldowns | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Gate          | Criteria                                         | Status                                                                                                                                                          |
+| ------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reliability   | 7‑day crash‑free IG loop, < 3% challenge rate    | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Security      | Secrets not stored in repo, JWT/session hardened | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Quality       | Integration tests for login/post/cron            | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Observability | Metrics + alerts for errors and cooldowns        | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
 
 ## KPI Targets (Suggested)
 
-| Area | KPI | Baseline | Target | Notes |
-| --- | --- | --- | --- | --- |
-| Instagram | Successful interactions per run | TBD | +30% | Based on stable login + cooldowns |
-| Instagram | Challenge rate | TBD | < 3% | Requires risk‑based throttling |
-| AI Output | Avg comment engagement | TBD | +25% | Needs analytics + tracking |
-| Reliability | Crash‑free loop runs | TBD | 99% | Add watchdog + retries |
-| ML Model | reCAPTCHA accuracy | TBD | > 92% | Track via validation set |
+| Area        | KPI                             | Baseline | Target | Notes                             |
+| ----------- | ------------------------------- | -------- | ------ | --------------------------------- |
+| Instagram   | Successful interactions per run | TBD      | +30%   | Based on stable login + cooldowns |
+| Instagram   | Challenge rate                  | TBD      | < 3%   | Requires risk‑based throttling    |
+| AI Output   | Avg comment engagement          | TBD      | +25%   | Needs analytics + tracking        |
+| Reliability | Crash‑free loop runs            | TBD      | 99%    | Add watchdog + retries            |
+| ML Model    | reCAPTCHA accuracy              | TBD      | > 92%  | Track via validation set          |
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation | Status |
-| --- | --- | --- | --- |
-| IG challenges / bans | High | Dynamic throttling, cooldowns, better fingerprinting | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#8a4f00;border:1px solid #ffd9a8;font-size:12px;">In progress</span> |
-| Provider rate limits | Medium | Key rotation, backoff, queueing | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e7f8ef;color:#0f7b47;border:1px solid #bfead4;font-size:12px;">Done</span> |
-| Data quality drift | Medium | Validation sets, drift monitoring | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
-| Compliance exposure | High | Policy rules, opt‑out, audit logs | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span> |
+| Risk                 | Impact | Mitigation                                           | Status                                                                                                                                                              |
+| -------------------- | ------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IG challenges / bans | High   | Dynamic throttling, cooldowns, better fingerprinting | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#8a4f00;border:1px solid #ffd9a8;font-size:12px;">In progress</span> |
+| Provider rate limits | Medium | Key rotation, backoff, queueing                      | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e7f8ef;color:#0f7b47;border:1px solid #bfead4;font-size:12px;">Done</span>        |
+| Data quality drift   | Medium | Validation sets, drift monitoring                    | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
+| Compliance exposure  | High   | Policy rules, opt‑out, audit logs                    | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
 
 ## Dependencies
 
@@ -221,5 +227,5 @@ flowchart LR
 - [ ] Content calendar and approvals
 - [ ] Per‑account proxy assignment
 - [ ] Pluggable model providers (OpenAI, local)
- - [ ] Data retention and deletion policies
- - [ ] Webhook‑based partner integrations
+- [ ] Data retention and deletion policies
+- [ ] Webhook‑based partner integrations

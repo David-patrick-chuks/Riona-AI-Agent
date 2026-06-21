@@ -1,6 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { Instagram_cookiesExist, getIgDailyState, incrementIgDailyCount, loadCookies } from './index';
+import {
+  Instagram_cookiesExist,
+  getIgDailyState,
+  incrementIgDailyCount,
+  loadCookies,
+} from './index';
 
 describe('utils', () => {
   const cookiesDir = path.join(process.cwd(), 'cookies');
@@ -8,7 +13,11 @@ describe('utils', () => {
   const dataPath = path.join(__dirname, '../data/igActionData.json');
 
   afterEach(async () => {
-    try { await fs.unlink(cookiesPath); } catch {}
+    try {
+      await fs.unlink(cookiesPath);
+    } catch {
+      /* ignore error */
+    }
     try {
       const files = await fs.readdir(cookiesDir);
       for (const file of files) {
@@ -16,8 +25,14 @@ describe('utils', () => {
           await fs.unlink(path.join(cookiesDir, file));
         }
       }
-    } catch {}
-    try { await fs.unlink(dataPath); } catch {}
+    } catch {
+      /* ignore error */
+    }
+    try {
+      await fs.unlink(dataPath);
+    } catch {
+      /* ignore error */
+    }
   });
 
   test('daily IG action counter increments', async () => {
@@ -27,6 +42,18 @@ describe('utils', () => {
     await incrementIgDailyCount(2);
     const updated = await getIgDailyState();
     expect(updated.count).toBeGreaterThanOrEqual(2);
+  });
+
+  test('session cookies without expires are treated as valid', async () => {
+    await fs.mkdir(cookiesDir, { recursive: true });
+    await fs.writeFile(
+      cookiesPath,
+      JSON.stringify([{ name: 'sessionid', value: 'abc123' }]),
+      'utf-8',
+    );
+
+    const exists = await Instagram_cookiesExist();
+    expect(exists).toBe(true);
   });
 
   test('invalid cookies JSON is backed up and treated as missing', async () => {
