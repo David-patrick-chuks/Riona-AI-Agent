@@ -17,18 +17,6 @@ async function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<
     await existingLock;
   }
 
-type CookieLike = { name: string; expires?: number };
-
-/** Puppeteer session cookies use expires -1; timed cookies use a Unix timestamp. */
-export const isCookieValid = (cookie: CookieLike | undefined, nowSec: number): boolean => {
-  if (!cookie) return false;
-  const { expires } = cookie;
-  if (expires === -1) return true;
-  if (typeof expires !== "number") return false;
-  return expires > nowSec;
-};
-
-export async function Instagram_cookiesExist(): Promise<boolean> {
   try {
     return await fn();
   } finally {
@@ -39,6 +27,17 @@ export async function Instagram_cookiesExist(): Promise<boolean> {
   }
 }
 
+type CookieLike = { name: string; expires?: number };
+
+/** Puppeteer session cookies use expires -1; timed cookies use a Unix timestamp. */
+export const isCookieValid = (cookie: CookieLike | undefined, nowSec: number): boolean => {
+  if (!cookie) return false;
+  const { expires } = cookie;
+  if (expires === -1 || expires === undefined) return true;
+  if (typeof expires !== 'number') return false;
+  return expires > nowSec;
+};
+
 /** Cookie file path for a given account key (legacy default path kept for "default"). */
 export function getInstagramCookiesPath(accountKey: string = 'default'): string {
   const key = accountKey || 'default';
@@ -47,12 +46,6 @@ export function getInstagramCookiesPath(accountKey: string = 'default'): string 
   }
   return `./cookies/Instagramcookies-${key}.json`;
 }
-
-const isCookieValid = (cookie: { expires?: number } | undefined, now: number): boolean => {
-  if (!cookie) return false;
-  if (cookie.expires === undefined || cookie.expires === -1) return true;
-  return cookie.expires > now;
-};
 
 /**
  * Checks if valid Instagram cookies exist and are not expired
