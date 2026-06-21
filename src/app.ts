@@ -75,7 +75,6 @@ app.get('/metrics', (req, res) => {
 
   res.type('html').send(metricsHtml);
 });
-});
 
 app.get(/.*/, (_req, res) => {
   res.sendFile('index.html', { root: 'frontend/dist' });
