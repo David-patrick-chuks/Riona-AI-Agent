@@ -13,7 +13,7 @@ import {
   listScheduledPosts,
 } from '../client/InstagramPoster';
 import logger from '../config/logger';
-import mongoose from 'mongoose';
+import { isDbConnected } from '../config/db';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
 import { geminiApiKeys } from '../secret';
 import { getLastRunSummary } from '../utils/igRunSummary';
@@ -29,6 +29,7 @@ import {
   scrapeLimiter,
   generalLimiter,
 } from '../middleware/rateLimit';
+import { getMetrics } from '../services/metrics';
 
 const router = express.Router();
 
@@ -57,7 +58,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 // Status endpoint
 router.get('/status', (_req: Request, res: Response) => {
   const status = {
-    dbConnected: mongoose.connection.readyState === 1,
+    dbConnected: isDbConnected(),
   };
   return res.json(status);
 });
@@ -71,7 +72,7 @@ router.get('/health', (req: Request, res: Response) => {
   if (!isAuthenticated) {
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
     });
   }
 
@@ -83,7 +84,7 @@ router.get('/health', (req: Request, res: Response) => {
   if (accountQuery) {
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
       account: accountQuery,
       accountConfigured: !!accountsMap?.[accountQuery],
       igClient: getIgClientStatus(accountQuery),
@@ -106,7 +107,7 @@ router.get('/health', (req: Request, res: Response) => {
     }
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
       igClient: getIgClientStatus('default'),
       igClients: getIgClientsSnapshot(),
       accounts: perAccount,
@@ -117,13 +118,34 @@ router.get('/health', (req: Request, res: Response) => {
 
   return res.json({
     ok: true,
-    dbConnected: mongoose.connection.readyState === 1,
+    dbConnected: isDbConnected(),
     igClient: getIgClientStatus('default'),
     igClients: getIgClientsSnapshot(),
     accounts: Array.from(accountKeys),
     geminiKeys: geminiApiKeys.length,
     lastIgRun: getLastRunSummary(),
   });
+});
+
+// Metrics endpoint — returns server performance metrics (auth required for detailed data)
+router.get('/metrics', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  const metrics = getMetrics();
+
+  if (!isAuthenticated) {
+    // Public: only basic uptime info
+    return res.json({
+      ok: true,
+      uptime: metrics.uptime,
+      uptimeFormatted: metrics.uptimeFormatted,
+    });
+  }
+
+  // Authenticated: full metrics
+  return res.json(metrics);
 });
 
 // Login endpoint (rate limited to prevent brute force)

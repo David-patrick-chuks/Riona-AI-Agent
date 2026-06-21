@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
-import mongoose from 'mongoose';
 import logger from '../config/logger';
-import ActionLog, { ActionLogStatus } from '../models/ActionLog';
+import { getPool, isDbConnected } from '../config/db';
+import { ActionLogStatus } from '../models/ActionLog';
 
 export type ActionLogInput = {
   platform: string;
@@ -37,8 +37,20 @@ type ActionSummary = {
 const getActionLogPath = () =>
   process.env.ACTION_LOG_PATH || path.join(process.cwd(), 'logs', 'actionLogs.json');
 
-const mapRecord = (entry: any): ActionLogRecord => ({
-  id: String(entry._id || entry.id || `${entry.createdAt}-${entry.action}`),
+const mapRecord = (entry: {
+  id?: string;
+  _id?: string;
+  platform: string;
+  action: string;
+  account?: string;
+  username?: string | null;
+  status: ActionLogStatus;
+  error?: string | null;
+  details?: Record<string, unknown> | null;
+  createdAt?: string | Date;
+  created_at?: string | Date;
+}): ActionLogRecord => ({
+  id: String(entry.id || entry._id || `${entry.createdAt || entry.created_at}-${entry.action}`),
   platform: String(entry.platform),
   action: String(entry.action),
   account: String(entry.account || 'default'),
@@ -46,7 +58,7 @@ const mapRecord = (entry: any): ActionLogRecord => ({
   status: entry.status === 'error' ? 'error' : 'success',
   error: entry.error ? String(entry.error) : undefined,
   details: entry.details && typeof entry.details === 'object' ? entry.details : undefined,
-  createdAt: new Date(entry.createdAt || Date.now()).toISOString(),
+  createdAt: new Date(entry.createdAt || entry.created_at || Date.now()).toISOString(),
 });
 
 const readFileLogs = async (): Promise<ActionLogRecord[]> => {
@@ -102,6 +114,68 @@ const appendFileLog = async (entry: {
   });
 };
 
+const insertDbLog = async (entry: {
+  platform: string;
+  action: string;
+  account: string;
+  username?: string;
+  status: ActionLogStatus;
+  error?: string;
+  details?: Record<string, unknown>;
+}) => {
+  const pool = getPool();
+  if (!pool) return;
+
+  await pool.query(
+    `INSERT INTO action_logs (platform, action, account, username, status, error, details)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      entry.platform,
+      entry.action,
+      entry.account,
+      entry.username ?? null,
+      entry.status,
+      entry.error ?? null,
+      entry.details ? JSON.stringify(entry.details) : null,
+    ],
+  );
+};
+
+const queryDbLogs = async (options: {
+  limit: number;
+  platform?: string;
+  account?: string;
+}): Promise<ActionLogRecord[]> => {
+  const pool = getPool();
+  if (!pool) return [];
+
+  const conditions: string[] = [];
+  const values: string[] = [];
+
+  if (options.platform) {
+    values.push(options.platform);
+    conditions.push(`platform = $${values.length}`);
+  }
+  if (options.account) {
+    values.push(options.account);
+    conditions.push(`account = $${values.length}`);
+  }
+
+  values.push(String(options.limit));
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query(
+    `SELECT id, platform, action, account, username, status, error, details, created_at
+     FROM action_logs
+     ${where}
+     ORDER BY created_at DESC
+     LIMIT $${values.length}`,
+    values,
+  );
+
+  return result.rows.map(mapRecord);
+};
+
 export const logAction = async (input: ActionLogInput): Promise<void> => {
   const entry = {
     platform: input.platform,
@@ -115,8 +189,8 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
   };
 
   try {
-    if (mongoose.connection.readyState === 1) {
-      await ActionLog.create(entry);
+    if (isDbConnected()) {
+      await insertDbLog(entry);
       return;
     }
 
@@ -135,12 +209,8 @@ export const listActionLogs = async (options?: {
   const platform = options?.platform;
   const account = options?.account;
 
-  if (mongoose.connection.readyState === 1) {
-    const query: Record<string, string> = {};
-    if (platform) query.platform = platform;
-    if (account) query.account = account;
-    const entries = await ActionLog.find(query).sort({ createdAt: -1 }).limit(limit).lean();
-    return entries.map(mapRecord);
+  if (isDbConnected()) {
+    return queryDbLogs({ limit, platform, account });
   }
 
   const entries = await readFileLogs();
@@ -157,9 +227,6 @@ export const getActionSummary = async (options?: {
 }): Promise<ActionSummary> => {
   const platform = options?.platform;
   const account = options?.account;
-  const query: Record<string, string> = {};
-  if (platform) query.platform = platform;
-  if (account) query.account = account;
 
   const summarize = (records: ActionLogRecord[]): ActionSummary =>
     records.reduce<ActionSummary>(
@@ -179,9 +246,10 @@ export const getActionSummary = async (options?: {
       },
     );
 
-  if (mongoose.connection.readyState === 1) {
-    const entries = await ActionLog.find(query).lean();
-    return summarize(entries.map(mapRecord));
+  if (isDbConnected()) {
+    const fileLimit = Math.max(1, Math.min(options?.limit || 500, 500));
+    const entries = await queryDbLogs({ limit: fileLimit, platform, account });
+    return summarize(entries);
   }
 
   const fileLimit = Math.max(1, Math.min(options?.limit || 500, 500));

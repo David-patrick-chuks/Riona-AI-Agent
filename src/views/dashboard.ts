@@ -3,213 +3,719 @@ export const dashboardHtml = `<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Riona Dashboard</title>
+  <title>Riona — Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --pink: #ff5fa2;
-      --pink-dark: #c93a7a;
-      --rose: #fff0f6;
-      --ink: #1b0b14;
+      --bg: #0f1117;
+      --surface: #161b22;
+      --surface-2: #1c2333;
+      --border: #2d3648;
+      --border-light: #3d4663;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --text-dim: #6e7681;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --success: #3fb950;
+      --success-bg: rgba(63, 185, 80, 0.12);
+      --warning: #d29922;
+      --warning-bg: rgba(210, 153, 34, 0.12);
+      --danger: #f85149;
+      --danger-bg: rgba(248, 81, 73, 0.12);
+      --radius: 10px;
+      --radius-lg: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
     }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
     body {
-      font-family: "Plus Jakarta Sans", "Poppins", "Avenir Next", system-ui, sans-serif;
       margin: 0;
-      color: var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, #ffd1e8 0%, transparent 60%),
-        radial-gradient(1000px 600px at 90% -20%, #ffe6f2 0%, transparent 55%),
-        linear-gradient(180deg, #fff8fb 0%, #ffffff 100%);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
     }
-    .wrap { max-width: 960px; margin: 32px auto; padding: 0 20px 40px; }
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 22px 24px; border-radius: 16px;
-      background: linear-gradient(135deg, #ff79b7 0%, #ff4f97 100%);
-      color: white; box-shadow: 0 10px 30px rgba(255, 95, 162, .35);
+
+    /* ── Layout ── */
+    .app {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
     }
-    header h1 { margin: 0; font-size: 28px; letter-spacing: 0.2px; }
-    header .tag { background: rgba(255,255,255,.2); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-top: 18px; }
-    .grid.two { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .card {
-      background: white; border-radius: 14px; padding: 16px;
-      border: 1px solid #ffe0ef;
-      box-shadow: 0 6px 16px rgba(255, 95, 162, .08);
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
     }
-    .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9a456a; }
-    .value { font-size: 20px; margin-top: 6px; font-weight: 700; }
-    .muted { color: #7a4860; }
-    pre {
-      background: var(--rose);
-      padding: 14px; border-radius: 12px;
-      border: 1px dashed #ffc4dd;
-      overflow: auto;
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
     }
-    .pill {
-      display: inline-block; padding: 4px 10px; border-radius: 999px;
-      background: #ffe0ef; color: #b23a72; font-size: 12px;
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
     }
-    form { display: grid; gap: 10px; }
-    input, button, select {
-      font: inherit;
-      border-radius: 10px;
-      border: 1px solid #ffc4dd;
-      padding: 10px 12px;
-    }
-    button {
-      cursor: pointer;
-      background: linear-gradient(135deg, #ff79b7 0%, #ff4f97 100%);
-      color: white;
-      border: none;
+
+    .brand-name {
+      font-size: 15px;
       font-weight: 700;
+      letter-spacing: -0.02em;
     }
-    button.secondary {
-      background: white;
-      color: #b23a72;
-      border: 1px solid #ffc4dd;
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
     }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 8px 8px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-item:hover { background: var(--surface-2); color: var(--text); }
+    .nav-item.active { background: var(--accent-glow); color: var(--accent-hover); }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .main {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      gap: 16px;
+    }
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 4px;
+    }
+
+    .page-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .live-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .live-dot::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── Stat cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-value.lg { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .badge.ok { background: var(--success-bg); color: var(--success); }
+    .badge.ok::before { background: var(--success); }
+    .badge.bad { background: var(--danger-bg); color: var(--danger); }
+    .badge.bad::before { background: var(--danger); }
+    .badge.neutral { background: var(--surface-2); color: var(--text-muted); }
+    .badge.neutral::before { background: var(--text-dim); }
+    .badge.warn { background: var(--warning-bg); color: var(--warning); }
+    .badge.warn::before { background: var(--warning); }
+
+    /* ── Panels ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .panel-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 2px 0 0;
+    }
+
+    /* ── Forms ── */
+    .form-grid { display: grid; gap: 10px; }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    input, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    input::placeholder { color: var(--text-dim); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+
+    .btn-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid rgba(248,81,73,0.3);
+    }
+
+    .btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.2); }
+
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    /* ── Session banner ── */
+    .session-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .session-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .session-info { flex: 1; min-width: 0; }
+    .session-name { font-size: 13px; font-weight: 600; }
+    .session-meta { font-size: 12px; color: var(--text-muted); }
+
+    /* ── Alert / toast ── */
+    .alert {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 12px;
+      border: 1px solid;
+    }
+
+    .alert.show { display: block; }
+    .alert.ok { background: var(--success-bg); border-color: rgba(63,185,80,0.3); color: var(--success); }
+    .alert.err { background: var(--danger-bg); border-color: rgba(248,81,73,0.3); color: var(--danger); }
+    .alert.info { background: var(--accent-glow); border-color: rgba(99,102,241,0.3); color: var(--accent-hover); }
+
+    /* ── Action stats mini ── */
+    .mini-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .mini-stat {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+
+    .mini-stat-val {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .mini-stat-val.ok { color: var(--success); }
+    .mini-stat-val.bad { color: var(--danger); }
+
+    .mini-stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Run summary ── */
+    .run-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .run-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .run-item-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .run-item-val { font-size: 18px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; margin-top: 4px; }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 13px;
     }
-    th, td {
+
+    thead th {
       text-align: left;
-      padding: 10px 8px;
-      border-bottom: 1px solid #ffe0ef;
-      vertical-align: top;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
-    .toolbar {
+
+    tbody td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text-muted);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface-2); }
+
+    .action-name { color: var(--text); font-weight: 500; }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-pill.ok { background: var(--success-bg); color: var(--success); }
+    .status-pill.bad { background: var(--danger-bg); color: var(--danger); }
+
+    .cooldown-row {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
     }
-    .toolbar input {
-      min-width: 120px;
-      background: white;
-      color: var(--ink);
-      border: 1px solid #ffc4dd;
-    }
-    .ok { color: #0f7b47; }
-    .bad { color: #b42318; }
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-      header { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+    .cooldown-row input { width: 80px; flex-shrink: 0; }
+
+    /* hidden pre for JS compat */
+    #auth-result, #control-result, #actions-summary, #run, #status-pill { display: none; }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .panels { grid-template-columns: 1fr; }
+      .main { padding: 20px 16px; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Riona Dashboard</h1>
-        <div class="muted">Live status + last run summary</div>
-      </div>
-      <div class="tag">Riona 🌸</div>
-    </header>
-
-    <div class="grid">
-      <div class="card">
-        <div class="label">Database</div>
-        <div class="value" id="db">loading...</div>
-      </div>
-      <div class="card">
-        <div class="label">IG Client</div>
-        <div class="value" id="ig">loading...</div>
-      </div>
-      <div class="card">
-        <div class="label">Gemini Keys</div>
-        <div class="value" id="keys">loading...</div>
-      </div>
-    </div>
-
-    <div class="grid two">
-      <div class="card">
-        <div class="label">Admin Session</div>
-        <div class="value" id="session-state">checking...</div>
-        <div class="muted" id="session-meta">Use the form below to sign into the local admin session.</div>
-        <form id="login-form" style="margin-top: 12px;">
-          <input id="username" name="username" placeholder="Instagram username" />
-          <input id="password" name="password" type="password" placeholder="Instagram password" />
-          <input id="account" name="account" placeholder="Account key (optional)" />
-          <button type="submit">Log In</button>
-        </form>
-        <div class="toolbar">
-          <button class="secondary" id="refresh-btn" type="button">Refresh</button>
-          <button class="secondary" id="logout-btn" type="button">Log Out</button>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">R</div>
+        <div>
+          <div class="brand-name">Riona</div>
+          <div class="brand-sub">Control Center</div>
         </div>
-        <pre id="auth-result">No action yet.</pre>
       </div>
 
-      <div class="card">
-        <div class="label">Recent Actions</div>
-        <div class="grid" style="grid-template-columns: repeat(3, minmax(0,1fr)); margin-top: 12px;">
-          <div>
-            <div class="label">Total</div>
-            <div class="value" id="actions-total">0</div>
+      <div class="nav-label">Monitor</div>
+      <button class="nav-item active" type="button">Overview</button>
+      <a class="nav-item" href="/metrics" style="text-decoration:none">Metrics</a>
+
+      <div class="nav-label">Actions</div>
+      <button class="nav-item" type="button" onclick="document.getElementById('interact-btn').click()">Run Interact</button>
+      <button class="nav-item" type="button" onclick="document.getElementById('refresh-btn').click()">Refresh Status</button>
+
+      <div class="sidebar-footer">
+        <div class="live-dot" id="refresh-indicator">Live · 15s refresh</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Overview</h1>
+          <p class="page-sub">Instagram automation status and controls</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-sm" id="refresh-btn" type="button">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Database</div>
+          <div class="stat-value" id="db-wrap"><span id="db">loading…</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">IG Client</div>
+          <div class="stat-value" id="ig-wrap"><span id="ig">loading…</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Gemini Keys</div>
+          <div class="stat-value lg" id="keys">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Session</div>
+          <div class="stat-value" id="session-state">checking…</div>
+        </div>
+      </div>
+
+      <div class="panels">
+        <!-- Login panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-title">Authentication</p>
+              <p class="panel-desc">Sign in to launch the Instagram browser session</p>
+            </div>
           </div>
-          <div>
-            <div class="label">Success</div>
-            <div class="value ok" id="actions-success">0</div>
+
+          <div class="session-banner" id="session-banner">
+            <div class="session-avatar" id="session-avatar">?</div>
+            <div class="session-info">
+              <div class="session-name" id="session-display">Not signed in</div>
+              <div class="session-meta" id="session-meta">Enter credentials below to connect</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="logout-btn" type="button">Sign out</button>
           </div>
+
+          <form id="login-form" class="form-grid">
+            <div class="field">
+              <label for="username">Instagram username</label>
+              <input id="username" name="username" placeholder="your_username" autocomplete="username" />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+            </div>
+            <div class="field">
+              <label for="account">Account key <span style="color:var(--text-dim)">(optional)</span></label>
+              <input id="account" name="account" placeholder="default" />
+            </div>
+            <button class="btn btn-primary" type="submit">Launch Browser &amp; Sign In</button>
+          </form>
+
+          <div class="alert" id="auth-alert"></div>
+          <pre id="auth-result"></pre>
+        </div>
+
+        <!-- Control panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-title">Automation Controls</p>
+              <p class="panel-desc">Manage the active Instagram session</p>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="interact-btn" type="button">▶ Run Interact</button>
+            <button class="btn btn-secondary" id="clear-cookies-btn" type="button">Clear Cookies</button>
+            <button class="btn btn-danger" id="exit-btn" type="button">Exit Client</button>
+          </div>
+
+          <div class="cooldown-row">
+            <input id="cooldown-minutes" type="number" min="1" step="1" value="60" aria-label="Cooldown minutes" />
+            <button class="btn btn-secondary btn-sm" id="cooldown-btn" type="button">Start Cooldown</button>
+          </div>
+
+          <div class="alert" id="control-alert"></div>
+          <pre id="control-result"></pre>
+        </div>
+      </div>
+
+      <!-- Last run -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header">
           <div>
-            <div class="label">Errors</div>
-            <div class="value bad" id="actions-error">0</div>
+            <p class="panel-title">Last Instagram Run</p>
+            <p class="panel-desc">Summary from the most recent interaction cycle</p>
+          </div>
+          <span class="badge neutral" id="status-pill">loading…</span>
+          <span class="badge neutral" id="run-status-badge">—</span>
+        </div>
+        <div class="run-grid" id="run-grid">
+          <div class="empty-state">Log in and run interact to see results here</div>
+        </div>
+        <pre id="run"></pre>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-title">Activity Feed</p>
+            <p class="panel-desc">Recent automation and admin actions</p>
           </div>
         </div>
-        <pre id="actions-summary">loading...</pre>
-      </div>
-    </div>
 
-    <div class="card" style="margin-top: 16px;">
-      <div class="label">Last IG Run</div>
-      <div class="pill" id="status-pill">loading...</div>
-      <pre id="run">loading...</pre>
-    </div>
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <div class="mini-stat-val" id="actions-total">0</div>
+            <div class="mini-stat-label">Total</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-val ok" id="actions-success">0</div>
+            <div class="mini-stat-label">Success</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-stat-val bad" id="actions-error">0</div>
+            <div class="mini-stat-label">Errors</div>
+          </div>
+        </div>
+        <pre id="actions-summary"></pre>
 
-    <div class="card" style="margin-top: 16px;">
-      <div class="label">Control Panel</div>
-      <div class="muted">Run common admin actions against the current authenticated session.</div>
-      <div class="toolbar">
-        <button id="interact-btn" type="button">Run Interact</button>
-        <button id="clear-cookies-btn" class="secondary" type="button">Clear Cookies</button>
-        <button id="exit-btn" class="secondary" type="button">Exit Client</button>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Platform</th>
+                <th>Action</th>
+                <th>Status</th>
+                <th>Account</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="actions-table">
+              <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="toolbar">
-        <input id="cooldown-minutes" type="number" min="1" step="1" value="60" />
-        <button id="cooldown-btn" type="button">Start Cooldown</button>
-      </div>
-      <pre id="control-result">No admin action run yet.</pre>
-    </div>
-
-    <div class="card" style="margin-top: 16px;">
-      <div class="label">Action Feed</div>
-      <div class="muted">Latest admin and automation activity</div>
-      <div style="overflow:auto; margin-top: 12px;">
-        <table>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Platform</th>
-              <th>Action</th>
-              <th>Status</th>
-              <th>Account</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody id="actions-table">
-            <tr><td colspan="6">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </main>
   </div>
+
   <script>
-    const authResult = document.getElementById('auth-result');
-    const controlResult = document.getElementById('control-result');
-    const sessionState = document.getElementById('session-state');
-    const sessionMeta = document.getElementById('session-meta');
+    const authAlert = document.getElementById('auth-alert');
+    const controlAlert = document.getElementById('control-alert');
+    const sessionDisplay = document.getElementById('session-display');
+    const sessionAvatar = document.getElementById('session-avatar');
+    const runGrid = document.getElementById('run-grid');
+    const runStatusBadge = document.getElementById('run-status-badge');
     const actionsTable = document.getElementById('actions-table');
     let refreshTimer = null;
 
@@ -220,14 +726,27 @@ export const dashboardHtml = `<!doctype html>
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
 
+    const showAlert = (el, message, type) => {
+      el.textContent = message;
+      el.className = 'alert show ' + type;
+      setTimeout(() => el.classList.remove('show'), 5000);
+    };
+
+    const setBadge = (el, text, type) => {
+      el.textContent = text;
+      el.className = 'badge ' + type;
+    };
+
+    const setStatBadge = (wrapId, text, type) => {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      wrap.innerHTML = '<span class="badge ' + type + '">' + escapeHtml(text) + '</span>';
+    };
+
     const requestJson = async (url, options = {}) => {
       const response = await fetch(url, options);
       let payload = null;
-      try {
-        payload = await response.json();
-      } catch (_err) {
-        payload = null;
-      }
+      try { payload = await response.json(); } catch (_err) { payload = null; }
       if (!response.ok) {
         const message = payload?.error || payload?.message || 'Request failed';
         throw new Error(message);
@@ -235,74 +754,117 @@ export const dashboardHtml = `<!doctype html>
       return payload;
     };
 
+    const renderRunSummary = (run) => {
+      if (!run || !Object.keys(run).length) {
+        runGrid.innerHTML = '<div class="empty-state">No runs yet — click <strong>Run Interact</strong> to start</div>';
+        runStatusBadge.textContent = 'No runs';
+        runStatusBadge.className = 'badge neutral';
+        return;
+      }
+
+      const fields = [
+        ['Posts visited', run.postsVisited ?? '—'],
+        ['Likes', run.likes ?? '—'],
+        ['Comments', run.comments ?? '—'],
+        ['Skipped (sponsored)', run.skippedSponsored ?? '—'],
+        ['Errors', run.errors ?? '—'],
+        ['Duration', run.durationMs ? Math.round(run.durationMs / 1000) + 's' : '—'],
+      ];
+
+      runGrid.innerHTML = fields.map(([label, val]) =>
+        '<div class="run-item"><div class="run-item-label">' + escapeHtml(label) +
+        '</div><div class="run-item-val">' + escapeHtml(String(val)) + '</div></div>'
+      ).join('');
+
+      runStatusBadge.textContent = 'Completed';
+      runStatusBadge.className = 'badge ok';
+    };
+
     const renderHealth = async () => {
       try {
         const response = await fetch('/api/health', { credentials: 'same-origin' });
         const data = await response.json();
-        document.getElementById('db').textContent = data.dbConnected ? 'connected' : 'disconnected';
+
+        const dbOk = data.dbConnected;
+        setStatBadge('db-wrap', dbOk ? 'Connected' : 'Disconnected', dbOk ? 'ok' : 'bad');
+        document.getElementById('db').textContent = dbOk ? 'connected' : 'disconnected';
+
         if (data.igClient === undefined) {
-          document.getElementById('ig').textContent = 'login for details';
+          setStatBadge('ig-wrap', 'Sign in required', 'neutral');
+          document.getElementById('ig').textContent = 'not signed in';
           document.getElementById('keys').textContent = '—';
-          document.getElementById('run').textContent = 'Log in to view IG run summary and key count.';
-          document.getElementById('status-pill').textContent = data.ok ? 'ok' : 'unknown';
+          document.getElementById('run').textContent = '';
+          document.getElementById('status-pill').textContent = 'locked';
+          renderRunSummary(null);
           return;
         }
-        document.getElementById('ig').textContent = data.igClient?.initialized ? 'initialized' : 'not initialized';
+
+        const igOk = data.igClient?.initialized;
+        setStatBadge('ig-wrap', igOk ? 'Initialized' : 'Not initialized', igOk ? 'ok' : 'warn');
+        document.getElementById('ig').textContent = igOk ? 'initialized' : 'not initialized';
         document.getElementById('keys').textContent = String(data.geminiKeys ?? 0);
         document.getElementById('run').textContent = JSON.stringify(data.lastIgRun ?? {}, null, 2);
         document.getElementById('status-pill').textContent = data.lastIgRun ? 'ok' : 'no runs yet';
-      } catch (err) {
-        document.getElementById('run').textContent = 'Failed to load /api/health';
+        renderRunSummary(data.lastIgRun);
+      } catch (_err) {
+        runGrid.innerHTML = '<div class="empty-state">Failed to load health data</div>';
       }
     };
 
     const renderSession = async () => {
+      const sessionState = document.getElementById('session-state');
+      const sessionMeta = document.getElementById('session-meta');
       try {
         const response = await fetch('/api/me');
         if (!response.ok) throw new Error('not authenticated');
         const data = await response.json();
-        sessionState.textContent = 'authenticated';
-        sessionMeta.textContent = 'User: ' + data.username + ' | Account: ' + data.account;
+        sessionState.innerHTML = '<span class="badge ok">Authenticated</span>';
+        sessionDisplay.textContent = data.username;
+        sessionMeta.textContent = 'Account: ' + data.account;
+        sessionAvatar.textContent = data.username.charAt(0).toUpperCase();
       } catch (_err) {
-        sessionState.textContent = 'not authenticated';
-        sessionMeta.textContent = 'Log in to use protected admin actions and view the full action feed.';
+        sessionState.innerHTML = '<span class="badge neutral">Guest</span>';
+        sessionDisplay.textContent = 'Not signed in';
+        sessionMeta.textContent = 'Enter credentials below to connect';
+        sessionAvatar.textContent = '?';
       }
     };
 
     const renderActions = async () => {
       try {
         const [actionsRes, summaryRes] = await Promise.all([
-          fetch('/api/actions?limit=8'),
+          fetch('/api/actions?limit=10'),
           fetch('/api/actions/summary?limit=25'),
         ]);
 
-        if (!actionsRes.ok || !summaryRes.ok) {
-          throw new Error('auth required');
-        }
+        if (!actionsRes.ok || !summaryRes.ok) throw new Error('auth required');
 
         const actionsPayload = await actionsRes.json();
         const summary = await summaryRes.json();
+
         document.getElementById('actions-total').textContent = String(summary.total || 0);
         document.getElementById('actions-success').textContent = String(summary.success || 0);
         document.getElementById('actions-error').textContent = String(summary.error || 0);
         document.getElementById('actions-summary').textContent = JSON.stringify(summary, null, 2);
 
         const rows = (actionsPayload.actions || []).map((entry) => {
-          const details = entry.error || JSON.stringify(entry.details || {});
+          const details = entry.error || (entry.details ? JSON.stringify(entry.details) : '—');
+          const statusClass = entry.status === 'success' ? 'ok' : 'bad';
           return '<tr>' +
             '<td>' + escapeHtml(new Date(entry.createdAt).toLocaleString()) + '</td>' +
             '<td>' + escapeHtml(entry.platform) + '</td>' +
-            '<td>' + escapeHtml(entry.action) + '</td>' +
-            '<td class="' + (entry.status === 'success' ? 'ok' : 'bad') + '">' + entry.status + '</td>' +
+            '<td><span class="action-name">' + escapeHtml(entry.action) + '</span></td>' +
+            '<td><span class="status-pill ' + statusClass + '">' + entry.status + '</span></td>' +
             '<td>' + escapeHtml(entry.account || 'default') + '</td>' +
-            '<td>' + escapeHtml(details || '-') + '</td>' +
+            '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(details) + '">' + escapeHtml(details) + '</td>' +
           '</tr>';
         }).join('');
 
-        actionsTable.innerHTML = rows || '<tr><td colspan="6">No actions logged yet.</td></tr>';
+        actionsTable.innerHTML = rows ||
+          '<tr><td colspan="6"><div class="empty-state">No actions logged yet</div></td></tr>';
       } catch (_err) {
-        document.getElementById('actions-summary').textContent = 'Log in to view recent actions.';
-        actionsTable.innerHTML = '<tr><td colspan="6">Log in to view recent actions.</td></tr>';
+        actionsTable.innerHTML =
+          '<tr><td colspan="6"><div class="empty-state">Sign in to view activity feed</div></td></tr>';
       }
     };
 
@@ -313,15 +875,21 @@ export const dashboardHtml = `<!doctype html>
     const runControlAction = async (url, options = {}) => {
       try {
         const payload = await requestJson(url, options);
-        controlResult.textContent = JSON.stringify(payload, null, 2);
+        showAlert(controlAlert, payload.message || payload.success ? 'Action completed' : JSON.stringify(payload), 'ok');
+        document.getElementById('control-result').textContent = JSON.stringify(payload, null, 2);
       } catch (err) {
-        controlResult.textContent = err instanceof Error ? err.message : 'Action failed.';
+        showAlert(controlAlert, err instanceof Error ? err.message : 'Action failed', 'err');
+        document.getElementById('control-result').textContent = err instanceof Error ? err.message : 'Action failed.';
       }
       await refreshAll();
     };
 
     document.getElementById('login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
+      const btn = event.target.querySelector('[type=submit]');
+      btn.disabled = true;
+      btn.textContent = 'Connecting…';
+
       const payload = {
         username: document.getElementById('username').value,
         password: document.getElementById('password').value,
@@ -334,21 +902,27 @@ export const dashboardHtml = `<!doctype html>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        authResult.textContent = JSON.stringify(data, null, 2);
+        showAlert(authAlert, data.message || 'Login successful — browser launching', 'ok');
+        document.getElementById('auth-result').textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        authResult.textContent = err instanceof Error ? err.message : 'Login request failed.';
+        showAlert(authAlert, err instanceof Error ? err.message : 'Login failed', 'err');
+        document.getElementById('auth-result').textContent = err instanceof Error ? err.message : 'Login failed.';
       }
 
+      btn.disabled = false;
+      btn.textContent = 'Launch Browser & Sign In';
       await refreshAll();
     });
 
     document.getElementById('refresh-btn').addEventListener('click', refreshAll);
+
     document.getElementById('logout-btn').addEventListener('click', async () => {
       try {
         const data = await requestJson('/api/logout', { method: 'POST' });
-        authResult.textContent = JSON.stringify(data, null, 2);
+        showAlert(authAlert, data.message || 'Signed out', 'info');
+        document.getElementById('auth-result').textContent = JSON.stringify(data, null, 2);
       } catch (err) {
-        authResult.textContent = err instanceof Error ? err.message : 'Logout request failed.';
+        showAlert(authAlert, err instanceof Error ? err.message : 'Logout failed', 'err');
       }
       await refreshAll();
     });

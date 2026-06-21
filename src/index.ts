@@ -6,7 +6,7 @@ import { initAgent } from './Agent/index';
 import { validateRequiredSecrets } from './secret';
 import { connectDB } from './config/db';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 validateRequiredSecrets();
 
 async function startServer() {

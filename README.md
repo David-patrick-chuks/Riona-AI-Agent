@@ -18,7 +18,7 @@
 - [Feature Summary](#feature-summary)
 - [Planned Expansion](#planned-expansion)
 - [Installation](#installation)
-- [MongoDB Setup](#mongodb-setup)
+- [PostgreSQL Setup](#postgresql-setup)
 - [Usage](#usage)
 - [Dashboard](#dashboard)
 - [Development](#development)
@@ -66,7 +66,7 @@ Before running automation, you can shape the agent with:
 - Instagram automation with cookies, relogin handling, posting, scheduling, and interactions
 - AI-generated captions and comments with schema-guided responses
 - Multi-account and profile-based operation support
-- MongoDB-backed state, summaries, and rate-limiting controls
+- PostgreSQL-backed action logs, summaries, and optional persistence
 - Simple dashboard for runtime health and latest activity
 - Logging, environment validation, and utility scripts for operations
 
@@ -94,34 +94,62 @@ Before running automation, you can shape the agent with:
 3. **Set up environment variables**:
    Rename the `.env.example` file to `.env` in the root directory and add your Instagram credentials. Refer to the `.env.example` file for the required variables.
 
-## MongoDB Setup (Using Docker)
+## PostgreSQL Setup
 
-1. **Install Docker**:
-   If you don't have Docker installed, download and install it from the [official website](https://www.docker.com/products/docker-desktop/)
-2. **Run MongoDB using Docker Container**:
-   **Option 1:**
-   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb mongodb/mongodb-community-server:latest`  
-    **Option 2:**
-   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb -v mongodb_data:/data/db mongodb/mongodb-community-server:latest     `  
-    (Option 2: use this if you want to have like a permanent storage in you so your data won't be lost or remove if you stop or remove your Docker container)
-3. **Modify the MONGODB_URI in the .env file**:
+The app uses PostgreSQL for action logs. If `DATABASE_URL` is not set, action logs fall back to a local JSON file (`logs/actionLogs.json`).
 
-```dotenv
- MONGODB_URI=mongodb://localhost:27017/instagram-ai-agent
+### Option A: Docker (recommended for contributors)
+
+```sh
+npm run db:up
 ```
 
-4. **Verify the connection**:
-   Open a new terminal and run the following command:
-   You should see the MongoDB container running.
-   Docker Commands (Additional Info):
+This starts PostgreSQL on port `5432` with credentials that match `.env.example`.
 
-- To stop the MongoDB container:
-  ```sh
-  docker stop instagram-ai-mongodb
-  ```
-- To start the MongoDB container:
-- To remove the MongoDB container:
-- To remove the MongoDB container and its data:
+### Option B: Local PostgreSQL
+
+Install PostgreSQL locally, create a database, and point `.env` at it:
+
+```dotenv
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/riona_ai_agent
+```
+
+Create the database if needed:
+
+```sh
+createdb riona_ai_agent
+```
+
+Schema is applied automatically on startup. To run migrations manually:
+
+```sh
+npm run db:migrate
+```
+
+### Verify
+
+```sh
+docker compose ps
+# or
+psql "$DATABASE_URL" -c '\dt'
+```
+
+Stop Docker Postgres:
+
+```sh
+npm run db:down
+```
+
+### Upgrading from a MongoDB fork
+
+If your fork still uses `MONGODB_URI`, merge this branch and update `.env`:
+
+1. Remove `MONGODB_URI` / `MONGODB_REQUIRED`
+2. Add `DATABASE_URL` and `DB_REQUIRED=false` (see `.env.example`)
+3. Run `npm install` (mongoose removed, `pg` added)
+4. Start Postgres with `npm run db:up` or use your local instance
+
+No data migration script is provided — MongoDB action logs were optional and the app still works without a database.
 
 ## Usage
 
@@ -249,10 +277,10 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 
 ### Database
 
-| Variable           | Type    | Default | Description                |
-| ------------------ | ------- | ------- | -------------------------- |
-| `MONGODB_URI`      | string  |         | MongoDB connection URI     |
-| `MONGODB_REQUIRED` | boolean | `false` | Require MongoDB connection |
+| Variable       | Type    | Default | Description                                     |
+| -------------- | ------- | ------- | ----------------------------------------------- |
+| `DATABASE_URL` | string  |         | PostgreSQL connection URL                       |
+| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing) |
 
 ### Logging & General
 
