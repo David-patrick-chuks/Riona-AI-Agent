@@ -18,7 +18,11 @@ export const sendTweetWithImage = async (): Promise<void> => {
 
   const filename = 'image.png';
 
-  download(uri, filename, async function () {
+  download(uri, filename, async function (err?: Error) {
+    if (err) {
+      console.error('Failed to download image, aborting tweet:', err.message);
+      return;
+    }
     try {
       const mediaId = await twitterClient.v1.uploadMedia('./image.png');
 

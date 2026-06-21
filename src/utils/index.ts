@@ -160,6 +160,7 @@ export async function handleError(
   prompt: string,
   runAgent: (schema: any, prompt: string, apiKeyIndex?: number) => Promise<string>,
   retryCount = 0,
+  triedKeys: Set<number> = new Set(),
 ): Promise<string> {
   if (error instanceof Error) {
     if (error.message.includes('429 Too Many Requests')) {
@@ -167,7 +168,7 @@ export async function handleError(
         `---GEMINI_API_KEY_${currentApiKeyIndex + 1} limit exhausted, switching to the next API key...`,
       );
       try {
-        const { index: nextIndex } = getNextApiKey(currentApiKeyIndex);
+        const { index: nextIndex } = getNextApiKey(currentApiKeyIndex, triedKeys);
         return runAgent(schema, prompt, nextIndex);
       } catch (keyError) {
         if (keyError instanceof Error) {
@@ -195,9 +196,18 @@ export async function handleError(
             prompt,
             runAgent,
             retryCount + 1,
+            triedKeys,
           );
         }
-        return handleError(retryError, currentApiKeyIndex, schema, prompt, runAgent, retryCount);
+        return handleError(
+          retryError,
+          currentApiKeyIndex,
+          schema,
+          prompt,
+          runAgent,
+          retryCount,
+          triedKeys,
+        );
       }
     } else if (error.message.includes('All API keys have reached their rate limits')) {
       logger.error(error.message);
