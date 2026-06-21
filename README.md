@@ -28,6 +28,12 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Community & Contact](#community--contact)
+- [Multi-Account Support](#multi-account-support)
+- [Project Policies](#project-policies)
+- [Project Structure](#project-structure)
+- [Logging](#logging)
+- [Error Handling](#error-handling)
+- [Stargazers](#stargazers)
 
 ## About
 
@@ -226,7 +232,7 @@ Open `http://localhost:3000/dashboard` for live status and the last IG run summa
 - `Guides/Scripts.md`
 - `Guides/Training.md`
 
-## reCAPTCHA Model
+## reCAPTCHA Model Integration
 
 This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is run via root scripts:
 
@@ -312,7 +318,7 @@ Then pass `account` in `/api/login` to select which account to use.
 
 ## Logging
 
-The project uses a custom logger to log information, warnings, and errors. Logs are saved in the [logs](http://_vscodecontentref_/3) directory.
+The project uses a custom logger to record information, warnings, and errors. Logs are stored in the `logs/` directory.
 
 ## Error Handling
 
@@ -320,7 +326,15 @@ Process-level error handlers are set up to catch unhandled promise rejections, u
 
 ## Contributing
 
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+Contributions are welcome and appreciated.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit your changes.
+4. Push your changes to your fork.
+5. Open a pull request for review.
+
+Please ensure your changes follow the existing code style and include documentation updates when necessary.
 
 ## License
 
@@ -341,4 +355,4 @@ Built with ❤️ by David Patrick
 - Twitter: @david_patrick01
 - Email: [davidchuksdev@gmail.com](mailto:davidchuksdev@gmail.com)
 
-Real-time chat is not set up yet. If you want a Discord server, open a discussion and we can spin it up based on interest.
+Real-time community chat is not available yet. If there is sufficient interest, a Discord server may be created in the future. Feel free to open a discussion to express interest.
