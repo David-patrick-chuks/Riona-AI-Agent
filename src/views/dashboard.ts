@@ -378,4 +378,4 @@ export const dashboardHtml = `<!doctype html>
     refreshTimer = setInterval(refreshAll, 15000);
   </script>
 </body>
-</html>\`;
+</html>`;
