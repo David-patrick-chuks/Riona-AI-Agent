@@ -1,6 +1,5 @@
-import Tweet from '../models/Tweet';
 import { twitterClient } from '../client/X-bot/client';
-import { canSendTweet } from '../utils';
+import { canSendTweet, saveTweetData } from '../utils';
 import { download } from '../utils/download';
 import { excitingTweets } from './tweets';
 
@@ -31,13 +30,7 @@ export const sendTweetWithImage = async (): Promise<void> => {
         },
       });
 
-      const newTweet = new Tweet({
-        tweetContent: tweetText,
-        imageUrl: uri,
-        timeTweeted: new Date(),
-      });
-
-      await newTweet.save();
+      await saveTweetData(tweetText, uri, new Date().toISOString());
       console.log('Tweeted: ', tweetText);
       console.log('Tweeted Data: ', send);
     } catch (e) {

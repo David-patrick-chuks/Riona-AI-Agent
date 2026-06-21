@@ -4,7 +4,13 @@
 
 - `IGusername`
 - `IGpassword`
-- `MONGODB_URI`
+
+## Database (optional)
+
+- `DATABASE_URL` — PostgreSQL connection URL (see `.env.example`)
+- `DB_REQUIRED` — set to `true` to fail startup without a database
+
+If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
 
 ## Gemini
 

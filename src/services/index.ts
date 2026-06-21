@@ -1,5 +1,5 @@
 import logger from '../config/logger';
-import mongoose from 'mongoose';
+import { closeDB } from '../config/db';
 import { closeIgClient } from '../client/Instagram';
 import { stopAllScheduledPosts } from '../client/scheduledPosts';
 
@@ -10,9 +10,7 @@ export const shutdown = (server: any) => {
     const cleanup = async () => {
       stopAllScheduledPosts();
       await closeIgClient('default').catch(() => undefined);
-      if (mongoose.connection.readyState === 1) {
-        await mongoose.disconnect().catch(() => undefined);
-      }
+      await closeDB();
     };
 
     void cleanup().finally(() => {

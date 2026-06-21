@@ -13,7 +13,7 @@ import {
   listScheduledPosts,
 } from '../client/InstagramPoster';
 import logger from '../config/logger';
-import mongoose from 'mongoose';
+import { isDbConnected } from '../config/db';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
 import { geminiApiKeys } from '../secret';
 import { getLastRunSummary } from '../utils/igRunSummary';
@@ -58,7 +58,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 // Status endpoint
 router.get('/status', (_req: Request, res: Response) => {
   const status = {
-    dbConnected: mongoose.connection.readyState === 1,
+    dbConnected: isDbConnected(),
   };
   return res.json(status);
 });
@@ -72,7 +72,7 @@ router.get('/health', (req: Request, res: Response) => {
   if (!isAuthenticated) {
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
     });
   }
 
@@ -84,7 +84,7 @@ router.get('/health', (req: Request, res: Response) => {
   if (accountQuery) {
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
       account: accountQuery,
       accountConfigured: !!accountsMap?.[accountQuery],
       igClient: getIgClientStatus(accountQuery),
@@ -107,7 +107,7 @@ router.get('/health', (req: Request, res: Response) => {
     }
     return res.json({
       ok: true,
-      dbConnected: mongoose.connection.readyState === 1,
+      dbConnected: isDbConnected(),
       igClient: getIgClientStatus('default'),
       igClients: getIgClientsSnapshot(),
       accounts: perAccount,
@@ -118,7 +118,7 @@ router.get('/health', (req: Request, res: Response) => {
 
   return res.json({
     ok: true,
-    dbConnected: mongoose.connection.readyState === 1,
+    dbConnected: isDbConnected(),
     igClient: getIgClientStatus('default'),
     igClients: getIgClientsSnapshot(),
     accounts: Array.from(accountKeys),

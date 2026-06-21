@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import mongoose from 'mongoose';
+import { closeDB } from '../config/db';
 import { getActionSummary, listActionLogs, logAction } from './actionLog';
 
 describe('action log service', () => {
@@ -15,7 +15,7 @@ describe('action log service', () => {
 
   afterEach(async () => {
     process.env.ACTION_LOG_PATH = originalPath;
-    await mongoose.disconnect();
+    await closeDB();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
