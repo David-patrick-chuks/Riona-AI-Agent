@@ -208,6 +208,23 @@ router.get('/me', (req: Request, res: Response) => {
   return res.json({ username: payload.username, account: (payload as any).account || 'default' });
 });
 
+// Logout endpoint — public so expired or invalid tokens can still clear the cookie
+router.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  void logAction({
+    platform: 'system',
+    action: 'logout',
+    status: 'success',
+    account: (req as any).user?.account || 'default',
+    username: (req as any).user?.username,
+  });
+  return res.json({ message: 'Logged out successfully' });
+});
+
 // All routes below require authentication
 router.use(requireAuth);
 
@@ -537,6 +554,9 @@ router.delete('/scheduled-posts/:jobId', async (req: Request, res: Response) => 
 // Scrape followers endpoint (rate limited - resource intensive)
 router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers } = req.body;
+  if (!targetAccount || typeof targetAccount !== 'string' || !targetAccount.trim()) {
+    return res.status(400).json({ error: 'targetAccount is required' });
+  }
   const account = (req as any).user.account || 'default';
   const acct = getAccount(account);
   try {
@@ -585,6 +605,9 @@ router.post('/scrape-followers', scrapeLimiter, async (req: Request, res: Respon
 // GET handler for scrape-followers to support file download (rate limited)
 router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Response) => {
   const { targetAccount, maxFollowers: rawMaxFollowers } = req.query;
+  if (!targetAccount || typeof targetAccount !== 'string' || !targetAccount.trim()) {
+    return res.status(400).json({ error: 'targetAccount query param is required' });
+  }
   const parsedMaxFollowers = Number(rawMaxFollowers);
   const maxFollowers =
     Number.isFinite(parsedMaxFollowers) && parsedMaxFollowers > 0 ? parsedMaxFollowers : 100;
@@ -724,23 +747,6 @@ router.post('/cooldown', async (req: Request, res: Response) => {
     });
     return res.status(500).json({ error: 'Failed to set cooldown' });
   }
-});
-
-// Logout endpoint
-router.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-  });
-  void logAction({
-    platform: 'system',
-    action: 'logout',
-    status: 'success',
-    account: (req as any).user?.account || 'default',
-    username: (req as any).user?.username,
-  });
-  return res.json({ message: 'Logged out successfully' });
 });
 
 export default router;

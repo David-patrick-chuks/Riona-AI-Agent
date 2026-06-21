@@ -251,24 +251,27 @@ async function backupCorruptCookies(cookiesPath: string): Promise<void> {
 }
 
 // ---------------------- API key rotation ----------------------
-const triedApiKeys = new Set<number>();
 
 /**
- * Gets the next available API key for rotation
+ * Gets the next available API key for rotation.
  * @param currentApiKeyIndex - Index of the current API key that failed
- * @returns The next API key string
+ * @param triedKeys - Caller-owned Set tracking which indices have been tried
+ * @returns The next API key string and its index
  * @throws Error if no keys are configured or all have been tried
  */
-export const getNextApiKey = (currentApiKeyIndex: number): { key: string; index: number } => {
+export const getNextApiKey = (
+  currentApiKeyIndex: number,
+  triedKeys: Set<number> = new Set(),
+): { key: string; index: number } => {
   if (geminiApiKeys.length === 0) {
     throw new Error('No valid GEMINI API keys configured.');
   }
-  triedApiKeys.add(currentApiKeyIndex);
+
+  triedKeys.add(currentApiKeyIndex);
 
   const nextIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length;
 
-  if (triedApiKeys.size >= geminiApiKeys.length) {
-    triedApiKeys.clear();
+  if (triedKeys.size >= geminiApiKeys.length) {
     throw new Error('All API keys have reached their rate limits. Please try again later.');
   }
   return { key: geminiApiKeys[nextIndex], index: nextIndex };
@@ -290,8 +293,14 @@ export async function handleError(
   currentApiKeyIndex: number,
   schema: any,
   prompt: string,
-  runAgent: (schema: any, prompt: string, apiKeyIndex?: number) => Promise<string>,
+  runAgent: (
+    schema: any,
+    prompt: string,
+    apiKeyIndex?: number,
+    triedKeys?: Set<number>,
+  ) => Promise<string>,
   retryCount = 0,
+  triedKeys: Set<number> = new Set(),
 ): Promise<string> {
   if (error instanceof Error) {
     if (error.message.includes('429 Too Many Requests')) {
@@ -299,8 +308,8 @@ export async function handleError(
         `---GEMINI_API_KEY_${currentApiKeyIndex + 1} limit exhausted, switching to the next API key...`,
       );
       try {
-        const { index: nextIndex } = getNextApiKey(currentApiKeyIndex);
-        return runAgent(schema, prompt, nextIndex);
+        const { index: nextIndex } = getNextApiKey(currentApiKeyIndex, triedKeys);
+        return runAgent(schema, prompt, nextIndex, triedKeys);
       } catch (keyError) {
         if (keyError instanceof Error) {
           logger.error('API key error:', keyError.message);
@@ -317,7 +326,7 @@ export async function handleError(
       logger.error('Service is temporarily unavailable. Retrying...');
       await new Promise((resolve) => setTimeout(resolve, 5000 * (retryCount + 1)));
       try {
-        return await runAgent(schema, prompt, currentApiKeyIndex);
+        return await runAgent(schema, prompt, currentApiKeyIndex, triedKeys);
       } catch (retryError) {
         if (retryError instanceof Error && retryError.message.includes('503 Service Unavailable')) {
           return handleError(
@@ -327,9 +336,18 @@ export async function handleError(
             prompt,
             runAgent,
             retryCount + 1,
+            triedKeys,
           );
         }
-        return handleError(retryError, currentApiKeyIndex, schema, prompt, runAgent, retryCount);
+        return handleError(
+          retryError,
+          currentApiKeyIndex,
+          schema,
+          prompt,
+          runAgent,
+          retryCount,
+          triedKeys,
+        );
       }
     } else if (error.message.includes('All API keys have reached their rate limits')) {
       logger.error(error.message);

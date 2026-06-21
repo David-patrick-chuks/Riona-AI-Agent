@@ -1,6 +1,6 @@
 import logger from '../config/logger';
 import { closeDB } from '../config/db';
-import { closeIgClient } from '../client/Instagram';
+import { closeAllIgClients } from '../client/Instagram';
 import { stopAllScheduledPosts } from '../client/scheduledPosts';
 
 // Graceful shutdown function
@@ -9,7 +9,7 @@ export const shutdown = (server: any) => {
     logger.info('Shutting down gracefully...');
     const cleanup = async () => {
       stopAllScheduledPosts();
-      await closeIgClient('default').catch(() => undefined);
+      await closeAllIgClients().catch(() => undefined);
       await closeDB();
     };
 
