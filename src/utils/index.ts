@@ -30,7 +30,8 @@ export function sanitizeFilename(filename: string, maxLength: number = 255): str
     .replace(/\.\./g, '')
     // Remove directory separators
     .replace(/[/\\]/g, '')
-    // Remove null bytes and control characters
+    // Remove null bytes and control characters (ASCII 0-31 and 127)
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1f\x7f]/g, '')
     // Remove characters problematic in HTTP headers (CR, LF)
     .replace(/[\r\n]/g, '')
