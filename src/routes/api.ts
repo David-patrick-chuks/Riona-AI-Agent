@@ -497,7 +497,8 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
     });
     if (Array.isArray(result)) {
       if (req.query.download === '1') {
-        const filename = `${targetAccount}_followers.txt`;
+        const safeAccount = targetAccount.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const filename = `${safeAccount}_followers.txt`;
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Content-Type', 'text/plain');
         res.send(result.join('\n'));
@@ -548,7 +549,8 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       },
     });
     if (Array.isArray(result)) {
-      const filename = `${targetAccount}_followers.txt`;
+      const safeAccount = String(targetAccount).replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const filename = `${safeAccount}_followers.txt`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'text/plain');
       res.send(result.join('\n'));
