@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
-import { getPosterClient } from '../client/InstagramPoster';
+import { getPosterClient, schedulePhotoPost, cancelScheduledPost, listScheduledPosts } from '../client/InstagramPoster';
 import logger from '../config/logger';
 import mongoose from 'mongoose';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
@@ -38,8 +38,20 @@ router.get('/status', (_req: Request, res: Response) => {
     return res.json(status);
 });
 
-// Health endpoint
+// Health endpoint — public minimal payload; full details when authenticated
 router.get('/health', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated =
+    !!payload && typeof payload === 'object' && 'username' in payload;
+
+  if (!isAuthenticated) {
+    return res.json({
+      ok: true,
+      dbConnected: mongoose.connection.readyState === 1,
+    });
+  }
+
   const accountQuery = typeof req.query.account === 'string' ? req.query.account : null;
   const allQuery = req.query.all === '1' || req.query.all === 'true';
   const accountsMap = getAccountsMap();
@@ -47,6 +59,7 @@ router.get('/health', (req: Request, res: Response) => {
 
   if (accountQuery) {
     return res.json({
+      ok: true,
       dbConnected: mongoose.connection.readyState === 1,
       account: accountQuery,
       accountConfigured: !!accountsMap?.[accountQuery],
@@ -66,6 +79,7 @@ router.get('/health', (req: Request, res: Response) => {
       };
     }
     return res.json({
+      ok: true,
       dbConnected: mongoose.connection.readyState === 1,
       igClient: getIgClientStatus('default'),
       igClients: getIgClientsSnapshot(),
@@ -76,6 +90,7 @@ router.get('/health', (req: Request, res: Response) => {
   }
 
   return res.json({
+    ok: true,
     dbConnected: mongoose.connection.readyState === 1,
     igClient: getIgClientStatus('default'),
     igClients: getIgClientsSnapshot(),
@@ -356,17 +371,16 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'imageUrl and cronTime are required' });
     }
     const account = (req as any).user.account || 'default';
-    const client = await getPosterClient(undefined, undefined, account);
-    await client.schedulePost(imageUrl, caption || '', cronTime);
+    const jobId = await schedulePhotoPost(imageUrl, caption || '', cronTime, account);
     await logAction({
       platform: 'instagram',
       action: 'schedule-post',
       status: 'success',
       account,
       username: (req as any).user.username,
-      details: { imageUrl, cronTime },
+      details: { imageUrl, cronTime, jobId },
     });
-    return res.json({ success: true, message: 'Post scheduled' });
+    return res.json({ success: true, message: 'Post scheduled', jobId });
   } catch (error) {
     logger.error('Schedule post error:', error);
     await logAction({
@@ -378,6 +392,44 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
       error: getErrorMessage(error),
     });
     return res.status(500).json({ error: 'Failed to schedule post' });
+  }
+});
+
+router.get('/scheduled-posts', async (req: Request, res: Response) => {
+  try {
+    const account = (req as any).user.account || 'default';
+    const jobs = listScheduledPosts(account);
+    return res.json({ jobs });
+  } catch (error) {
+    logger.error('List scheduled posts error:', error);
+    return res.status(500).json({ error: 'Failed to list scheduled posts' });
+  }
+});
+
+router.delete('/scheduled-posts/:jobId', async (req: Request, res: Response) => {
+  try {
+    const account = (req as any).user.account || 'default';
+    const jobId = String(req.params.jobId);
+    const jobs = listScheduledPosts(account);
+    if (!jobs.some((job) => job.id === jobId)) {
+      return res.status(404).json({ error: 'Scheduled post not found for this account' });
+    }
+    const cancelled = cancelScheduledPost(jobId);
+    if (!cancelled) {
+      return res.status(404).json({ error: 'Scheduled post not found' });
+    }
+    await logAction({
+      platform: 'instagram',
+      action: 'cancel-scheduled-post',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { jobId },
+    });
+    return res.json({ success: true, jobId });
+  } catch (error) {
+    logger.error('Cancel scheduled post error:', error);
+    return res.status(500).json({ error: 'Failed to cancel scheduled post' });
   }
 });
 

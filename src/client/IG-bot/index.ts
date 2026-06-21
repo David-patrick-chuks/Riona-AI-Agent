@@ -1,6 +1,5 @@
 import { IgApiClient, MediaRepositoryConfigureResponseRootObject } from 'instagram-private-api';
 import { get } from 'request-promise';
-import { CronJob } from 'cron';
 
 interface IInstagramClient {
     username: string;
@@ -69,20 +68,8 @@ export class InstagramClient implements IInstagramClient {
     }
 
     async schedulePost(url: string, caption: string, cronTime: string): Promise<void> {
-        if (!url || !cronTime) {
-            throw new Error("Image URL and cron time are required.");
-        }
-
-        console.log(`Scheduling post for: ${cronTime}`);
-        const job = new CronJob(cronTime, async () => {
-            try {
-                await this.postPhoto(url, caption);
-            } catch (error) {
-                console.error("Error during scheduled post:", (error as Error).message);
-            }
-        });
-
-        job.start();
-        console.log("Cron job started.");
+        throw new Error(
+            'Use schedulePhotoPost() from InstagramPoster instead — schedulePost no longer creates untracked cron jobs.'
+        );
     }
 }

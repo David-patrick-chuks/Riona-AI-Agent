@@ -4,6 +4,7 @@ import { shutdown } from "./services";
 import app from "./app";
 import { initAgent } from "./Agent/index";
 import { validateRequiredSecrets } from "./secret";
+import { connectDB } from "./config/db";
 
 dotenv.config();
 validateRequiredSecrets();
@@ -15,6 +16,8 @@ async function startServer() {
     logger.error("Error during agent initialization:", err);
     process.exit(1);
   }
+
+  await connectDB();
 
   const server = app.listen(process.env.PORT || 3000, () => {
     logger.info(`Server is running on port ${process.env.PORT || 3000}`);

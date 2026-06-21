@@ -7,7 +7,6 @@ import session from 'express-session';
 
 import logger, { setupErrorHandlers } from "./config/logger";
 import { setup_HandleError } from "./utils";
-import { connectDB } from "./config/db";
 import apiRoutes from "./routes/api";
 import { getIgClient, closeIgClient } from "./client/Instagram";
 import { getBoolEnv, getNumberEnv } from "./utils/env";
@@ -24,9 +23,6 @@ dotenv.config();
 
 // Initialize Express app
 const app: Application = express();
-
-// Connect to the database
-connectDB();
 
 // Middleware setup
 app.use(helmet({
@@ -295,9 +291,16 @@ app.get('/dashboard', (_req, res) => {
 
     const renderHealth = async () => {
       try {
-        const response = await fetch('/api/health');
+        const response = await fetch('/api/health', { credentials: 'same-origin' });
         const data = await response.json();
         document.getElementById('db').textContent = data.dbConnected ? 'connected' : 'disconnected';
+        if (data.igClient === undefined) {
+          document.getElementById('ig').textContent = 'login for details';
+          document.getElementById('keys').textContent = '—';
+          document.getElementById('run').textContent = 'Log in to view IG run summary and key count.';
+          document.getElementById('status-pill').textContent = data.ok ? 'ok' : 'unknown';
+          return;
+        }
         document.getElementById('ig').textContent = data.igClient?.initialized ? 'initialized' : 'not initialized';
         document.getElementById('keys').textContent = String(data.geminiKeys ?? 0);
         document.getElementById('run').textContent = JSON.stringify(data.lastIgRun ?? {}, null, 2);

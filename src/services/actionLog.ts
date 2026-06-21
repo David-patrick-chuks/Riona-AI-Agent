@@ -128,21 +128,40 @@ export const getActionSummary = async (options?: {
   account?: string;
   limit?: number;
 }): Promise<ActionSummary> => {
-  const entries = await listActionLogs(options);
-  return entries.reduce<ActionSummary>(
-    (summary, entry) => {
-      summary.total += 1;
-      summary[entry.status] += 1;
-      summary.byAction[entry.action] = (summary.byAction[entry.action] || 0) + 1;
-      summary.byPlatform[entry.platform] = (summary.byPlatform[entry.platform] || 0) + 1;
-      return summary;
-    },
-    {
-      total: 0,
-      success: 0,
-      error: 0,
-      byAction: {},
-      byPlatform: {},
-    }
-  );
+  const platform = options?.platform;
+  const account = options?.account;
+  const query: Record<string, string> = {};
+  if (platform) query.platform = platform;
+  if (account) query.account = account;
+
+  const summarize = (records: ActionLogRecord[]): ActionSummary =>
+    records.reduce<ActionSummary>(
+      (summary, entry) => {
+        summary.total += 1;
+        summary[entry.status] += 1;
+        summary.byAction[entry.action] = (summary.byAction[entry.action] || 0) + 1;
+        summary.byPlatform[entry.platform] = (summary.byPlatform[entry.platform] || 0) + 1;
+        return summary;
+      },
+      {
+        total: 0,
+        success: 0,
+        error: 0,
+        byAction: {},
+        byPlatform: {},
+      }
+    );
+
+  if (mongoose.connection.readyState === 1) {
+    const entries = await ActionLog.find(query).lean();
+    return summarize(entries.map(mapRecord));
+  }
+
+  const fileLimit = Math.max(1, Math.min(options?.limit || 500, 500));
+  const entries = await readFileLogs();
+  const filtered = entries
+    .filter((entry) => (platform ? entry.platform === platform : true))
+    .filter((entry) => (account ? entry.account === account : true))
+    .slice(0, fileLimit);
+  return summarize(filtered);
 };

@@ -2,6 +2,12 @@ import { InstagramClient } from './IG-bot';
 import logger from '../config/logger';
 import { getAccount } from '../config/accounts';
 import { IGpassword, IGusername } from '../secret';
+import {
+  cancelScheduledPost,
+  listScheduledPosts,
+  schedulePostJob,
+  stopAllScheduledPosts,
+} from './scheduledPosts';
 
 type PosterEntry = { client: InstagramClient; creds: { username: string; password: string } };
 
@@ -49,3 +55,17 @@ export const postPhotoBuffer = async (buffer: Buffer, caption: string = '', acco
   const client = await getPosterClient(undefined, undefined, accountKey);
   return client.postPhotoBuffer(buffer, caption);
 };
+
+export const schedulePhotoPost = async (
+  imageUrl: string,
+  caption: string,
+  cronTime: string,
+  accountKey: string = 'default'
+): Promise<string> => {
+  const client = await getPosterClient(undefined, undefined, accountKey);
+  return schedulePostJob(accountKey, cronTime, imageUrl, caption, async () => {
+    await client.postPhoto(imageUrl, caption);
+  });
+};
+
+export { cancelScheduledPost, listScheduledPosts, stopAllScheduledPosts };

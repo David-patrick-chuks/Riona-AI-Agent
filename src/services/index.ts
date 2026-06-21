@@ -1,12 +1,14 @@
 import logger from "../config/logger";
 import mongoose from "mongoose";
 import { closeIgClient } from "../client/Instagram";
+import { stopAllScheduledPosts } from "../client/scheduledPosts";
 
 // Graceful shutdown function
 export const shutdown = (server: any) => {
     try {
       logger.info("Shutting down gracefully...");
       const cleanup = async () => {
+        stopAllScheduledPosts();
         await closeIgClient("default").catch(() => undefined);
         if (mongoose.connection.readyState === 1) {
           await mongoose.disconnect().catch(() => undefined);

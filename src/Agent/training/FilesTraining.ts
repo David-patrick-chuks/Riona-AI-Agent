@@ -75,5 +75,7 @@ async function testParse() {
     }
 }
 
-// Execute the test function
-testParse();
+// Execute the test function when run directly
+if (require.main === module) {
+    testParse();
+}
