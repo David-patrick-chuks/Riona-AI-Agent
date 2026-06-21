@@ -1,10 +1,24 @@
+import logger from '../config/logger';
+
 export type CommentFilterConfig = {
   allow?: string[];
   deny?: string[];
   sentiment?: 'positive' | 'neutral' | 'any';
 };
 
+export type CommentSentiment = NonNullable<CommentFilterConfig['sentiment']>;
+
+const VALID_SENTIMENTS: CommentSentiment[] = ['positive', 'neutral', 'any'];
+
 const normalize = (s: string) => s.toLowerCase();
+
+export const parseCommentSentiment = (raw?: string): CommentSentiment => {
+  const value = (raw || 'any').trim().toLowerCase();
+  if (VALID_SENTIMENTS.includes(value as CommentSentiment)) {
+    return value as CommentSentiment;
+  }
+  return 'any';
+};
 
 export const getCommentFilterConfig = (): CommentFilterConfig => {
   const allow = (process.env.IG_COMMENT_ALLOWLIST || '')
@@ -15,10 +29,13 @@ export const getCommentFilterConfig = (): CommentFilterConfig => {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  const sentiment = (process.env.IG_COMMENT_SENTIMENT || 'any').toLowerCase() as
-    | 'positive'
-    | 'neutral'
-    | 'any';
+  const rawSentiment = process.env.IG_COMMENT_SENTIMENT;
+  const sentiment = parseCommentSentiment(rawSentiment);
+  if (rawSentiment && sentiment === 'any' && rawSentiment.trim().toLowerCase() !== 'any') {
+    logger.warn(
+      `Invalid IG_COMMENT_SENTIMENT "${rawSentiment}". Expected any, positive, or neutral. Using "any".`
+    );
+  }
   return { allow, deny, sentiment };
 };
 
