@@ -1,7 +1,7 @@
 const tf = require('@tensorflow/tfjs');
 const fs = require('fs').promises;
 const path = require('path');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage } = require('canvas');
 
 /**
  * Configuration constants for the image classification model.

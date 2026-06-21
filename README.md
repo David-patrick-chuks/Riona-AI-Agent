@@ -229,6 +229,8 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 | `IG_COMMENT_ALLOWLIST`   | string  |                                                                        | Comma-separated allowed comment terms          |
 | `IG_COMMENT_DENYLIST`    | string  |                                                                        | Comma-separated blocked comment terms          |
 | `IG_COMMENT_SENTIMENT`   | string  | `any`                                                                  | Sentiment filter: `any`, `positive`, `neutral` |
+| `IG_COMMENT_MIN_LENGTH`  | number  |                                                                        | Minimum allowed comment length (chars)         |
+| `IG_COMMENT_MAX_LENGTH`  | number  |                                                                        | Maximum allowed comment length (chars)         |
 | `IG_AD_MARKERS`          | string  | `sponsored,paid partnership,paid partnership with`                     | Comma-separated ad markers                     |
 | `IG_AD_BUTTON_MARKERS`   | string  | `learn more,shop now,sign up,install now,get offer,subscribe,book now` | Comma-separated ad button markers              |
 
