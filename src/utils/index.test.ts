@@ -74,7 +74,7 @@ describe('utils', () => {
     await fs.writeFile(
       cookiesPath,
       JSON.stringify([{ name: 'sessionid', value: 'abc', expires: -1 }]),
-      'utf-8'
+      'utf-8',
     );
 
     expect(await Instagram_cookiesExist()).toBe(true);
@@ -86,7 +86,7 @@ describe('utils', () => {
     await fs.writeFile(
       cookiesPath,
       JSON.stringify([{ name: 'sessionid', value: 'abc', expires: past }]),
-      'utf-8'
+      'utf-8',
     );
 
     expect(await Instagram_cookiesExist()).toBe(false);
@@ -98,7 +98,7 @@ describe('utils', () => {
     await fs.writeFile(
       cookiesPath,
       JSON.stringify([{ name: 'sessionid', value: 'abc', expires: future }]),
-      'utf-8'
+      'utf-8',
     );
 
     expect(await Instagram_cookiesExist()).toBe(true);
