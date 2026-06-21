@@ -1,5 +1,28 @@
 import { twitterClient } from './index';
 import logger from '../../../config/logger';
+import { schedulePostJob } from '../../scheduledPosts';
+
+/**
+ * Schedules a text-only tweet to X/Twitter.
+ * @param text The text CONTENT of the tweet.
+ * @param cronTime The cron expression for scheduling.
+ * @param accountKey Optional account identifier.
+ */
+export async function scheduleTweet(
+  text: string,
+  cronTime: string,
+  accountKey: string = 'default',
+): Promise<string> {
+  return schedulePostJob(
+    accountKey,
+    'twitter',
+    cronTime,
+    async () => {
+      await postTweet(text);
+    },
+    { text },
+  );
+}
 
 /**
  * Posts a text-only tweet to X/Twitter.
