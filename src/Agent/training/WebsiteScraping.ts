@@ -85,9 +85,10 @@ async function scrapeAllRoutes(baseUrl: string): Promise<void> {
         console.log(`Failed to scrape content from ${currentLink}`);
       }
 
+      const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
       const newLinks = await getAllLinks(currentLink);
       for (const link of newLinks) {
-        if (link.startsWith(baseUrl) && !visitedLinks.has(link)) {
+        if (link.startsWith(normalizedBase) && !visitedLinks.has(link)) {
           linksToVisit.push(link);
         }
       }

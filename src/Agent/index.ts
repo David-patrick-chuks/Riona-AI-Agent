@@ -76,7 +76,7 @@ export async function runAgent(
       const nextIndex = (apiKeyIndex + 1) % geminiApiKeys.length;
       return runAgent(schema, prompt, nextIndex, triedKeys);
     }
-    return handleError(error, apiKeyIndex, schema, prompt, runAgent);
+    return handleError(error, apiKeyIndex, schema, prompt, runAgent, 0, triedKeys);
   }
 }
 
