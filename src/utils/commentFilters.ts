@@ -38,7 +38,15 @@ export const getCommentFilterConfig = (): CommentFilterConfig => {
       `Invalid IG_COMMENT_SENTIMENT "${rawSentiment}". Expected any, positive, or neutral. Using "any".`,
     );
   }
-  return { allow, deny, sentiment };
+
+  const minLength = process.env.IG_COMMENT_MIN_LENGTH
+    ? parseInt(process.env.IG_COMMENT_MIN_LENGTH, 10)
+    : undefined;
+  const maxLength = process.env.IG_COMMENT_MAX_LENGTH
+    ? parseInt(process.env.IG_COMMENT_MAX_LENGTH, 10)
+    : undefined;
+
+  return { allow, deny, sentiment, minLength, maxLength };
 };
 
 const positiveWords = [
