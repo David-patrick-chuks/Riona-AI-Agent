@@ -29,6 +29,7 @@ import {
   scrapeLimiter,
   generalLimiter,
 } from '../middleware/rateLimit';
+import { getMetrics } from '../services/metrics';
 
 const router = express.Router();
 
@@ -124,6 +125,27 @@ router.get('/health', (req: Request, res: Response) => {
     geminiKeys: geminiApiKeys.length,
     lastIgRun: getLastRunSummary(),
   });
+});
+
+// Metrics endpoint — returns server performance metrics (auth required for detailed data)
+router.get('/metrics', (req: Request, res: Response) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  const metrics = getMetrics();
+
+  if (!isAuthenticated) {
+    // Public: only basic uptime info
+    return res.json({
+      ok: true,
+      uptime: metrics.uptime,
+      uptimeFormatted: metrics.uptimeFormatted,
+    });
+  }
+
+  // Authenticated: full metrics
+  return res.json(metrics);
 });
 
 // Login endpoint (rate limited to prevent brute force)
