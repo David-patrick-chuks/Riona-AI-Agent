@@ -12,7 +12,7 @@ import {
   cancelScheduledPost,
   listScheduledPosts,
 } from '../client/InstagramPoster';
-import { postTweet } from '../client/X-bot';
+import { postTweet, likeTweet, retweet, replyToTweet, scheduleTweet } from '../client/X-bot';
 import logger from '../config/logger';
 import { isDbConnected } from '../config/db';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
@@ -504,6 +504,93 @@ router.post('/post-tweet', actionLimiter, async (req: Request, res: Response) =>
       error: getErrorMessage(error),
     });
     return res.status(500).json({ error: 'Failed to post tweet' });
+  }
+});
+
+// Twitter like endpoint
+router.post('/twitter/like', actionLimiter, async (req: Request, res: Response) => {
+  try {
+    const { tweetId } = req.body;
+    if (!tweetId) return res.status(400).json({ error: 'tweetId is required' });
+    const result = await likeTweet(tweetId);
+    await logAction({
+      platform: 'twitter',
+      action: 'like',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { tweetId },
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('Twitter like error:', error);
+    return res.status(500).json({ error: getErrorMessage(error) });
+  }
+});
+
+// Twitter retweet endpoint
+router.post('/twitter/retweet', actionLimiter, async (req: Request, res: Response) => {
+  try {
+    const { tweetId } = req.body;
+    if (!tweetId) return res.status(400).json({ error: 'tweetId is required' });
+    const result = await retweet(tweetId);
+    await logAction({
+      platform: 'twitter',
+      action: 'retweet',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { tweetId },
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('Twitter retweet error:', error);
+    return res.status(500).json({ error: getErrorMessage(error) });
+  }
+});
+
+// Twitter reply endpoint
+router.post('/twitter/reply', actionLimiter, async (req: Request, res: Response) => {
+  try {
+    const { tweetId, text } = req.body;
+    if (!tweetId || !text) return res.status(400).json({ error: 'tweetId and text are required' });
+    const result = await replyToTweet(tweetId, text);
+    await logAction({
+      platform: 'twitter',
+      action: 'reply',
+      status: 'success',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      details: { tweetId, textSnippet: text.substring(0, 50) },
+    });
+    return res.json(result);
+  } catch (error) {
+    logger.error('Twitter reply error:', error);
+    return res.status(500).json({ error: getErrorMessage(error) });
+  }
+});
+
+// Twitter schedule tweet endpoint
+router.post('/twitter/schedule-tweet', async (req: Request, res: Response) => {
+  try {
+    const { text, cronTime } = req.body;
+    if (!text || !cronTime) {
+      return res.status(400).json({ error: 'text and cronTime are required' });
+    }
+    const account = (req as any).user.account || 'default';
+    const jobId = await scheduleTweet(text, cronTime, account);
+    await logAction({
+      platform: 'twitter',
+      action: 'schedule-tweet',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { textSnippet: text.substring(0, 50), cronTime, jobId },
+    });
+    return res.json({ success: true, message: 'Tweet scheduled', jobId });
+  } catch (error) {
+    logger.error('Twitter schedule error:', error);
+    return res.status(500).json({ error: getErrorMessage(error) });
   }
 });
 

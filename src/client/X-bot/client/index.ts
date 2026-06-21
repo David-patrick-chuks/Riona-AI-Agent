@@ -16,3 +16,4 @@ export const twitterClient = client.readWrite;
 export const twitterBearer = bearer.readOnly;
 
 export * from './tweet';
+export * from './engagement';
