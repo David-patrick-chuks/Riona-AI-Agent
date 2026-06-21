@@ -1,5 +1,5 @@
 import moment from "moment";
-import Tweet from "../../Agent/schema";
+import Tweet from "../../models/Tweet";
 
 async function canSendTweet() {
     const twentyFourHoursAgo = moment().subtract(24, "hours").toDate(); // Get the timestamp of 24 hours ago

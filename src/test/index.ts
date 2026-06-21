@@ -1,4 +1,4 @@
-import Tweet from "../Agent/schema";
+import Tweet from "../models/Tweet";
 import { twitterClient } from "../client/X-bot/client";
 import { canSendTweet } from "../utils";
 import { download } from "../utils/download";

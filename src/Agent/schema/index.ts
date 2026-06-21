@@ -6,7 +6,6 @@ type JsonSchema = {
   properties?: Record<string, JsonSchema>;
   required?: string[];
 };
-import mongoose, { Document, Schema, Model } from "mongoose";
 
 export type InstagramCommentSchema = JsonSchema;
 
@@ -41,22 +40,3 @@ export const getInstagramCommentSchema = (): InstagramCommentSchema => {
 
   return schema;
 };
-
-// Define the interface for the Tweet document
-interface ITweet extends Document {
-  tweetContent: string;
-  imageUrl: string;
-  timeTweeted: Date;
-}
-
-// Define the schema for the Tweet document
-const tweetSchema: Schema<ITweet> = new Schema({
-  tweetContent: { type: String, required: true },
-  imageUrl: { type: String, required: true },
-  timeTweeted: { type: Date, default: Date.now },
-});
-
-// Create the model for the Tweet document
-const Tweet: Model<ITweet> = mongoose.model<ITweet>("Tweet", tweetSchema);
-
-export default Tweet;
