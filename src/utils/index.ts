@@ -3,6 +3,31 @@ import path from 'path';
 import { geminiApiKeys } from '../secret';
 import logger from '../config/logger';
 
+// Simple file lock to prevent race conditions in read-modify-write operations
+const fileLocks = new Map<string, Promise<void>>();
+
+async function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+  const existingLock = fileLocks.get(filePath);
+  let resolveLock: () => void;
+  const newLock = new Promise<void>((resolve) => {
+    resolveLock = resolve;
+  });
+  fileLocks.set(filePath, newLock);
+
+  if (existingLock) {
+    await existingLock;
+  }
+
+  try {
+    return await fn();
+  } finally {
+    resolveLock!();
+    if (fileLocks.get(filePath) === newLock) {
+      fileLocks.delete(filePath);
+    }
+  }
+}
+
 /** Cookie file path for a given account key (legacy default path kept for "default"). */
 export function getInstagramCookiesPath(accountKey: string = 'default'): string {
   const key = accountKey || 'default';
@@ -233,20 +258,27 @@ export const saveTweetData = async (
   const tweetDataPath = path.join(__dirname, '../data/tweetData.json');
   const tweetData = { tweetContent, imageUrl: imageUrl || null, timeTweeted };
 
-  try {
-    await fs.access(tweetDataPath);
-    const data = await fs.readFile(tweetDataPath, 'utf-8');
-    const json = JSON.parse(data);
-    json.push(tweetData);
-    await fs.writeFile(tweetDataPath, JSON.stringify(json, null, 2));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
-    } else {
-      logger.error('Error saving tweet data:', error);
-      throw error;
+  await withFileLock(tweetDataPath, async () => {
+    try {
+      await fs.access(tweetDataPath);
+      const data = await fs.readFile(tweetDataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (!Array.isArray(json)) {
+        logger.warn('tweetData.json contains non-array data, resetting to array');
+        await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
+        return;
+      }
+      json.push(tweetData);
+      await fs.writeFile(tweetDataPath, JSON.stringify(json, null, 2));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
+      } else {
+        logger.error('Error saving tweet data:', error);
+        throw error;
+      }
     }
-  }
+  });
 };
 
 export const checkAndDeleteOldTweetData = async (): Promise<void> => {
@@ -310,16 +342,30 @@ export const getIgDailyState = async (): Promise<{ date: string; count: number }
 export const incrementIgDailyCount = async (by = 1): Promise<void> => {
   const dataPath = path.join(__dirname, '../data/igActionData.json');
   const dataDir = path.dirname(dataPath);
-  const today = new Date().toISOString().slice(0, 10);
-  const current = await getIgDailyState();
-  const next = current.date === today ? current.count + by : by;
-  const payload = { date: today, count: next };
-  try {
-    await fs.mkdir(dataDir, { recursive: true });
-    await fs.writeFile(dataPath, JSON.stringify(payload, null, 2));
-  } catch (error) {
-    logger.error('Error writing igActionData:', error);
-  }
+
+  await withFileLock(dataPath, async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    // Read current state inside the lock to prevent race conditions
+    let currentCount = 0;
+    try {
+      await fs.access(dataPath);
+      const data = await fs.readFile(dataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (json.date === today) {
+        currentCount = Number(json.count) || 0;
+      }
+    } catch {
+      // File doesn't exist or is invalid, start from 0
+    }
+    const next = currentCount + by;
+    const payload = { date: today, count: next };
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(dataPath, JSON.stringify(payload, null, 2));
+    } catch (error) {
+      logger.error('Error writing igActionData:', error);
+    }
+  });
 };
 
 // ---------------------- IG cooldown ----------------------
@@ -357,19 +403,26 @@ export const saveScrapedData = async (link: string, content: string): Promise<vo
   const scrapedDataDir = path.dirname(scrapedDataPath);
   const scrapedData = { link, content };
 
-  try {
-    await fs.mkdir(scrapedDataDir, { recursive: true });
-    await fs.access(scrapedDataPath);
-    const data = await fs.readFile(scrapedDataPath, 'utf-8');
-    const json = JSON.parse(data);
-    json.push(scrapedData);
-    await fs.writeFile(scrapedDataPath, JSON.stringify(json, null, 2));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
-    } else {
-      logger.error('Error saving scraped data:', error);
-      throw error;
+  await withFileLock(scrapedDataPath, async () => {
+    try {
+      await fs.mkdir(scrapedDataDir, { recursive: true });
+      await fs.access(scrapedDataPath);
+      const data = await fs.readFile(scrapedDataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (!Array.isArray(json)) {
+        logger.warn('scrapedData.json contains non-array data, resetting to array');
+        await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
+        return;
+      }
+      json.push(scrapedData);
+      await fs.writeFile(scrapedDataPath, JSON.stringify(json, null, 2));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
+      } else {
+        logger.error('Error saving scraped data:', error);
+        throw error;
+      }
     }
-  }
+  });
 };
