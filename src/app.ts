@@ -9,6 +9,7 @@ import logger, { setupErrorHandlers } from './config/logger';
 import { setup_HandleError } from './utils';
 import apiRoutes from './routes/api';
 import { metricsMiddleware } from './services/metrics';
+import { verifyToken, getTokenFromRequest } from './secret';
 import { getIgClient, closeIgClient } from './client/Instagram';
 import { getBoolEnv, getNumberEnv } from './utils/env';
 import { getIgProfile } from './config/igProfile';
@@ -441,8 +442,16 @@ app.get('/dashboard', (_req, res) => {
 </html>`);
 });
 
-// Metrics dashboard
-app.get('/metrics', (_req, res) => {
+// Metrics dashboard (requires authentication)
+app.get('/metrics', (req, res) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
+
+  if (!isAuthenticated) {
+    return res.redirect('/dashboard');
+  }
+
   res.type('html').send(`<!doctype html>
 <html lang="en">
 <head>

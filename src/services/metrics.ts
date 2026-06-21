@@ -55,11 +55,6 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
   next();
 }
 
-/** Increment rate limit hit counter */
-export function recordRateLimitHit(): void {
-  metrics.rateLimitHits++;
-}
-
 /** Get current metrics snapshot */
 export function getMetrics(): {
   uptime: number;
