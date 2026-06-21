@@ -8,7 +8,7 @@ import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
 import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown, getInstagramCookiesPath } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
-import { setLastRunSummary } from "../../utils/igRunSummary";
+import { setLastRunSummary, IgRunSummary } from "../../utils/igRunSummary";
 import { getCommentFilterConfig, shouldSkipComment } from "../../utils/commentFilters";
 import { runAgent } from "../../Agent";
 import { getInstagramCommentSchema } from "../../Agent/schema";
@@ -429,26 +429,8 @@ export class IgClient {
 
     async interactWithPosts() {
         if (!this.page) throw new Error("Page not initialized");
-        const cooldown = await getIgCooldown();
-        if (cooldown.until > Date.now()) {
-            const minsLeft = Math.ceil((cooldown.until - Date.now()) / 60000);
-            logger.warn(`IG cooldown active for ~${minsLeft} more minutes. Skipping interactions.`);
-            return;
-        }
-        const ready = await this.ensureHomeFeedReady();
-        if (!ready) {
-            logger.warn("Skipping interactions because home feed is not ready.");
-            return;
-        }
-        const profile = getIgProfile();
-        const dailyLimit = profile.dailyMaxActions;
-        const dailyState = await getIgDailyState();
-        if (dailyLimit > 0 && dailyState.count >= dailyLimit) {
-            logger.warn(`Daily action limit reached (${dailyState.count}/${dailyLimit}).`);
-            return;
-        }
         const startedAt = new Date();
-        const summary = {
+        const summary: IgRunSummary = {
             startedAt: startedAt.toISOString(),
             finishedAt: '',
             durationMs: 0,
@@ -458,6 +440,39 @@ export class IgClient {
             skippedSponsored: 0,
             errors: 0,
         };
+        let runFinished = false;
+        const finishRun = (reason?: string) => {
+            if (runFinished) return;
+            runFinished = true;
+            const finishedAt = new Date();
+            summary.finishedAt = finishedAt.toISOString();
+            summary.durationMs = finishedAt.getTime() - startedAt.getTime();
+            if (reason) summary.reason = reason;
+            setLastRunSummary(summary);
+            logger.info(`IG run summary: ${JSON.stringify(summary)}`);
+        };
+
+        const cooldown = await getIgCooldown();
+        if (cooldown.until > Date.now()) {
+            const minsLeft = Math.ceil((cooldown.until - Date.now()) / 60000);
+            logger.warn(`IG cooldown active for ~${minsLeft} more minutes. Skipping interactions.`);
+            finishRun('cooldown');
+            return;
+        }
+        const ready = await this.ensureHomeFeedReady();
+        if (!ready) {
+            logger.warn("Skipping interactions because home feed is not ready.");
+            finishRun('feed-not-ready');
+            return;
+        }
+        const profile = getIgProfile();
+        const dailyLimit = profile.dailyMaxActions;
+        const dailyState = await getIgDailyState();
+        if (dailyLimit > 0 && dailyState.count >= dailyLimit) {
+            logger.warn(`Daily action limit reached (${dailyState.count}/${dailyLimit}).`);
+            finishRun('daily-limit');
+            return;
+        }
         let postIndex = 1; // Start with the first post
         const maxPosts = profile.maxPostsPerRun; // Limit to prevent infinite scrolling
         const page = this.page;
@@ -465,6 +480,7 @@ export class IgClient {
             // Check for exit flag
             if (typeof getShouldExitInteractions === 'function' && getShouldExitInteractions()) {
                 console.log('Exit from interactions requested. Stopping loop.');
+                finishRun('exit-requested');
                 break;
             }
             try {
@@ -626,11 +642,7 @@ export class IgClient {
                 continue;
             }
         }
-        const finishedAt = new Date();
-        summary.finishedAt = finishedAt.toISOString();
-        summary.durationMs = finishedAt.getTime() - startedAt.getTime();
-        setLastRunSummary(summary);
-        logger.info(`IG run summary: ${JSON.stringify(summary)}`);
+        finishRun();
     }
 
     async scrapeFollowers(targetAccount: string, maxFollowers: number) {
