@@ -18,7 +18,7 @@
 - [Feature Summary](#feature-summary)
 - [Planned Expansion](#planned-expansion)
 - [Installation](#installation)
-- [MongoDB Setup](#mongodb-setup)
+- [PostgreSQL Setup](#postgresql-setup)
 - [Usage](#usage)
 - [Dashboard](#dashboard)
 - [Development](#development)
@@ -28,6 +28,12 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Community & Contact](#community--contact)
+- [Multi-Account Support](#multi-account-support)
+- [Project Policies](#project-policies)
+- [Project Structure](#project-structure)
+- [Logging](#logging)
+- [Error Handling](#error-handling)
+- [Stargazers](#stargazers)
 
 ## About
 
@@ -66,7 +72,7 @@ Before running automation, you can shape the agent with:
 - Instagram automation with cookies, relogin handling, posting, scheduling, and interactions
 - AI-generated captions and comments with schema-guided responses
 - Multi-account and profile-based operation support
-- MongoDB-backed state, summaries, and rate-limiting controls
+- PostgreSQL-backed action logs, summaries, and optional persistence
 - Simple dashboard for runtime health and latest activity
 - Logging, environment validation, and utility scripts for operations
 
@@ -94,34 +100,62 @@ Before running automation, you can shape the agent with:
 3. **Set up environment variables**:
    Rename the `.env.example` file to `.env` in the root directory and add your Instagram credentials. Refer to the `.env.example` file for the required variables.
 
-## MongoDB Setup (Using Docker)
+## PostgreSQL Setup
 
-1. **Install Docker**:
-   If you don't have Docker installed, download and install it from the [official website](https://www.docker.com/products/docker-desktop/)
-2. **Run MongoDB using Docker Container**:
-   **Option 1:**
-   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb mongodb/mongodb-community-server:latest`  
-    **Option 2:**
-   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb -v mongodb_data:/data/db mongodb/mongodb-community-server:latest     `  
-    (Option 2: use this if you want to have like a permanent storage in you so your data won't be lost or remove if you stop or remove your Docker container)
-3. **Modify the MONGODB_URI in the .env file**:
+The app uses PostgreSQL for action logs. If `DATABASE_URL` is not set, action logs fall back to a local JSON file (`logs/actionLogs.json`).
 
-```dotenv
- MONGODB_URI=mongodb://localhost:27017/instagram-ai-agent
+### Option A: Docker (recommended for contributors)
+
+```sh
+npm run db:up
 ```
 
-4. **Verify the connection**:
-   Open a new terminal and run the following command:
-   You should see the MongoDB container running.
-   Docker Commands (Additional Info):
+This starts PostgreSQL on port `5432` with credentials that match `.env.example`.
 
-- To stop the MongoDB container:
-  ```sh
-  docker stop instagram-ai-mongodb
-  ```
-- To start the MongoDB container:
-- To remove the MongoDB container:
-- To remove the MongoDB container and its data:
+### Option B: Local PostgreSQL
+
+Install PostgreSQL locally, create a database, and point `.env` at it:
+
+```dotenv
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/riona_ai_agent
+```
+
+Create the database if needed:
+
+```sh
+createdb riona_ai_agent
+```
+
+Schema is applied automatically on startup. To run migrations manually:
+
+```sh
+npm run db:migrate
+```
+
+### Verify
+
+```sh
+docker compose ps
+# or
+psql "$DATABASE_URL" -c '\dt'
+```
+
+Stop Docker Postgres:
+
+```sh
+npm run db:down
+```
+
+### Upgrading from a MongoDB fork
+
+If your fork still uses `MONGODB_URI`, merge this branch and update `.env`:
+
+1. Remove `MONGODB_URI` / `MONGODB_REQUIRED`
+2. Add `DATABASE_URL` and `DB_REQUIRED=false` (see `.env.example`)
+3. Run `npm install` (mongoose removed, `pg` added)
+4. Start Postgres with `npm run db:up` or use your local instance
+
+No data migration script is provided — MongoDB action logs were optional and the app still works without a database.
 
 ## Usage
 
@@ -199,7 +233,7 @@ actions, application logs, and errors.
 - `Guides/Scripts.md`
 - `Guides/Training.md`
 
-## reCAPTCHA Model
+## reCAPTCHA Model Integration
 
 This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is run via root scripts:
 
@@ -230,6 +264,8 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 | `IG_COMMENT_ALLOWLIST`   | string  |                                                                        | Comma-separated allowed comment terms          |
 | `IG_COMMENT_DENYLIST`    | string  |                                                                        | Comma-separated blocked comment terms          |
 | `IG_COMMENT_SENTIMENT`   | string  | `any`                                                                  | Sentiment filter: `any`, `positive`, `neutral` |
+| `IG_COMMENT_MIN_LENGTH`  | number  |                                                                        | Minimum allowed comment length (chars)         |
+| `IG_COMMENT_MAX_LENGTH`  | number  |                                                                        | Maximum allowed comment length (chars)         |
 | `IG_AD_MARKERS`          | string  | `sponsored,paid partnership,paid partnership with`                     | Comma-separated ad markers                     |
 | `IG_AD_BUTTON_MARKERS`   | string  | `learn more,shop now,sign up,install now,get offer,subscribe,book now` | Comma-separated ad button markers              |
 
@@ -250,10 +286,10 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 
 ### Database
 
-| Variable           | Type    | Default | Description                |
-| ------------------ | ------- | ------- | -------------------------- |
-| `MONGODB_URI`      | string  |         | MongoDB connection URI     |
-| `MONGODB_REQUIRED` | boolean | `false` | Require MongoDB connection |
+| Variable       | Type    | Default | Description                                     |
+| -------------- | ------- | ------- | ----------------------------------------------- |
+| `DATABASE_URL` | string  |         | PostgreSQL connection URL                       |
+| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing) |
 
 ### Logging & General
 
@@ -285,7 +321,7 @@ Then pass `account` in `/api/login` to select which account to use.
 
 ## Logging
 
-The project uses a custom logger to log information, warnings, and errors. Logs are saved in the [logs](http://_vscodecontentref_/3) directory.
+The project uses a custom logger to record information, warnings, and errors. Logs are stored in the `logs/` directory.
 
 ## Error Handling
 
@@ -293,7 +329,15 @@ Process-level error handlers are set up to catch unhandled promise rejections, u
 
 ## Contributing
 
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+Contributions are welcome and appreciated.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit your changes.
+4. Push your changes to your fork.
+5. Open a pull request for review.
+
+Please ensure your changes follow the existing code style and include documentation updates when necessary.
 
 ## License
 
@@ -314,4 +358,4 @@ Built with ❤️ by David Patrick
 - Twitter: @david_patrick01
 - Email: [davidchuksdev@gmail.com](mailto:davidchuksdev@gmail.com)
 
-Real-time chat is not set up yet. If you want a Discord server, open a discussion and we can spin it up based on interest.
+Real-time community chat is not available yet. If there is sufficient interest, a Discord server may be created in the future. Feel free to open a discussion to express interest.

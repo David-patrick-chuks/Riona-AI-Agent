@@ -6,27 +6,6 @@ import { geminiApiKeys } from '../../secret';
 import dotenv from 'dotenv';
 dotenv.config();
 
-let currentApiKeyIndex = 0; // Keeps track of the current API key in use
-const triedApiKeys = new Set<number>(); // Keep track of which keys we've tried in one request cycle
-
-// Function to get the next API key in the list
-const getNextApiKey = () => {
-  // Add the current key to tried keys
-  triedApiKeys.add(currentApiKeyIndex);
-
-  // Move to next key
-  currentApiKeyIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length; // Circular rotation of API keys
-
-  // Check if we've tried all keys
-  if (triedApiKeys.size >= geminiApiKeys.length) {
-    // All keys have been tried, reset tracking and throw error
-    triedApiKeys.clear();
-    throw new Error('All API keys have reached their rate limits. Please try again later.');
-  }
-
-  return geminiApiKeys[currentApiKeyIndex];
-};
-
 function cleanTranscript(rawTranscript: string): string {
   // Remove music or any similar tags like [Music], [Applause], etc.
   const cleaned = rawTranscript.replace(/\[.*?\]/g, '');
@@ -81,9 +60,11 @@ export async function generateTrainingPrompt(
   transcript: string,
   prompt: string = MainPrompt,
   retryCount = 0,
+  apiKeyIndex: number = 0,
+  triedKeys: Set<number> = new Set(),
 ): Promise<any> {
-  let geminiApiKey = geminiApiKeys[currentApiKeyIndex];
-  let currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
+  const geminiApiKey = geminiApiKeys[apiKeyIndex];
+  const currentApiKeyName = `GEMINI_API_KEY_${apiKeyIndex + 1}`;
 
   if (!geminiApiKey) {
     logger.error('No valid Gemini API key available.');
@@ -122,20 +103,13 @@ export async function generateTrainingPrompt(
     if (error instanceof Error) {
       if (error.message.includes('429 Too Many Requests')) {
         logger.error(`---${currentApiKeyName} limit exhausted, switching to the next API key...`);
-        try {
-          geminiApiKey = getNextApiKey();
-          currentApiKeyName = `GEMINI_API_KEY_${currentApiKeyIndex + 1}`;
-          return generateTrainingPrompt(transcript, prompt);
-        } catch (keyError) {
-          // This catches the error when all keys have been tried
-          if (keyError instanceof Error) {
-            logger.error(keyError.message);
-            return `Error: ${keyError.message}`;
-          } else {
-            logger.error('Unknown error when trying to get next API key');
-            return 'Error: All API keys have reached their rate limits. Please try again later.';
-          }
+        triedKeys.add(apiKeyIndex);
+        if (triedKeys.size >= geminiApiKeys.length) {
+          logger.error('All API keys have reached their rate limits.');
+          return 'Error: All API keys have reached their rate limits. Please try again later.';
         }
+        const nextIndex = (apiKeyIndex + 1) % geminiApiKeys.length;
+        return generateTrainingPrompt(transcript, prompt, retryCount, nextIndex, triedKeys);
       } else if (error.message.includes('503 Service Unavailable')) {
         if (retryCount >= MAX_503_RETRIES) {
           logger.error('Service unavailable after maximum retries.');
@@ -143,7 +117,7 @@ export async function generateTrainingPrompt(
         }
         logger.error('Service is temporarily unavailable. Retrying...');
         await new Promise((resolve) => setTimeout(resolve, 5000 * (retryCount + 1)));
-        return generateTrainingPrompt(transcript, prompt, retryCount + 1);
+        return generateTrainingPrompt(transcript, prompt, retryCount + 1, apiKeyIndex, triedKeys);
       } else if (error.message.includes('All API keys have reached their rate limits')) {
         logger.error(error.message);
         return `Error: ${error.message}`;

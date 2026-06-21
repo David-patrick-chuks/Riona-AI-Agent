@@ -2,24 +2,39 @@ export type CommentFilterConfig = {
   allow?: string[];
   deny?: string[];
   sentiment?: 'positive' | 'neutral' | 'any';
+  minLength?: number;
+  maxLength?: number;
 };
 
 const normalize = (s: string) => s.toLowerCase();
 
+const parseList = (value: string): string[] =>
+  value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const parseSentiment = (value: string): 'positive' | 'neutral' | 'any' => {
+  const normalized = value.toLowerCase();
+  if (normalized === 'positive' || normalized === 'neutral' || normalized === 'any') {
+    return normalized;
+  }
+  return 'any';
+};
+
+const parseNumber = (value?: string): number | undefined => {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
 export const getCommentFilterConfig = (): CommentFilterConfig => {
-  const allow = (process.env.IG_COMMENT_ALLOWLIST || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const deny = (process.env.IG_COMMENT_DENYLIST || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const sentiment = (process.env.IG_COMMENT_SENTIMENT || 'any').toLowerCase() as
-    | 'positive'
-    | 'neutral'
-    | 'any';
-  return { allow, deny, sentiment };
+  const allow = parseList(process.env.IG_COMMENT_ALLOWLIST || '');
+  const deny = parseList(process.env.IG_COMMENT_DENYLIST || '');
+  const sentiment = parseSentiment(process.env.IG_COMMENT_SENTIMENT || 'any');
+  const minLength = parseNumber(process.env.IG_COMMENT_MIN_LENGTH);
+  const maxLength = parseNumber(process.env.IG_COMMENT_MAX_LENGTH);
+  return { allow, deny, sentiment, minLength, maxLength };
 };
 
 const positiveWords = [
@@ -62,6 +77,12 @@ const sentimentScore = (text: string) => {
 
 export const shouldSkipComment = (comment: string, cfg: CommentFilterConfig): boolean => {
   if (!comment) return true;
+
+  const trimmed = comment.trim();
+  if (!trimmed) return true;
+
+  if (cfg.minLength && trimmed.length < cfg.minLength) return true;
+  if (cfg.maxLength && trimmed.length > cfg.maxLength) return true;
 
   if (cfg.allow && cfg.allow.length > 0 && !hasAny(comment, cfg.allow)) return true;
   if (cfg.deny && cfg.deny.length > 0 && hasAny(comment, cfg.deny)) return true;

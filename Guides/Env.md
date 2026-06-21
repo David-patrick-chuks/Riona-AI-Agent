@@ -4,7 +4,13 @@
 
 - `IGusername`
 - `IGpassword`
-- `MONGODB_URI`
+
+## Database (optional)
+
+- `DATABASE_URL` — PostgreSQL connection URL (see `.env.example`)
+- `DB_REQUIRED` — set to `true` to fail startup without a database
+
+If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
 
 ## Gemini
 
@@ -45,3 +51,5 @@
 - `IG_COMMENT_ALLOWLIST` (comma-separated)
 - `IG_COMMENT_DENYLIST` (comma-separated)
 - `IG_COMMENT_SENTIMENT` (any | positive | neutral)
+- `IG_COMMENT_MIN_LENGTH` (minimum comment length in characters)
+- `IG_COMMENT_MAX_LENGTH` (maximum comment length in characters)

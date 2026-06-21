@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
-import mongoose from 'mongoose';
 import logger from '../config/logger';
-import ActionLog, { ActionLogStatus } from '../models/ActionLog';
+import { getPool, isDbConnected } from '../config/db';
+import { ActionLogStatus } from '../models/ActionLog';
 
 export type ActionLogInput = {
   platform: string;
@@ -34,11 +34,48 @@ type ActionSummary = {
   byPlatform: Record<string, number>;
 };
 
+// Enhanced filter options for action log queries
+export type ActionLogFilterOptions = {
+  limit?: number;
+  offset?: number;
+  platform?: string;
+  account?: string;
+  status?: ActionLogStatus;
+  action?: string;
+  fromDate?: string; // ISO date string
+  toDate?: string; // ISO date string
+  errorKeyword?: string;
+  sort?: 'asc' | 'desc';
+};
+
+// Paginated result with metadata
+export type PaginatedActionLogs = {
+  actions: ActionLogRecord[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+};
+
 const getActionLogPath = () =>
   process.env.ACTION_LOG_PATH || path.join(process.cwd(), 'logs', 'actionLogs.json');
 
-const mapRecord = (entry: any): ActionLogRecord => ({
-  id: String(entry._id || entry.id || `${entry.createdAt}-${entry.action}`),
+const mapRecord = (entry: {
+  id?: string;
+  _id?: string;
+  platform: string;
+  action: string;
+  account?: string;
+  username?: string | null;
+  status: ActionLogStatus;
+  error?: string | null;
+  details?: Record<string, unknown> | null;
+  createdAt?: string | Date;
+  created_at?: string | Date;
+}): ActionLogRecord => ({
+  id: String(entry.id || entry._id || `${entry.createdAt || entry.created_at}-${entry.action}`),
   platform: String(entry.platform),
   action: String(entry.action),
   account: String(entry.account || 'default'),
@@ -46,7 +83,7 @@ const mapRecord = (entry: any): ActionLogRecord => ({
   status: entry.status === 'error' ? 'error' : 'success',
   error: entry.error ? String(entry.error) : undefined,
   details: entry.details && typeof entry.details === 'object' ? entry.details : undefined,
-  createdAt: new Date(entry.createdAt || Date.now()).toISOString(),
+  createdAt: new Date(entry.createdAt || entry.created_at || Date.now()).toISOString(),
 });
 
 const readFileLogs = async (): Promise<ActionLogRecord[]> => {
@@ -102,6 +139,105 @@ const appendFileLog = async (entry: {
   });
 };
 
+const insertDbLog = async (entry: {
+  platform: string;
+  action: string;
+  account: string;
+  username?: string;
+  status: ActionLogStatus;
+  error?: string;
+  details?: Record<string, unknown>;
+}) => {
+  const pool = getPool();
+  if (!pool) return;
+
+  await pool.query(
+    `INSERT INTO action_logs (platform, action, account, username, status, error, details)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      entry.platform,
+      entry.action,
+      entry.account,
+      entry.username ?? null,
+      entry.status,
+      entry.error ?? null,
+      entry.details ? JSON.stringify(entry.details) : null,
+    ],
+  );
+};
+
+const queryDbLogs = async (
+  options: ActionLogFilterOptions & { countOnly?: boolean },
+): Promise<{ records: ActionLogRecord[]; total: number }> => {
+  const pool = getPool();
+  if (!pool) return { records: [], total: 0 };
+
+  const conditions: string[] = [];
+  const values: (string | number)[] = [];
+
+  if (options.platform) {
+    values.push(options.platform);
+    conditions.push(`platform = $${values.length}`);
+  }
+  if (options.account) {
+    values.push(options.account);
+    conditions.push(`account = $${values.length}`);
+  }
+  if (options.status) {
+    values.push(options.status);
+    conditions.push(`status = $${values.length}`);
+  }
+  if (options.action) {
+    values.push(options.action);
+    conditions.push(`action = $${values.length}`);
+  }
+  if (options.fromDate) {
+    values.push(options.fromDate);
+    conditions.push(`created_at >= $${values.length}::timestamptz`);
+  }
+  if (options.toDate) {
+    values.push(options.toDate);
+    conditions.push(`created_at <= $${values.length}::timestamptz`);
+  }
+  if (options.errorKeyword) {
+    values.push(`%${options.errorKeyword}%`);
+    conditions.push(`error ILIKE $${values.length}`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Get total count for pagination metadata
+  const countResult = await pool.query(
+    `SELECT COUNT(*) as total FROM action_logs ${where}`,
+    values,
+  );
+  const total = parseInt(countResult.rows[0]?.total || '0', 10);
+
+  if (options.countOnly) {
+    return { records: [], total };
+  }
+
+  const limit = Math.max(1, Math.min(options.limit || 20, 100));
+  const offset = Math.max(0, options.offset || 0);
+  const sortOrder = options.sort === 'asc' ? 'ASC' : 'DESC';
+
+  values.push(limit);
+  const limitParam = values.length;
+  values.push(offset);
+  const offsetParam = values.length;
+
+  const result = await pool.query(
+    `SELECT id, platform, action, account, username, status, error, details, created_at
+     FROM action_logs
+     ${where}
+     ORDER BY created_at ${sortOrder}
+     LIMIT $${limitParam} OFFSET $${offsetParam}`,
+    values,
+  );
+
+  return { records: result.rows.map(mapRecord), total };
+};
+
 export const logAction = async (input: ActionLogInput): Promise<void> => {
   const entry = {
     platform: input.platform,
@@ -115,8 +251,8 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
   };
 
   try {
-    if (mongoose.connection.readyState === 1) {
-      await ActionLog.create(entry);
+    if (isDbConnected()) {
+      await insertDbLog(entry);
       return;
     }
 
@@ -152,6 +288,91 @@ export const listActionLogs = async (options?: {
     .filter((entry) => (account ? entry.account === account : true))
     .filter((entry) => (status ? entry.status === status : true))
     .slice(0, limit);
+/**
+ * Filter and apply file-based log entries based on filter options
+ */
+const filterFileLogs = (
+  entries: ActionLogRecord[],
+  options: ActionLogFilterOptions,
+): ActionLogRecord[] => {
+  return entries.filter((entry) => {
+    if (options.platform && entry.platform !== options.platform) return false;
+    if (options.account && entry.account !== options.account) return false;
+    if (options.status && entry.status !== options.status) return false;
+    if (options.action && entry.action !== options.action) return false;
+    if (options.fromDate && entry.createdAt < options.fromDate) return false;
+    if (options.toDate && entry.createdAt > options.toDate) return false;
+    if (
+      options.errorKeyword &&
+      (!entry.error || !entry.error.toLowerCase().includes(options.errorKeyword.toLowerCase()))
+    ) {
+      return false;
+    }
+    return true;
+  });
+};
+
+/**
+ * List action logs with enhanced filtering and pagination support
+ */
+export const listActionLogs = async (
+  options?: ActionLogFilterOptions,
+): Promise<PaginatedActionLogs> => {
+  const limit = Math.max(1, Math.min(options?.limit || 20, 100));
+  const offset = Math.max(0, options?.offset || 0);
+  const sort = options?.sort || 'desc';
+
+  if (isDbConnected()) {
+    const { records, total } = await queryDbLogs({ ...options, limit, offset, sort });
+    return {
+      actions: records,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + records.length < total,
+      },
+    };
+  }
+
+  // File-based filtering
+  let entries = await readFileLogs();
+
+  // Apply filters
+  entries = filterFileLogs(entries, options || {});
+
+  // Apply sort
+  if (sort === 'asc') {
+    entries = entries.reverse();
+  }
+
+  const total = entries.length;
+
+  // Apply pagination
+  const paginatedEntries = entries.slice(offset, offset + limit);
+
+  return {
+    actions: paginatedEntries,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + paginatedEntries.length < total,
+    },
+  };
+};
+
+/**
+ * Legacy function for backward compatibility - returns just the array
+ * @deprecated Use listActionLogs which returns paginated results
+ */
+export const listActionLogsLegacy = async (options?: {
+  limit?: number;
+  platform?: string;
+  account?: string;
+}): Promise<ActionLogRecord[]> => {
+  const result = await listActionLogs(options);
+  return result.actions;
 };
 
 export const getActionSummary = async (options?: {
@@ -161,9 +382,6 @@ export const getActionSummary = async (options?: {
 }): Promise<ActionSummary> => {
   const platform = options?.platform;
   const account = options?.account;
-  const query: Record<string, string> = {};
-  if (platform) query.platform = platform;
-  if (account) query.account = account;
 
   const summarize = (records: ActionLogRecord[]): ActionSummary =>
     records.reduce<ActionSummary>(
@@ -183,16 +401,14 @@ export const getActionSummary = async (options?: {
       },
     );
 
-  if (mongoose.connection.readyState === 1) {
-    const entries = await ActionLog.find(query).lean();
-    return summarize(entries.map(mapRecord));
+  if (isDbConnected()) {
+    const fileLimit = Math.max(1, Math.min(options?.limit || 500, 500));
+    const { records } = await queryDbLogs({ limit: fileLimit, platform, account });
+    return summarize(records);
   }
 
   const fileLimit = Math.max(1, Math.min(options?.limit || 500, 500));
   const entries = await readFileLogs();
-  const filtered = entries
-    .filter((entry) => (platform ? entry.platform === platform : true))
-    .filter((entry) => (account ? entry.account === account : true))
-    .slice(0, fileLimit);
+  const filtered = filterFileLogs(entries, { platform, account }).slice(0, fileLimit);
   return summarize(filtered);
 };

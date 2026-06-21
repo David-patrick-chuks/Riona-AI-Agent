@@ -7,43 +7,23 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 
-// Track API key state across requests
-let currentAgentApiKeyIndex = 0;
-const triedAgentApiKeys = new Set<number>();
-
 /**
- * Gets the next API key for the agent with rotation
- * @returns Next available Gemini API key
- * @throws Error if all keys have been tried
- */
-const getNextAgentApiKey = () => {
-  triedAgentApiKeys.add(currentAgentApiKeyIndex);
-
-  // Move to next key
-  currentAgentApiKeyIndex = (currentAgentApiKeyIndex + 1) % geminiApiKeys.length;
-
-  // Check if we've tried all keys
-  if (triedAgentApiKeys.size >= geminiApiKeys.length) {
-    triedAgentApiKeys.clear();
-    throw new Error('All API keys have reached their rate limits. Please try again later.');
-  }
-
-  return geminiApiKeys[currentAgentApiKeyIndex];
-};
-
-/**
- * Runs the AI agent with the given schema and prompt
+ * Runs the AI agent with the given schema and prompt.
+ * triedKeys is passed through recursive retries so each top-level call
+ * has its own isolated rotation state — concurrent requests do not interfere.
  * @param schema - JSON schema for the response
  * @param prompt - Prompt to send to the model
  * @param apiKeyIndex - Index of API key to use
+ * @param triedKeys - Caller-owned Set tracking exhausted key indices
  * @returns Parsed JSON response from the model
  */
 export async function runAgent(
   schema: InstagramCommentSchema,
   prompt: string,
-  apiKeyIndex: number = currentAgentApiKeyIndex,
+  apiKeyIndex: number = 0,
+  triedKeys: Set<number> = new Set(),
 ): Promise<any> {
-  let geminiApiKey = geminiApiKeys[apiKeyIndex];
+  const geminiApiKey = geminiApiKeys[apiKeyIndex];
 
   if (!geminiApiKey) {
     logger.error('No valid Gemini API key available.');
@@ -89,20 +69,14 @@ export async function runAgent(
       logger.error(
         `---GEMINI_API_KEY_${apiKeyIndex + 1} limit exhausted, switching to the next API key...`,
       );
-      try {
-        geminiApiKey = getNextAgentApiKey();
-        return runAgent(schema, prompt, currentAgentApiKeyIndex);
-      } catch (keyError) {
-        if (keyError instanceof Error) {
-          logger.error('API key error:', keyError.message);
-          return `Error: ${keyError.message}`;
-        } else {
-          logger.error('Unknown error when trying to get next API key');
-          return 'Error: All API keys have reached their rate limits. Please try again later.';
-        }
+      triedKeys.add(apiKeyIndex);
+      if (triedKeys.size >= geminiApiKeys.length) {
+        return 'Error: All API keys have reached their rate limits. Please try again later.';
       }
+      const nextIndex = (apiKeyIndex + 1) % geminiApiKeys.length;
+      return runAgent(schema, prompt, nextIndex, triedKeys);
     }
-    return handleError(error, apiKeyIndex, schema, prompt, runAgent);
+    return handleError(error, apiKeyIndex, schema, prompt, runAgent, 0, triedKeys);
   }
 }
 
@@ -115,20 +89,18 @@ export async function runAgent(
 export function chooseCharacter(): any {
   // Try to load Adrian's custom style first
   try {
-    // Use __dirname to get relative path that works in both src and build
-    // __dirname will be src/Agent or build/Agent, so go up one level to reach config
     const adrianStylePath = path.join(__dirname, '..', 'config', 'adrian-style');
-    logger.info(`Loading Adrian's custom style configuration from: ${adrianStylePath}`);
     const requireModule = createRequire(__filename);
     const loaded = requireModule(adrianStylePath);
     const adrianStyle = loaded.default || loaded.adrianStyleConfig;
-    logger.info(`✅ Adrian's style loaded successfully!`);
+    const name = adrianStyle?.userProfile?.name ?? 'adrian-style';
+    const handle = adrianStyle?.userProfile?.instagram;
+    logger.info(`Character loaded: ${name}${handle ? ` (@${handle})` : ''} [adrian-style]`);
     return adrianStyle;
   } catch (adrianError) {
     logger.warn(
-      `Could not load adrian-style: ${adrianError instanceof Error ? adrianError.message : String(adrianError)}`,
+      `Could not load adrian-style: ${adrianError instanceof Error ? adrianError.message : String(adrianError)}. Falling back to JSON characters.`,
     );
-    logger.warn(`Falling back to JSON characters`);
 
     // Fallback to JSON characters
     const charactersDir = (() => {
@@ -144,10 +116,12 @@ export function chooseCharacter(): any {
       throw new Error('No character JSON files found and no adrian-style.ts available');
     }
 
-    const chosenFile = path.join(charactersDir, jsonFiles[0]);
-    logger.info(`Automatically selected character: ${jsonFiles[0]}`);
-    const data = fs.readFileSync(chosenFile, 'utf8');
-    return JSON.parse(data);
+    const chosenFile = jsonFiles[0];
+    const data = fs.readFileSync(path.join(charactersDir, chosenFile), 'utf8');
+    const character = JSON.parse(data);
+    const name = character?.name ?? character?.userProfile?.name ?? chosenFile;
+    logger.info(`Character loaded: ${name} [${chosenFile}]`);
+    return character;
   }
 }
 
@@ -158,11 +132,9 @@ export function chooseCharacter(): any {
  */
 export function initAgent(): any {
   try {
-    const character = chooseCharacter();
-    console.log('Character/Style selected:', character);
-    return character;
+    return chooseCharacter();
   } catch (error) {
-    console.error('Error selecting character:', error);
+    logger.error('Error selecting character:', error);
     process.exit(1);
   }
 }

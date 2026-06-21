@@ -5,9 +5,11 @@ import logger from '../config/logger';
 type ScheduledJob = {
   id: string;
   accountKey: string;
+  platform: string;
   cronTime: string;
-  url: string;
-  caption: string;
+  url?: string;
+  text?: string;
+  caption?: string;
   job: CronJob;
   createdAt: string;
 };
@@ -17,18 +19,20 @@ const scheduledJobs = new Map<string, ScheduledJob>();
 export type ScheduledPostInfo = {
   id: string;
   accountKey: string;
+  platform: string;
   cronTime: string;
-  url: string;
-  caption: string;
+  url?: string;
+  text?: string;
+  caption?: string;
   createdAt: string;
 };
 
 export function schedulePostJob(
   accountKey: string,
+  platform: string,
   cronTime: string,
-  url: string,
-  caption: string,
   onFire: () => Promise<void>,
+  metadata?: { url?: string; caption?: string; text?: string },
 ): string {
   const validation = validateCronExpression(cronTime);
   if (!validation.valid) {
@@ -36,7 +40,12 @@ export function schedulePostJob(
   }
 
   for (const [id, entry] of scheduledJobs) {
-    if (entry.accountKey === accountKey && entry.cronTime === cronTime && entry.url === url) {
+    if (
+      entry.accountKey === accountKey &&
+      entry.platform === platform &&
+      entry.cronTime === cronTime &&
+      (entry.url === metadata?.url || entry.text === metadata?.text)
+    ) {
       entry.job.stop();
       scheduledJobs.delete(id);
     }
@@ -65,9 +74,11 @@ export function schedulePostJob(
   scheduledJobs.set(id, {
     id,
     accountKey,
+    platform,
     cronTime,
-    url,
-    caption,
+    url: metadata?.url,
+    caption: metadata?.caption,
+    text: metadata?.text,
     job,
     createdAt: new Date().toISOString(),
   });
@@ -87,12 +98,14 @@ export function cancelScheduledPost(jobId: string): boolean {
 export function listScheduledPosts(accountKey?: string): ScheduledPostInfo[] {
   return [...scheduledJobs.values()]
     .filter((entry) => !accountKey || entry.accountKey === accountKey)
-    .map(({ id, accountKey: key, cronTime, url, caption, createdAt }) => ({
+    .map(({ id, accountKey: key, platform, cronTime, url, caption, text, createdAt }) => ({
       id,
       accountKey: key,
+      platform,
       cronTime,
       url,
       caption,
+      text,
       createdAt,
     }));
 }
