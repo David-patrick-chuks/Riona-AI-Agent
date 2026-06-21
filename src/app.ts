@@ -16,7 +16,6 @@ import { getIgProfile } from './config/igProfile';
 import { setIgCooldown, getIgCooldown } from './utils';
 import { dashboardHtml } from './views/dashboard';
 
-
 // Set up process-level error handlers
 setupErrorHandlers();
 
@@ -37,8 +36,20 @@ app.use(
     },
   }),
 );
-app.use(cors());
-app.use(express.json()); // JSON body parsing
+// CORS configuration - restrict origins in production
+const corsOrigin = process.env.CORS_ORIGIN || '*';
+app.use(
+  cors({
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((o) => o.trim()),
+    credentials: getBoolEnv('CORS_CREDENTIALS', false),
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
+
+// Request body size limits to prevent DoS attacks
+const jsonLimit = process.env.MAX_JSON_PAYLOAD || '100kb';
+app.use(express.json({ limit: jsonLimit }));
 app.use(express.urlencoded({ extended: true, limit: '1kb' })); // URL-encoded data
 app.use(cookieParser()); // Cookie parsing
 app.use(

@@ -3,6 +3,51 @@ import path from 'path';
 import { geminiApiKeys } from '../secret';
 import logger from '../config/logger';
 
+/**
+ * Validate URL to prevent SSRF attacks
+ * Only allows HTTP/HTTPS URLs to public hosts
+ */
+export function validateImageUrl(url: string): { valid: boolean; error?: string } {
+  if (!url || typeof url !== 'string') {
+    return { valid: false, error: 'URL is required' };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+
+  // Only allow HTTP and HTTPS protocols
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return { valid: false, error: 'Only HTTP/HTTPS URLs are allowed' };
+  }
+
+  // Block private/internal IPs to prevent SSRF
+  const hostname = parsed.hostname.toLowerCase();
+  const blockedPatterns = [
+    /^localhost$/i,
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+    /^192\.168\./,
+    /^0\./,
+    /^169\.254\./, // Link-local
+    /^::1$/,
+    /^fc00:/i, // IPv6 private
+    /^fe80:/i, // IPv6 link-local
+  ];
+
+  for (const pattern of blockedPatterns) {
+    if (pattern.test(hostname)) {
+      return { valid: false, error: 'Private/internal URLs are not allowed' };
+    }
+  }
+
+  return { valid: true };
+}
+
 const fileLocks = new Map<string, Promise<void>>();
 
 async function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {

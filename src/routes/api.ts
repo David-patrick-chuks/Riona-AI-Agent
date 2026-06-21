@@ -30,6 +30,7 @@ import {
   generalLimiter,
 } from '../middleware/rateLimit';
 import { getMetrics } from '../services/metrics';
+import { validateImageUrl } from '../utils';
 
 const router = express.Router();
 
@@ -356,6 +357,11 @@ router.post('/post-photo', actionLimiter, async (req: Request, res: Response) =>
     if (!imageUrl) {
       return res.status(400).json({ error: 'imageUrl is required' });
     }
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = validateImageUrl(imageUrl);
+    if (!urlValidation.valid) {
+      return res.status(400).json({ error: urlValidation.error });
+    }
     const account = (req as any).user.account || 'default';
     const client = await getPosterClient(undefined, undefined, account);
     const result = await client.postPhoto(imageUrl, caption || '');
@@ -434,6 +440,11 @@ router.post('/schedule-post', async (req: Request, res: Response) => {
     const { imageUrl, caption, cronTime } = req.body;
     if (!imageUrl || !cronTime) {
       return res.status(400).json({ error: 'imageUrl and cronTime are required' });
+    }
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = validateImageUrl(imageUrl);
+    if (!urlValidation.valid) {
+      return res.status(400).json({ error: urlValidation.error });
     }
     const account = (req as any).user.account || 'default';
     const jobId = await schedulePhotoPost(imageUrl, caption || '', cronTime, account);
