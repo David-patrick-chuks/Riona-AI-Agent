@@ -1,12 +1,12 @@
 import puppeteer, { Browser } from 'puppeteer';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type WindowLike } from 'dompurify';
 import { JSDOM } from 'jsdom';
 import { saveScrapedData } from '../../utils';
 
 // Function to clean the HTML content
 function cleanHTML(inputHtml: string): string {
   const window = new JSDOM('').window;
-  const purify = DOMPurify(window);
+  const purify = DOMPurify(window as unknown as WindowLike);
   return purify.sanitize(inputHtml, {
     ALLOWED_TAGS: [], // Remove all tags
   });
