@@ -237,6 +237,11 @@ export const saveTweetData = async (
     await fs.access(tweetDataPath);
     const data = await fs.readFile(tweetDataPath, 'utf-8');
     const json = JSON.parse(data);
+    if (!Array.isArray(json)) {
+      logger.warn('tweetData.json contains non-array data, resetting to array');
+      await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
+      return;
+    }
     json.push(tweetData);
     await fs.writeFile(tweetDataPath, JSON.stringify(json, null, 2));
   } catch (error) {
@@ -362,6 +367,11 @@ export const saveScrapedData = async (link: string, content: string): Promise<vo
     await fs.access(scrapedDataPath);
     const data = await fs.readFile(scrapedDataPath, 'utf-8');
     const json = JSON.parse(data);
+    if (!Array.isArray(json)) {
+      logger.warn('scrapedData.json contains non-array data, resetting to array');
+      await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
+      return;
+    }
     json.push(scrapedData);
     await fs.writeFile(scrapedDataPath, JSON.stringify(json, null, 2));
   } catch (error) {
