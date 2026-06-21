@@ -23,7 +23,7 @@ interface RateLimitConfig {
 const stores: { [name: string]: RateLimitStore } = {};
 
 // Cleanup old entries periodically (every 5 minutes)
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const storeName of Object.keys(stores)) {
     const store = stores[storeName];
@@ -34,6 +34,18 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+/** Stop the cleanup interval (useful for tests) */
+export function stopCleanupInterval(): void {
+  clearInterval(cleanupInterval);
+}
+
+/** Clear all rate limit stores (useful for tests) */
+export function clearAllStores(): void {
+  for (const key of Object.keys(stores)) {
+    delete stores[key];
+  }
+}
 
 /**
  * Get client identifier from request
