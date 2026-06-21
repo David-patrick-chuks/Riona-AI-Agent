@@ -73,6 +73,35 @@ const writeFileLogs = async (entries: ActionLogRecord[]) => {
   await fs.writeFile(filePath, JSON.stringify(entries, null, 2));
 };
 
+/** Serializes file-based log writes to prevent read-modify-write races. */
+let fileLogChain: Promise<void> = Promise.resolve();
+
+const withFileLogLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+  const run = fileLogChain.then(fn, fn);
+  fileLogChain = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+};
+
+const appendFileLog = async (entry: {
+  platform: string;
+  action: string;
+  account: string;
+  username?: string;
+  status: ActionLogStatus;
+  error?: string;
+  details?: Record<string, unknown>;
+  createdAt: string;
+}) => {
+  await withFileLogLock(async () => {
+    const entries = await readFileLogs();
+    entries.unshift(mapRecord(entry));
+    await writeFileLogs(entries.slice(0, 500));
+  });
+};
+
 export const logAction = async (input: ActionLogInput): Promise<void> => {
   const entry = {
     platform: input.platform,
@@ -91,9 +120,7 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
       return;
     }
 
-    const entries = await readFileLogs();
-    entries.unshift(mapRecord(entry));
-    await writeFileLogs(entries.slice(0, 500));
+    await appendFileLog(entry);
   } catch (error) {
     logger.warn("Failed to persist action log entry.", error);
   }

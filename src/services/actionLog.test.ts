@@ -57,4 +57,17 @@ describe("action log service", () => {
     expect(summary.byAction.login).toBe(1);
     expect(summary.byAction.interact).toBe(1);
   });
+
+  test("concurrent file logs do not lose entries", async () => {
+    await Promise.all([
+      logAction({ platform: "instagram", action: "login", status: "success", account: "default" }),
+      logAction({ platform: "instagram", action: "interact", status: "success", account: "default" }),
+      logAction({ platform: "instagram", action: "exit", status: "success", account: "default" }),
+    ]);
+
+    const entries = await listActionLogs({ limit: 10 });
+    expect(entries).toHaveLength(3);
+    const actions = entries.map((entry) => entry.action).sort();
+    expect(actions).toEqual(["exit", "interact", "login"]);
+  });
 });
