@@ -25,4 +25,15 @@ describe('comment filters', () => {
     const cfg = getCommentFilterConfig();
     expect(shouldSkipComment('this is terrible', cfg)).toBe(true);
   });
+
+  test('minimum and maximum length filters comments', () => {
+    process.env.IG_COMMENT_MIN_LENGTH = '10';
+    process.env.IG_COMMENT_MAX_LENGTH = '30';
+    const cfg = getCommentFilterConfig();
+    expect(shouldSkipComment('short', cfg)).toBe(true);
+    expect(shouldSkipComment('this comment is definitely way too long for the limit', cfg)).toBe(
+      true,
+    );
+    expect(shouldSkipComment('this is fine', cfg)).toBe(false);
+  });
 });

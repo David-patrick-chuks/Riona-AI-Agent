@@ -51,3 +51,5 @@ If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
 - `IG_COMMENT_ALLOWLIST` (comma-separated)
 - `IG_COMMENT_DENYLIST` (comma-separated)
 - `IG_COMMENT_SENTIMENT` (any | positive | neutral)
+- `IG_COMMENT_MIN_LENGTH` (minimum comment length in characters)
+- `IG_COMMENT_MAX_LENGTH` (maximum comment length in characters)
