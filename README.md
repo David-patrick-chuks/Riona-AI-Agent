@@ -34,6 +34,7 @@
 - [Logging](#logging)
 - [Error Handling](#error-handling)
 - [Stargazers](#stargazers)
+
 ## About
 
 Riona AI Agent is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, account workflows, scheduling, engagement actions, and training inputs so you can run a social media operator from one codebase.
@@ -231,7 +232,7 @@ Open `http://localhost:3000/dashboard` for live status and the last IG run summa
 - `Guides/Scripts.md`
 - `Guides/Training.md`
 
-## reCAPTCHA Model Integration 
+## reCAPTCHA Model Integration
 
 This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is run via root scripts:
 
@@ -282,10 +283,10 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 
 ### Database
 
-| Variable       | Type    | Default | Description                                      |
-| -------------- | ------- | ------- | ------------------------------------------------ |
-| `DATABASE_URL` | string  |         | PostgreSQL connection URL                        |
-| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing)  |
+| Variable       | Type    | Default | Description                                     |
+| -------------- | ------- | ------- | ----------------------------------------------- |
+| `DATABASE_URL` | string  |         | PostgreSQL connection URL                       |
+| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing) |
 
 ### Logging & General
 
