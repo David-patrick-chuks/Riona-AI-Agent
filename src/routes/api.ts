@@ -12,6 +12,7 @@ import {
   cancelScheduledPost,
   listScheduledPosts,
 } from '../client/InstagramPoster';
+import { postTweet } from '../client/X-bot';
 import logger from '../config/logger';
 import { isDbConnected } from '../config/db';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
@@ -473,6 +474,38 @@ router.post(
     }
   },
 );
+
+// Post tweet endpoint (X/Twitter API client, rate limited)
+router.post('/post-tweet', actionLimiter, async (req: Request, res: Response) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+    const result = await postTweet(text);
+    const account = (req as any).user.account || 'default';
+    await logAction({
+      platform: 'twitter',
+      action: 'post-tweet',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { textSnippet: text.substring(0, 50) },
+    });
+    return res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Post tweet error:', error);
+    await logAction({
+      platform: 'twitter',
+      action: 'post-tweet',
+      status: 'error',
+      account: (req as any).user.account || 'default',
+      username: (req as any).user.username,
+      error: getErrorMessage(error),
+    });
+    return res.status(500).json({ error: 'Failed to post tweet' });
+  }
+});
 
 // Schedule photo post endpoint (cron syntax)
 router.post('/schedule-post', async (req: Request, res: Response) => {
