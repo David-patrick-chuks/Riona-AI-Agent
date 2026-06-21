@@ -634,12 +634,38 @@ router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Respons
 
 router.get('/actions', async (req: Request, res: Response) => {
   try {
+    // Parse pagination params
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    // Parse filter params
     const account = typeof req.query.account === 'string' ? req.query.account : undefined;
     const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
-    const logs = await listActionLogs({ limit, account, platform });
-    return res.json({ actions: logs });
+    const status =
+      req.query.status === 'success' || req.query.status === 'error' ? req.query.status : undefined;
+    const action = typeof req.query.action === 'string' ? req.query.action : undefined;
+    const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+    const errorKeyword =
+      typeof req.query.errorKeyword === 'string' ? req.query.errorKeyword : undefined;
+    const sort = req.query.sort === 'asc' ? 'asc' : 'desc';
+
+    const result = await listActionLogs({
+      limit,
+      offset,
+      account,
+      platform,
+      status,
+      action,
+      fromDate,
+      toDate,
+      errorKeyword,
+      sort,
+    });
+
+    return res.json(result);
   } catch (error) {
     logger.error('Actions listing error:', error);
     return res.status(500).json({ error: 'Failed to load action logs' });
