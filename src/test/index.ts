@@ -4,10 +4,10 @@ import { canSendTweet } from '../utils';
 import { download } from '../utils/download';
 import { excitingTweets } from './tweets';
 
-const SendtweetWithImage = async () => {
+export const sendTweetWithImage = async (): Promise<void> => {
   const canSend = await canSendTweet();
 
-  if (!canSend) return; // If we cannot send tweet, exit the function
+  if (!canSend) return;
 
   const urls = [
     'https://th.bing.com/th/id/R.ae6f69f96681689598d25c19fb2f6b8c?rik=pep5uJzjHTlqxQ&pid=ImgRaw&r=0',
@@ -18,15 +18,12 @@ const SendtweetWithImage = async () => {
 
   const filename = 'image.png';
 
-  // Retry logic for downloading and sending tweet with image
   download(uri, filename, async function () {
     try {
-      // Retry logic for image upload
       const mediaId = await twitterClient.v1.uploadMedia('./image.png');
 
       const tweetText = excitingTweets[Math.floor(Math.random() * excitingTweets.length)];
 
-      // Retry logic for tweeting
       const send = await twitterClient.v2.tweet({
         text: tweetText,
         media: {
@@ -34,7 +31,6 @@ const SendtweetWithImage = async () => {
         },
       });
 
-      // Store tweet data in the database
       const newTweet = new Tweet({
         tweetContent: tweetText,
         imageUrl: uri,
@@ -49,3 +45,7 @@ const SendtweetWithImage = async () => {
     }
   });
 };
+
+if (require.main === module) {
+  void sendTweetWithImage();
+}

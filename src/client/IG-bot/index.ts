@@ -76,7 +76,7 @@ export class InstagramClient implements IInstagramClient {
     return response;
   }
 
-  async schedulePost(url: string, caption: string, cronTime: string): Promise<void> {
+  async schedulePost(_url: string, _caption: string, _cronTime: string): Promise<void> {
     throw new Error(
       'Use schedulePhotoPost() from InstagramPoster instead — schedulePost no longer creates untracked cron jobs.',
     );

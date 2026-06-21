@@ -3,7 +3,6 @@ import puppeteerExtra from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 import UserAgent from 'user-agents';
-import { Server } from 'proxy-chain';
 import { IGpassword, IGusername } from '../../secret';
 import logger from '../../config/logger';
 import {
@@ -13,7 +12,6 @@ import {
   getIgDailyState,
   incrementIgDailyCount,
   getIgCooldown,
-  setIgCooldown,
   getInstagramCookiesPath,
 } from '../../utils';
 import { getIgProfile } from '../../config/igProfile';
@@ -21,8 +19,6 @@ import { setLastRunSummary, IgRunSummary } from '../../utils/igRunSummary';
 import { getCommentFilterConfig, shouldSkipComment } from '../../utils/commentFilters';
 import { runAgent } from '../../Agent';
 import { getInstagramCommentSchema } from '../../Agent/schema';
-import readline from 'readline';
-import fs from 'fs/promises';
 import { getShouldExitInteractions } from '../../api/agent';
 
 // Add stealth plugin to puppeteer
