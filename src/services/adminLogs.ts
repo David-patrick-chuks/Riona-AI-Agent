@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { listActionLogs } from './actionLog';
+import { listActionLogs, type ActionLogRecord } from './actionLog';
 
 export type AdminLogLevel = 'error' | 'warn' | 'info' | 'debug' | 'unknown';
 
@@ -110,8 +110,10 @@ export const listAdminErrors = async (options?: { limit?: number }): Promise<Adm
     listAdminLogs({ limit, level: 'error' }),
   ]);
 
+  const actionEntries = actionErrors;
+
   return [
-    ...actionErrors.map<AdminErrorEntry>((entry) => ({
+    ...actionEntries.map<AdminErrorEntry>((entry: ActionLogRecord) => ({
       source: 'action',
       message: entry.error || `${entry.action} failed`,
       timestamp: entry.createdAt,
