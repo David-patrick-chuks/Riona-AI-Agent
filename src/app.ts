@@ -13,8 +13,7 @@ import { getBoolEnv, getNumberEnv } from './utils/env';
 import { getIgProfile } from './config/igProfile';
 import { setIgCooldown, getIgCooldown } from './utils';
 import { dashboardHtml } from './views/dashboard';
-// import { main as twitterMain } from './client/Twitter'; //
-// import { main as githubMain } from './client/GitHub'; //
+
 
 // Set up process-level error handlers
 setupErrorHandlers();
