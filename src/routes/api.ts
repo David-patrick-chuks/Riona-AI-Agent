@@ -686,6 +686,75 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   }
 });
 
+// Export action logs as CSV or JSON file
+router.get('/actions/export', async (req: Request, res: Response) => {
+  try {
+    const format = req.query.format === 'csv' ? 'csv' : 'json';
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 500;
+
+    // Parse filter params (same as /actions)
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
+    const status =
+      req.query.status === 'success' || req.query.status === 'error' ? req.query.status : undefined;
+    const action = typeof req.query.action === 'string' ? req.query.action : undefined;
+    const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+
+    const result = await listActionLogs({
+      limit,
+      offset: 0,
+      account,
+      platform,
+      status,
+      action,
+      fromDate,
+      toDate,
+      sort: 'desc',
+    });
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `action-logs-${timestamp}.${format}`;
+
+    if (format === 'csv') {
+      // Generate CSV
+      const headers = ['id', 'createdAt', 'platform', 'action', 'account', 'status', 'error'];
+      const csvRows = [headers.join(',')];
+
+      for (const log of result.actions) {
+        const row = [
+          log.id,
+          log.createdAt,
+          log.platform,
+          log.action,
+          log.account,
+          log.status,
+          log.error ? `"${log.error.replace(/"/g, '""')}"` : '',
+        ];
+        csvRows.push(row.join(','));
+      }
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.send(csvRows.join('\n'));
+    }
+
+    // JSON format
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.json({
+      exportedAt: new Date().toISOString(),
+      totalRecords: result.actions.length,
+      filters: { account, platform, status, action, fromDate, toDate },
+      actions: result.actions,
+    });
+  } catch (error) {
+    logger.error('Actions export error:', error);
+    return res.status(500).json({ error: 'Failed to export action logs' });
+  }
+});
+
 // Exit endpoint
 router.post('/exit-interactions', async (_req: Request, res: Response) => {
   const { setShouldExitInteractions } = await import('../api/agent');
