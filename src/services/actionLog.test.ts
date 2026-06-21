@@ -75,4 +75,26 @@ describe('action log service', () => {
     const actions = entries.map((entry) => entry.action).sort();
     expect(actions).toEqual(['exit', 'interact', 'login']);
   });
+
+  test('filters action logs by status', async () => {
+    await logAction({
+      platform: 'instagram',
+      action: 'login',
+      status: 'success',
+      account: 'default',
+    });
+    await logAction({
+      platform: 'instagram',
+      action: 'interact',
+      status: 'error',
+      account: 'default',
+      error: 'challenge required',
+    });
+
+    const entries = await listActionLogs({ limit: 10, status: 'error' });
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].action).toBe('interact');
+    expect(entries[0].status).toBe('error');
+  });
 });

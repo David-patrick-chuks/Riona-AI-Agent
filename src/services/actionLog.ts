@@ -130,15 +130,18 @@ export const listActionLogs = async (options?: {
   limit?: number;
   platform?: string;
   account?: string;
+  status?: ActionLogStatus;
 }): Promise<ActionLogRecord[]> => {
   const limit = Math.max(1, Math.min(options?.limit || 20, 100));
   const platform = options?.platform;
   const account = options?.account;
+  const status = options?.status;
 
   if (mongoose.connection.readyState === 1) {
     const query: Record<string, string> = {};
     if (platform) query.platform = platform;
     if (account) query.account = account;
+    if (status) query.status = status;
     const entries = await ActionLog.find(query).sort({ createdAt: -1 }).limit(limit).lean();
     return entries.map(mapRecord);
   }
@@ -147,6 +150,7 @@ export const listActionLogs = async (options?: {
   return entries
     .filter((entry) => (platform ? entry.platform === platform : true))
     .filter((entry) => (account ? entry.account === account : true))
+    .filter((entry) => (status ? entry.status === status : true))
     .slice(0, limit);
 };
 

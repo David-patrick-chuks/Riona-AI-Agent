@@ -262,6 +262,48 @@ app.get('/dashboard', (_req, res) => {
         </table>
       </div>
     </div>
+
+    <div class="grid two">
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Application Logs</div>
+        <div class="muted">Latest lines from the server log files</div>
+        <div style="overflow:auto; margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Level</th>
+                <th>File</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Error Feed</div>
+        <div class="muted">Failed actions and server errors</div>
+        <div style="overflow:auto; margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Source</th>
+                <th>Context</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody id="errors-table">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
   <script>
     const authResult = document.getElementById('auth-result');
@@ -269,6 +311,8 @@ app.get('/dashboard', (_req, res) => {
     const sessionState = document.getElementById('session-state');
     const sessionMeta = document.getElementById('session-meta');
     const actionsTable = document.getElementById('actions-table');
+    const logsTable = document.getElementById('logs-table');
+    const errorsTable = document.getElementById('errors-table');
     let refreshTimer = null;
 
     const escapeHtml = (value) => String(value)
@@ -364,8 +408,52 @@ app.get('/dashboard', (_req, res) => {
       }
     };
 
+    const formatTime = (value) => {
+      if (!value) return '-';
+      const time = new Date(value);
+      return Number.isNaN(time.getTime()) ? value : time.toLocaleString();
+    };
+
+    const renderLogs = async () => {
+      try {
+        const response = await fetch('/api/admin/logs?limit=20');
+        if (!response.ok) throw new Error('auth required');
+        const payload = await response.json();
+        const rows = (payload.logs || []).map((entry) => (
+          '<tr>' +
+            '<td>' + escapeHtml(formatTime(entry.timestamp)) + '</td>' +
+            '<td class="' + (entry.level === 'error' ? 'bad' : '') + '">' + escapeHtml(entry.level) + '</td>' +
+            '<td>' + escapeHtml(entry.file) + '</td>' +
+            '<td>' + escapeHtml(entry.message) + '</td>' +
+          '</tr>'
+        )).join('');
+        logsTable.innerHTML = rows || '<tr><td colspan="4">No application logs found.</td></tr>';
+      } catch (_err) {
+        logsTable.innerHTML = '<tr><td colspan="4">Log in to view application logs.</td></tr>';
+      }
+    };
+
+    const renderErrors = async () => {
+      try {
+        const response = await fetch('/api/admin/errors?limit=20');
+        if (!response.ok) throw new Error('auth required');
+        const payload = await response.json();
+        const rows = (payload.errors || []).map((entry) => (
+          '<tr>' +
+            '<td>' + escapeHtml(formatTime(entry.timestamp)) + '</td>' +
+            '<td>' + escapeHtml(entry.source) + '</td>' +
+            '<td>' + escapeHtml(entry.context || entry.platform || '-') + '</td>' +
+            '<td class="bad">' + escapeHtml(entry.message) + '</td>' +
+          '</tr>'
+        )).join('');
+        errorsTable.innerHTML = rows || '<tr><td colspan="4">No errors logged yet.</td></tr>';
+      } catch (_err) {
+        errorsTable.innerHTML = '<tr><td colspan="4">Log in to view errors.</td></tr>';
+      }
+    };
+
     const refreshAll = async () => {
-      await Promise.all([renderHealth(), renderSession(), renderActions()]);
+      await Promise.all([renderHealth(), renderSession(), renderActions(), renderLogs(), renderErrors()]);
     };
 
     const runControlAction = async (url, options = {}) => {
