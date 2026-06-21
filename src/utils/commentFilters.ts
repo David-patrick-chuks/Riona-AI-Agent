@@ -35,7 +35,7 @@ export const getCommentFilterConfig = (): CommentFilterConfig => {
   const sentiment = parseCommentSentiment(rawSentiment);
   if (rawSentiment && sentiment === 'any' && rawSentiment.trim().toLowerCase() !== 'any') {
     logger.warn(
-      `Invalid IG_COMMENT_SENTIMENT "${rawSentiment}". Expected any, positive, or neutral. Using "any".`
+      `Invalid IG_COMMENT_SENTIMENT "${rawSentiment}". Expected any, positive, or neutral. Using "any".`,
     );
   }
   return { allow, deny, sentiment };
