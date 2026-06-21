@@ -115,20 +115,20 @@ export async function runAgent(
 export function chooseCharacter(): any {
   // Try to load Adrian's custom style first
   try {
-    // Use __dirname to get relative path that works in both src and build
-    // __dirname will be src/Agent or build/Agent, so go up one level to reach config
     const adrianStylePath = path.join(__dirname, '..', 'config', 'adrian-style');
-    logger.info(`Loading Adrian's custom style configuration from: ${adrianStylePath}`);
     const requireModule = createRequire(__filename);
     const loaded = requireModule(adrianStylePath);
     const adrianStyle = loaded.default || loaded.adrianStyleConfig;
-    logger.info(`✅ Adrian's style loaded successfully!`);
+    const name = adrianStyle?.userProfile?.name ?? 'adrian-style';
+    const handle = adrianStyle?.userProfile?.instagram;
+    logger.info(
+      `Character loaded: ${name}${handle ? ` (@${handle})` : ''} [adrian-style]`,
+    );
     return adrianStyle;
   } catch (adrianError) {
     logger.warn(
-      `Could not load adrian-style: ${adrianError instanceof Error ? adrianError.message : String(adrianError)}`,
+      `Could not load adrian-style: ${adrianError instanceof Error ? adrianError.message : String(adrianError)}. Falling back to JSON characters.`,
     );
-    logger.warn(`Falling back to JSON characters`);
 
     // Fallback to JSON characters
     const charactersDir = (() => {
@@ -144,10 +144,12 @@ export function chooseCharacter(): any {
       throw new Error('No character JSON files found and no adrian-style.ts available');
     }
 
-    const chosenFile = path.join(charactersDir, jsonFiles[0]);
-    logger.info(`Automatically selected character: ${jsonFiles[0]}`);
-    const data = fs.readFileSync(chosenFile, 'utf8');
-    return JSON.parse(data);
+    const chosenFile = jsonFiles[0];
+    const data = fs.readFileSync(path.join(charactersDir, chosenFile), 'utf8');
+    const character = JSON.parse(data);
+    const name = character?.name ?? character?.userProfile?.name ?? chosenFile;
+    logger.info(`Character loaded: ${name} [${chosenFile}]`);
+    return character;
   }
 }
 
@@ -158,9 +160,7 @@ export function chooseCharacter(): any {
  */
 export function initAgent(): any {
   try {
-    const character = chooseCharacter();
-    logger.info(`Character/Style selected: ${JSON.stringify(character)}`);
-    return character;
+    return chooseCharacter();
   } catch (error) {
     logger.error('Error selecting character:', error);
     process.exit(1);
