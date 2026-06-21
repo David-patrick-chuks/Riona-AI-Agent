@@ -159,10 +159,10 @@ export function chooseCharacter(): any {
 export function initAgent(): any {
   try {
     const character = chooseCharacter();
-    console.log('Character/Style selected:', character);
+    logger.info(`Character/Style selected: ${JSON.stringify(character)}`);
     return character;
   } catch (error) {
-    console.error('Error selecting character:', error);
+    logger.error('Error selecting character:', error);
     process.exit(1);
   }
 }
