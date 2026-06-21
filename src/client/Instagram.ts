@@ -134,6 +134,20 @@ export const closeIgClient = async (accountKey: string = 'default') => {
   }
 };
 
+/**
+ * Closes all Instagram clients across all accounts
+ */
+export const closeAllIgClients = async () => {
+  const keys = [...igClients.keys()];
+  await Promise.all(
+    keys.map((key) =>
+      closeIgClient(key).catch((err) => {
+        logger.warn(`Failed to close IG client for account "${key}":`, err);
+      }),
+    ),
+  );
+};
+
 export async function scrapeFollowersHandler(
   targetAccount: string,
   maxFollowers: number,
