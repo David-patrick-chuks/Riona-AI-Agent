@@ -1140,6 +1140,9 @@ router.get('/admin/errors', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Admin error listing error:', error);
     return res.status(500).json({ error: 'Failed to load error feed' });
+  }
+});
+
 // Webhook endpoints - for external trigger integrations (ROADMAP: Webhook endpoints for external triggers)
 
 // Get available webhook events

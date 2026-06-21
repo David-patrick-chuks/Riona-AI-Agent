@@ -96,6 +96,8 @@ describe('action log service', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].action).toBe('interact');
     expect(entries[0].status).toBe('error');
+  });
+
   describe('filtering', () => {
     beforeEach(async () => {
       // Create a set of test entries with different properties

@@ -170,7 +170,7 @@ export const listWebhooks = async (
           : 'SELECT id, url, events, status, account, created_at, last_triggered_at, failure_count FROM webhooks ORDER BY created_at DESC',
         account ? [account] : [],
       );
-      return result.rows.map((row) => ({
+      return result.rows.map((row: any) => ({
         id: row.id,
         url: row.url,
         events: typeof row.events === 'string' ? JSON.parse(row.events) : row.events,
@@ -316,7 +316,7 @@ export const triggerWebhooks = async (
           : "SELECT * FROM webhooks WHERE status = 'active'",
         account ? [account] : [],
       );
-      webhooks = result.rows.map((row) => ({
+      webhooks = result.rows.map((row: any) => ({
         id: row.id,
         url: row.url,
         events: typeof row.events === 'string' ? JSON.parse(row.events) : row.events,

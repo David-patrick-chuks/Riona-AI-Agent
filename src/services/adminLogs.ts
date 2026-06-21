@@ -110,7 +110,7 @@ export const listAdminErrors = async (options?: { limit?: number }): Promise<Adm
     listAdminLogs({ limit, level: 'error' }),
   ]);
 
-  const actionEntries = actionErrors;
+  const actionEntries = actionErrors.actions || [];
 
   return [
     ...actionEntries.map<AdminErrorEntry>((entry: ActionLogRecord) => ({

@@ -510,6 +510,8 @@ app.get('/dashboard', (_req, res) => {
     document.getElementById('clear-cookies-btn').addEventListener('click', () => {
       void runControlAction('/api/clear-cookies', { method: 'DELETE' });
     });
+  `);
+});
 
 // Metrics dashboard (requires authentication)
 app.get('/metrics', (req, res) => {
