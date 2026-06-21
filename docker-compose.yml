@@ -17,7 +17,7 @@ services:
 
 networks:
   instagram-ai-network:
-    external: true
+    driver: bridge
 
 volumes:
   mongodb_data:
