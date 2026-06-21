@@ -24,6 +24,16 @@ import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
 import {
+  createWebhook,
+  listWebhooks,
+  deleteWebhook,
+  getValidEvents,
+  isValidEvent,
+  triggerWebhooks,
+  updateWebhookStatus,
+  WebhookEvent,
+} from '../services/webhooks';
+import {
   loginLimiter,
   actionLimiter,
   dmLimiter,
@@ -739,6 +749,168 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+// Webhook endpoints - for external trigger integrations (ROADMAP: Webhook endpoints for external triggers)
+
+// Get available webhook events
+router.get('/webhooks/events', (_req: Request, res: Response) => {
+  return res.json({ events: getValidEvents() });
+});
+
+// Register a new webhook
+router.post('/webhooks', async (req: Request, res: Response) => {
+  try {
+    const { url, events } = req.body;
+    if (!url || !events || !Array.isArray(events)) {
+      return res.status(400).json({ error: 'url and events array are required' });
+    }
+    const account = (req as any).user.account || 'default';
+    const webhook = await createWebhook({ url, events, account });
+    await logAction({
+      platform: 'system',
+      action: 'webhook-create',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { webhookId: webhook.id, url, events },
+    });
+    return res.status(201).json({
+      id: webhook.id,
+      url: webhook.url,
+      events: webhook.events,
+      secret: webhook.secret,
+      status: webhook.status,
+      createdAt: webhook.createdAt,
+      message: 'Store the secret securely. It will not be shown again.',
+    });
+  } catch (error) {
+    logger.error('Webhook create error:', error);
+    return res.status(400).json({ error: getErrorMessage(error) });
+  }
+});
+
+// List webhooks for the current account
+router.get('/webhooks', async (req: Request, res: Response) => {
+  try {
+    const account = (req as any).user.account || 'default';
+    const showAll = req.query.all === '1' || req.query.all === 'true';
+    const webhooks = await listWebhooks(showAll ? undefined : account);
+    return res.json({ webhooks });
+  } catch (error) {
+    logger.error('Webhook list error:', error);
+    return res.status(500).json({ error: 'Failed to list webhooks' });
+  }
+});
+
+// Delete a webhook
+router.delete('/webhooks/:id', async (req: Request, res: Response) => {
+  try {
+    const account = (req as any).user.account || 'default';
+    const id = String(req.params.id);
+    const deleted = await deleteWebhook(id, account);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+    await logAction({
+      platform: 'system',
+      action: 'webhook-delete',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { webhookId: id },
+    });
+    return res.json({ success: true, id });
+  } catch (error) {
+    logger.error('Webhook delete error:', error);
+    return res.status(500).json({ error: 'Failed to delete webhook' });
+  }
+});
+
+// Update webhook status (pause/resume)
+router.patch('/webhooks/:id', async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    const { status } = req.body;
+    if (!status || !['active', 'paused'].includes(status)) {
+      return res.status(400).json({ error: 'status must be "active" or "paused"' });
+    }
+    const account = (req as any).user.account || 'default';
+    const updated = await updateWebhookStatus(id, status);
+    if (!updated) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+    await logAction({
+      platform: 'system',
+      action: 'webhook-update',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { webhookId: id, newStatus: status },
+    });
+    return res.json({ success: true, id, status });
+  } catch (error) {
+    logger.error('Webhook update error:', error);
+    return res.status(500).json({ error: 'Failed to update webhook' });
+  }
+});
+
+// Test webhook by sending a test event
+router.post('/webhooks/:id/test', async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    const account = (req as any).user.account || 'default';
+    const event: WebhookEvent = 'action.login';
+    const result = await triggerWebhooks(
+      event,
+      {
+        test: true,
+        message: 'This is a test webhook event',
+        triggeredBy: (req as any).user.username,
+        webhookId: id,
+      },
+      account,
+    );
+    return res.json({
+      success: true,
+      result,
+      message: `Test event sent. ${result.sent} webhook(s) received the event.`,
+    });
+  } catch (error) {
+    logger.error('Webhook test error:', error);
+    return res.status(500).json({ error: 'Failed to test webhook' });
+  }
+});
+
+// Manual trigger endpoint - allows external systems to trigger internal actions
+router.post('/webhooks/trigger', async (req: Request, res: Response) => {
+  try {
+    const { event, data } = req.body;
+    if (!event || !isValidEvent(event)) {
+      return res.status(400).json({
+        error: `Invalid event. Valid events: ${getValidEvents().join(', ')}`,
+      });
+    }
+    const account = (req as any).user.account || 'default';
+    const result = await triggerWebhooks(event as WebhookEvent, data || {}, account);
+    await logAction({
+      platform: 'system',
+      action: 'webhook-trigger',
+      status: 'success',
+      account,
+      username: (req as any).user.username,
+      details: { event, sent: result.sent, failed: result.failed },
+    });
+    return res.json({
+      success: true,
+      event,
+      sent: result.sent,
+      failed: result.failed,
+    });
+  } catch (error) {
+    logger.error('Webhook trigger error:', error);
+    return res.status(500).json({ error: 'Failed to trigger webhooks' });
   }
 });
 
