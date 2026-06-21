@@ -1,7 +1,6 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import mongoose from 'mongoose';
 import { logAction } from './actionLog';
 import { listAdminErrors, listAdminLogs } from './adminLogs';
 
@@ -19,7 +18,6 @@ describe('admin log service', () => {
   afterEach(async () => {
     process.env.LOGS_DIR = originalLogsDir;
     process.env.ACTION_LOG_PATH = originalActionLogPath;
-    await mongoose.disconnect();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 

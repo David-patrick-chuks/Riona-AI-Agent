@@ -91,11 +91,11 @@ describe('action log service', () => {
       error: 'challenge required',
     });
 
-    const entries = await listActionLogs({ limit: 10, status: 'error' });
+    const result = await listActionLogs({ limit: 10, status: 'error' });
 
-    expect(entries).toHaveLength(1);
-    expect(entries[0].action).toBe('interact');
-    expect(entries[0].status).toBe('error');
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].action).toBe('interact');
+    expect(result.actions[0].status).toBe('error');
   });
 
   describe('filtering', () => {
