@@ -764,7 +764,7 @@ export class IgClient {
 
         // Add new unique followers to our list
         for (const follower of newFollowers) {
-          if (!followers.includes(follower) && followers.length < maxFollowers) {
+          if (!followers.includes(follower) && followers.length < limit) {
             followers.push(follower);
             console.log(`Found follower: ${follower}`);
           }
