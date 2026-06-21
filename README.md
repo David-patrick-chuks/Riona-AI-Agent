@@ -209,7 +209,8 @@ Then open the dashboard or call `POST /api/interact` with your session cookie to
 
 ## Dashboard
 
-Open `http://localhost:3000/dashboard` for live status and the last IG run summary.
+Open `http://localhost:3000/dashboard` for live status, the last IG run summary, recent
+actions, application logs, and errors.
 
 ## Development
 

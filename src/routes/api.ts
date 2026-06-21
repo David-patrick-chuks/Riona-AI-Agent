@@ -23,6 +23,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import { AdminLogLevel, listAdminErrors, listAdminLogs } from '../services/adminLogs';
 import {
   createWebhook,
   listWebhooks,
@@ -1113,6 +1114,32 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+router.get('/admin/logs', async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 50);
+    const level =
+      typeof req.query.level === 'string' && req.query.level
+        ? (req.query.level as AdminLogLevel)
+        : undefined;
+    const logs = await listAdminLogs({ limit, level });
+    return res.json({ logs });
+  } catch (error) {
+    logger.error('Admin log listing error:', error);
+    return res.status(500).json({ error: 'Failed to load application logs' });
+  }
+});
+
+router.get('/admin/errors', async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 50);
+    const errors = await listAdminErrors({ limit });
+    return res.json({ errors });
+  } catch (error) {
+    logger.error('Admin error listing error:', error);
+    return res.status(500).json({ error: 'Failed to load error feed' });
   }
 });
 

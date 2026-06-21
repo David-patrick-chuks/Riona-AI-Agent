@@ -76,6 +76,28 @@ describe('action log service', () => {
     expect(actions).toEqual(['exit', 'interact', 'login']);
   });
 
+  test('filters action logs by status', async () => {
+    await logAction({
+      platform: 'instagram',
+      action: 'login',
+      status: 'success',
+      account: 'default',
+    });
+    await logAction({
+      platform: 'instagram',
+      action: 'interact',
+      status: 'error',
+      account: 'default',
+      error: 'challenge required',
+    });
+
+    const result = await listActionLogs({ limit: 10, status: 'error' });
+
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].action).toBe('interact');
+    expect(result.actions[0].status).toBe('error');
+  });
+
   describe('filtering', () => {
     beforeEach(async () => {
       // Create a set of test entries with different properties
