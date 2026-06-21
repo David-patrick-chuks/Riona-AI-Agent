@@ -29,7 +29,7 @@
 - [License](#license)
 - [Community & Contact](#community--contact)
 
-## Aboutcontinue
+## About
 
 Riona AI Agent is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, account workflows, scheduling, engagement actions, and training inputs so you can run a social media operator from one codebase.
 
@@ -128,16 +128,20 @@ Before running automation, you can shape the agent with:
 1. **Run the agent**:
 
 ```sh
- npm start
+npm start
 ```
 
-Note: The specific platform (Instagram, Twitter) and actions performed by the agent are typically configured through environment variables in the `.env` file, or by selections made if the application prompts for choices at runtime. 2. **Log in and trigger interactions via API**:
+This starts the API server on port 3000 and opens the dashboard at `http://localhost:3000/dashboard`. The Instagram browser only launches when you log in or trigger interactions — it does not auto-comment on its own unless `IG_AGENT_ENABLED=true`.
+
+2. **Log in and trigger interactions**:
 
 ```sh
- curl -X POST http://localhost:3000/api/login \
-   -H "Content-Type: application/json" \
-   -d '{"username":"YOUR_IG_USERNAME","password":"YOUR_IG_PASSWORD"}'
+curl -X POST http://localhost:3000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"YOUR_IG_USERNAME","password":"YOUR_IG_PASSWORD"}'
 ```
+
+Then open the dashboard or call `POST /api/interact` with your session cookie to start liking and commenting on feed posts.
 
 3. **Optional: auto-run the Instagram agent loop**
    Set `IG_AGENT_ENABLED=true` in `.env` to run the interaction loop continuously.

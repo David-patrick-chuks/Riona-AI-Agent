@@ -15,6 +15,7 @@ import {
   getInstagramCookiesPath,
 } from '../../utils';
 import { getIgProfile } from '../../config/igProfile';
+import { getBoolEnv } from '../../utils/env';
 import { setLastRunSummary, IgRunSummary } from '../../utils/igRunSummary';
 import { getCommentFilterConfig, shouldSkipComment } from '../../utils/commentFilters';
 import { runAgent } from '../../Agent';
@@ -64,22 +65,8 @@ export class IgClient {
   }
 
   async init() {
-    // const server = new Server({ port: 8000 });
-    // await server.listen();
-    // const proxyUrl = server.getProxyUrl();
-    // logger.info(`Using proxy URL: ${proxyUrl}`);
-
-    // Center the window on a 1920x1080 screen
-    const width = 1280;
-    const height = 800;
-    const screenWidth = 1920;
-    const screenHeight = 1080;
-    const left = Math.floor((screenWidth - width) / 2);
-    const top = Math.floor((screenHeight - height) / 2);
-    this.browser = await puppeteerExtra.launch({
-      headless: false,
-      args: [`--window-size=${width},${height}`, `--window-position=${left},${top}`],
-    });
+    const { headless, args, width, height } = this.getLaunchOptions();
+    this.browser = await puppeteerExtra.launch({ headless, args });
     this.page = await this.browser.newPage();
     const userAgent = new UserAgent({ deviceCategory: 'desktop' });
     await this.page.setUserAgent(userAgent.toString());
@@ -90,6 +77,66 @@ export class IgClient {
     } else {
       await this.loginWithCredentials();
     }
+  }
+
+  private getLaunchOptions() {
+    const width = 1280;
+    const height = 800;
+    const left = Math.floor((1920 - width) / 2);
+    const top = Math.floor((1080 - height) / 2);
+    const args = [
+      `--window-size=${width},${height}`,
+      `--window-position=${left},${top}`,
+      '--disable-dev-shm-usage',
+    ];
+    if (process.platform === 'linux') {
+      args.push('--no-sandbox', '--disable-setuid-sandbox');
+    }
+    return {
+      headless: getBoolEnv('PUPPETEER_HEADLESS', false),
+      args,
+      width,
+      height,
+    };
+  }
+
+  private async findCommentBox(
+    postSelector: string,
+  ): Promise<puppeteer.ElementHandle<Element> | null> {
+    if (!this.page) return null;
+    const page = this.page;
+    const selectors = [
+      `${postSelector} textarea[aria-label*="Add a comment" i]`,
+      `${postSelector} textarea[placeholder*="Add a comment" i]`,
+      `${postSelector} textarea[aria-label*="comment" i]`,
+      `${postSelector} textarea[placeholder*="comment" i]`,
+      `${postSelector} div[contenteditable="true"][role="textbox"]`,
+      `${postSelector} form textarea`,
+      `${postSelector} textarea`,
+    ];
+
+    for (const selector of selectors) {
+      const box = await page.$(selector);
+      if (box) return box as puppeteer.ElementHandle<Element>;
+    }
+
+    await page.evaluate((sel) => {
+      const article = document.querySelector(sel);
+      if (!article) return;
+      const commentIcon = article.querySelector(
+        'svg[aria-label="Comment"], svg[aria-label*="Comment"]',
+      );
+      const trigger = commentIcon?.closest('div[role="button"], button, a');
+      (trigger as HTMLElement | undefined)?.click();
+    }, postSelector);
+    await delay(750);
+
+    for (const selector of selectors) {
+      const box = await page.$(selector);
+      if (box) return box as puppeteer.ElementHandle<Element>;
+    }
+
+    return null;
   }
 
   private async loginWithCookies() {
@@ -508,6 +555,7 @@ export class IgClient {
     let postIndex = 1; // Start with the first post
     const maxPosts = profile.maxPostsPerRun; // Limit to prevent infinite scrolling
     const page = this.page;
+    let stopReason: string | undefined;
     while (postIndex <= maxPosts) {
       // Check for exit flag
       if (typeof getShouldExitInteractions === 'function' && getShouldExitInteractions()) {
@@ -519,7 +567,8 @@ export class IgClient {
         const postSelector = `article:nth-of-type(${postIndex})`;
         // Check if the post exists
         if (!(await page.$(postSelector))) {
-          console.log('No more posts found. Ending iteration...');
+          console.log(`No more posts found after ${postIndex - 1} post(s). Ending iteration...`);
+          stopReason = 'feed-end';
           break;
         }
 
@@ -592,8 +641,7 @@ export class IgClient {
           caption = expandedCaption;
         }
         // Comment on the post
-        const commentBoxSelector = `${postSelector} textarea[aria-label*="comment"], ${postSelector} textarea[placeholder*="comment"], ${postSelector} textarea`;
-        const commentBox = await page.$(commentBoxSelector);
+        const commentBox = await this.findCommentBox(postSelector);
         if (commentBox) {
           console.log(`Commenting on post ${postIndex}...`);
           const prompt = `human-like Instagram comment based on to the following post: "${caption}". make sure the reply\n            Matchs the tone of the caption (casual, funny, serious, or sarcastic).\n            Sound organic—avoid robotic phrasing, overly perfect grammar, or anything that feels AI-generated.\n            Use relatable language, including light slang, emojis (if appropriate), and subtle imperfections like minor typos or abbreviations (e.g., 'lol' or 'omg').\n            If the caption is humorous or sarcastic, play along without overexplaining the joke.\n            If the post is serious (e.g., personal struggles, activism), respond with empathy and depth.\n            Avoid generic praise ('Great post!'); instead, react specifically to the content (e.g., 'The way you called out pineapple pizza haters 😂👏').\n            *Keep it concise (1-2 sentences max) and compliant with Instagram's guidelines (no spam, harassment, etc.).*`;
@@ -650,6 +698,7 @@ export class IgClient {
           const updated = await getIgDailyState();
           if (updated.count >= dailyLimit) {
             logger.warn(`Daily action limit reached (${updated.count}/${dailyLimit}). Stopping.`);
+            stopReason = 'daily-limit';
             break;
           }
         }
@@ -673,7 +722,7 @@ export class IgClient {
         continue;
       }
     }
-    finishRun();
+    finishRun(stopReason ?? (postIndex > maxPosts ? 'max-posts-reached' : 'completed'));
   }
 
   async scrapeFollowers(targetAccount: string, maxFollowers: number) {
