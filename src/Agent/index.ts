@@ -121,9 +121,7 @@ export function chooseCharacter(): any {
     const adrianStyle = loaded.default || loaded.adrianStyleConfig;
     const name = adrianStyle?.userProfile?.name ?? 'adrian-style';
     const handle = adrianStyle?.userProfile?.instagram;
-    logger.info(
-      `Character loaded: ${name}${handle ? ` (@${handle})` : ''} [adrian-style]`,
-    );
+    logger.info(`Character loaded: ${name}${handle ? ` (@${handle})` : ''} [adrian-style]`);
     return adrianStyle;
   } catch (adrianError) {
     logger.warn(

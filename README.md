@@ -277,10 +277,10 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 
 ### Database
 
-| Variable       | Type    | Default | Description                                      |
-| -------------- | ------- | ------- | ------------------------------------------------ |
-| `DATABASE_URL` | string  |         | PostgreSQL connection URL                        |
-| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing)  |
+| Variable       | Type    | Default | Description                                     |
+| -------------- | ------- | ------- | ----------------------------------------------- |
+| `DATABASE_URL` | string  |         | PostgreSQL connection URL                       |
+| `DB_REQUIRED`  | boolean | `false` | Require PostgreSQL connection (exit if missing) |
 
 ### Logging & General
 

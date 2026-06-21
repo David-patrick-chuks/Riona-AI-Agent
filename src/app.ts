@@ -16,7 +16,6 @@ import { getIgProfile } from './config/igProfile';
 import { setIgCooldown, getIgCooldown } from './utils';
 import { dashboardHtml } from './views/dashboard';
 
-
 // Set up process-level error handlers
 setupErrorHandlers();
 
