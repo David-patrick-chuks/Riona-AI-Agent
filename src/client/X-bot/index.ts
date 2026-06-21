@@ -1,2 +1,2 @@
 /** X/Twitter client entry point. */
-export { twitterClient } from './client';
+export * from './client';
