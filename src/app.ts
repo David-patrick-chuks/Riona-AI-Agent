@@ -68,9 +68,18 @@ const runInstagramOnce = async () => {
   await igClient.interactWithPosts();
 };
 
+const isLoginError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  return lower.includes('login') || lower.includes('challenge');
+};
+
 const runAgents = async () => {
   const profile = getIgProfile();
   const intervalMs = profile.intervalMs;
+  // Declared outside the loop so the re-login guard persists across iterations.
+  let didRelogin = false;
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const cooldown = await getIgCooldown();
@@ -81,14 +90,13 @@ const runAgents = async () => {
     }
 
     logger.info('Starting Instagram agent iteration...');
-    let didRelogin = false;
     try {
       await runInstagramOnce();
       logger.info('Instagram agent iteration finished.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       logger.error('Instagram agent iteration failed:', error);
-      if (message.toLowerCase().includes('login') || message.toLowerCase().includes('challenge')) {
+
+      if (isLoginError(error)) {
         if (!didRelogin) {
           didRelogin = true;
           logger.warn('Attempting one re-login before stopping the loop...');
@@ -103,8 +111,9 @@ const runAgents = async () => {
             return;
           }
         } else {
+          // Re-login already attempted in a prior iteration — give up.
           await setIgCooldown(getNumberEnv('IG_COOLDOWN_MINUTES', 60));
-          logger.error('Stopping agent loop due to login/challenge requirement.');
+          logger.error('Stopping agent loop due to repeated login/challenge failures.');
           return;
         }
       }
