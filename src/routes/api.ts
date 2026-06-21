@@ -686,12 +686,93 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   }
 });
 
+// Helper to calculate date range presets
+const getDateRangePreset = (preset: string): { fromDate: string; toDate: string } | undefined => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (preset) {
+    case 'today':
+      return {
+        fromDate: today.toISOString(),
+        toDate: now.toISOString(),
+      };
+    case 'yesterday': {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return {
+        fromDate: yesterday.toISOString(),
+        toDate: today.toISOString(),
+      };
+    }
+    case 'last7days': {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return {
+        fromDate: weekAgo.toISOString(),
+        toDate: now.toISOString(),
+      };
+    }
+    case 'last30days': {
+      const monthAgo = new Date(today);
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      return {
+        fromDate: monthAgo.toISOString(),
+        toDate: now.toISOString(),
+      };
+    }
+    default:
+      return undefined;
+  }
+};
+
+// Get action log statistics/counts
+router.get('/actions/stats', async (req: Request, res: Response) => {
+  try {
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const platform = typeof req.query.platform === 'string' ? req.query.platform : undefined;
+
+    // Get date range preset if provided
+    const datePreset = typeof req.query.dateRange === 'string' ? req.query.dateRange : undefined;
+    const presetDates = datePreset ? getDateRangePreset(datePreset) : undefined;
+    const fromDate =
+      typeof req.query.fromDate === 'string' ? req.query.fromDate : presetDates?.fromDate;
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : presetDates?.toDate;
+
+    // Get counts for each status
+    const [successResult, errorResult, totalResult] = await Promise.all([
+      listActionLogs({ limit: 1, account, platform, status: 'success', fromDate, toDate }),
+      listActionLogs({ limit: 1, account, platform, status: 'error', fromDate, toDate }),
+      listActionLogs({ limit: 1, account, platform, fromDate, toDate }),
+    ]);
+
+    // Get breakdown by action type
+    const summary = await getActionSummary({ limit: 500, account, platform });
+
+    return res.json({
+      total: totalResult.pagination.total,
+      success: successResult.pagination.total,
+      error: errorResult.pagination.total,
+      successRate:
+        totalResult.pagination.total > 0
+          ? `${((successResult.pagination.total / totalResult.pagination.total) * 100).toFixed(1)}%`
+          : '0%',
+      byAction: summary.byAction,
+      byPlatform: summary.byPlatform,
+      dateRange: presetDates ? { preset: datePreset, ...presetDates } : { fromDate, toDate },
+    });
+  } catch (error) {
+    logger.error('Actions stats error:', error);
+    return res.status(500).json({ error: 'Failed to load action stats' });
+  }
+});
+
 // Export action logs as CSV or JSON file
 router.get('/actions/export', async (req: Request, res: Response) => {
   try {
     const format = req.query.format === 'csv' ? 'csv' : 'json';
     const rawLimit = Number(req.query.limit);
-    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 500;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 1000) : 500;
 
     // Parse filter params (same as /actions)
     const account = typeof req.query.account === 'string' ? req.query.account : undefined;
@@ -699,8 +780,13 @@ router.get('/actions/export', async (req: Request, res: Response) => {
     const status =
       req.query.status === 'success' || req.query.status === 'error' ? req.query.status : undefined;
     const action = typeof req.query.action === 'string' ? req.query.action : undefined;
-    const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
-    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+
+    // Support date range presets
+    const datePreset = typeof req.query.dateRange === 'string' ? req.query.dateRange : undefined;
+    const presetDates = datePreset ? getDateRangePreset(datePreset) : undefined;
+    const fromDate =
+      typeof req.query.fromDate === 'string' ? req.query.fromDate : presetDates?.fromDate;
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : presetDates?.toDate;
 
     const result = await listActionLogs({
       limit,
@@ -718,8 +804,18 @@ router.get('/actions/export', async (req: Request, res: Response) => {
     const filename = `action-logs-${timestamp}.${format}`;
 
     if (format === 'csv') {
-      // Generate CSV
-      const headers = ['id', 'createdAt', 'platform', 'action', 'account', 'status', 'error'];
+      // Generate CSV with all fields
+      const headers = [
+        'id',
+        'createdAt',
+        'platform',
+        'action',
+        'account',
+        'username',
+        'status',
+        'error',
+        'details',
+      ];
       const csvRows = [headers.join(',')];
 
       for (const log of result.actions) {
@@ -729,8 +825,10 @@ router.get('/actions/export', async (req: Request, res: Response) => {
           log.platform,
           log.action,
           log.account,
+          log.username || '',
           log.status,
           log.error ? `"${log.error.replace(/"/g, '""')}"` : '',
+          log.details ? `"${JSON.stringify(log.details).replace(/"/g, '""')}"` : '',
         ];
         csvRows.push(row.join(','));
       }
@@ -746,12 +844,48 @@ router.get('/actions/export', async (req: Request, res: Response) => {
     return res.json({
       exportedAt: new Date().toISOString(),
       totalRecords: result.actions.length,
-      filters: { account, platform, status, action, fromDate, toDate },
+      filters: { account, platform, status, action, fromDate, toDate, dateRange: datePreset },
       actions: result.actions,
     });
   } catch (error) {
     logger.error('Actions export error:', error);
     return res.status(500).json({ error: 'Failed to export action logs' });
+  }
+});
+
+// Bulk delete old action logs (admin cleanup)
+router.delete('/actions/cleanup', async (req: Request, res: Response) => {
+  try {
+    const daysOld = Number(req.query.daysOld);
+    if (!Number.isFinite(daysOld) || daysOld < 7) {
+      return res.status(400).json({
+        error: 'daysOld must be a number >= 7 to prevent accidental data loss',
+      });
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    // Get count of logs to be deleted
+    const oldLogs = await listActionLogs({
+      limit: 1,
+      toDate: cutoffDate.toISOString(),
+    });
+
+    const countToDelete = oldLogs.pagination.total;
+
+    // For safety, this endpoint only reports what would be deleted
+    // Actual deletion would require database access which varies by backend
+    return res.json({
+      dryRun: true,
+      message: `Found ${countToDelete} action logs older than ${daysOld} days`,
+      cutoffDate: cutoffDate.toISOString(),
+      recordsToDelete: countToDelete,
+      note: 'Actual deletion requires direct database access. Use this for planning cleanup operations.',
+    });
+  } catch (error) {
+    logger.error('Actions cleanup error:', error);
+    return res.status(500).json({ error: 'Failed to analyze cleanup' });
   }
 });
 
