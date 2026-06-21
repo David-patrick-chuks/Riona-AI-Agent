@@ -3,6 +3,17 @@ import path from "path";
 import { geminiApiKeys } from "../secret";
 import logger from "../config/logger";
 
+type CookieLike = { name: string; expires?: number };
+
+/** Puppeteer session cookies use expires -1; timed cookies use a Unix timestamp. */
+export const isCookieValid = (cookie: CookieLike | undefined, nowSec: number): boolean => {
+  if (!cookie) return false;
+  const { expires } = cookie;
+  if (expires === -1) return true;
+  if (typeof expires !== "number") return false;
+  return expires > nowSec;
+};
+
 export async function Instagram_cookiesExist(): Promise<boolean> {
   try {
     const cookiesPath = "./cookies/Instagramcookies.json";
@@ -27,8 +38,8 @@ export async function Instagram_cookiesExist(): Promise<boolean> {
 
     const currentTimestamp = Math.floor(Date.now() / 1000);
 
-    if (primaryCookie && primaryCookie.expires > currentTimestamp) return true;
-    if (fallbackCookie && fallbackCookie.expires > currentTimestamp) return true;
+    if (isCookieValid(primaryCookie, currentTimestamp)) return true;
+    if (isCookieValid(fallbackCookie, currentTimestamp)) return true;
 
     return false;
   } catch (error) {
