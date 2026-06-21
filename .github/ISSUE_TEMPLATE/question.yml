@@ -1,6 +1,6 @@
 name: Question
 description: Ask a question about usage or setup
-labels: ["question"]
+labels: ['question']
 body:
   - type: textarea
     id: question

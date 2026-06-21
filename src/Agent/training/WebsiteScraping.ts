@@ -1,11 +1,11 @@
-import puppeteer, { Browser } from "puppeteer";
-import DOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
-import { saveScrapedData } from "../../utils";
+import puppeteer, { Browser } from 'puppeteer';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+import { saveScrapedData } from '../../utils';
 
 // Function to clean the HTML content
 function cleanHTML(inputHtml: string): string {
-  const window = new JSDOM("").window;
+  const window = new JSDOM('').window;
   const purify = DOMPurify(window);
   return purify.sanitize(inputHtml, {
     ALLOWED_TAGS: [], // Remove all tags
@@ -18,12 +18,12 @@ async function scrapeAndCleanContent(url: string): Promise<string | null> {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
 
     await page.setDefaultNavigationTimeout(30000);
-    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.goto(url, { waitUntil: 'networkidle2' });
 
     const htmlContent = await page.evaluate(() => document.body.innerHTML);
     return cleanHTML(htmlContent);
@@ -40,19 +40,17 @@ async function getAllLinks(url: string): Promise<string[]> {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
 
     await page.setDefaultNavigationTimeout(30000);
-    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.goto(url, { waitUntil: 'networkidle2' });
 
     const links = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a"))
+      Array.from(document.querySelectorAll('a'))
         .map((anchor) => anchor.href)
-        .filter(
-          (href) => href && !href.includes("mailto:") && !href.includes("tel:")
-        )
+        .filter((href) => href && !href.includes('mailto:') && !href.includes('tel:')),
     );
 
     return links;
@@ -99,9 +97,9 @@ async function scrapeAllRoutes(baseUrl: string): Promise<void> {
 
 // List of medical websites to scrape
 const medicalWebsites = [
-  "https://www.docteur-guiga.com/fr/accueil/",
-  "https://www.dranasgherissi.com/fr/",
-  "https://medical-travel.fr/tarifs/",
+  'https://www.docteur-guiga.com/fr/accueil/',
+  'https://www.dranasgherissi.com/fr/',
+  'https://medical-travel.fr/tarifs/',
 ];
 
 // Scrape all medical websites
@@ -120,8 +118,8 @@ async function scrapeAllMedicalWebsites() {
 // Execute the scraping
 scrapeAllMedicalWebsites()
   .then(() => {
-    console.log("All medical websites scraping completed.");
+    console.log('All medical websites scraping completed.');
   })
   .catch((error) => {
-    console.error("Error in main scraping process:", error);
+    console.error('Error in main scraping process:', error);
   });

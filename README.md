@@ -1,21 +1,17 @@
-
 # Riona AI Agent
 
-[![GitHub stars](https://img.shields.io/github/stars/David-patrick-chuks/Riona-AI-Agent?style=social)](https://github.com/David-patrick-chuks/Riona-AI-Agent/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/David-patrick-chuks/Riona-AI-Agent?style=social)](https://github.com/David-patrick-chuks/Riona-AI-Agent/network/members)
-[![GitHub license](https://img.shields.io/github/license/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/blob/main/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/issues)
-[![GitHub contributors](https://img.shields.io/github/contributors/David-patrick-chuks/Riona-AI-Agent)](https://github.com/David-patrick-chuks/Riona-AI-Agent/graphs/contributors)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![Code style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
+[GitHub stars](https://github.com/David-patrick-chuks/Riona-AI-Agent/stargazers)
+[GitHub forks](https://github.com/David-patrick-chuks/Riona-AI-Agent/network/members)
+[GitHub license](https://github.com/David-patrick-chuks/Riona-AI-Agent/blob/main/LICENSE)
+[GitHub issues](https://github.com/David-patrick-chuks/Riona-AI-Agent/issues)
+[GitHub contributors](https://github.com/David-patrick-chuks/Riona-AI-Agent/graphs/contributors)
+[PRs Welcome](http://makeapullrequest.com)
+[Code style: Prettier](https://github.com/prettier/prettier)
 
 [Website](https://www.agentriona.xyz) | [Roadmap](ROADMAP.md) | [Twitter](https://twitter.com/david_patrick01) | [Contact](mailto:davidchuksdev@gmail.com)
 
-<p align="center">
-  <img src="riona.png" alt="Riona AI Agent banner" width="100%" />
-</p>
-
 ## Table of Contents
+
 - [About](#about)
 - [Overview](#overview)
 - [Quick Links](#quick-links)
@@ -33,7 +29,7 @@
 - [License](#license)
 - [Community & Contact](#community--contact)
 
-## About
+## Aboutcontinue
 
 Riona AI Agent is an AI-powered social automation platform for Instagram and X/Twitter. It combines browser automation, AI-generated content, account workflows, scheduling, engagement actions, and training inputs so you can run a social media operator from one codebase.
 
@@ -84,140 +80,94 @@ Before running automation, you can shape the agent with:
 
 1. **Clone the repository**:
 
-   ```sh
-   git clone https://github.com/david-patrick-chuks/riona-ai-agent.git
-   cd riona-ai-agent
-   ```
+```sh
+ git clone https://github.com/david-patrick-chuks/riona-ai-agent.git
+ cd riona-ai-agent
+```
 
 2. **Install dependencies**:
 
-   ```sh
-   npm install
-   ```
+```sh
+ npm install
+```
 
 3. **Set up environment variables**:
    Rename the `.env.example` file to `.env` in the root directory and add your Instagram credentials. Refer to the `.env.example` file for the required variables.
-   ```dotenv # Instagram credentials
-   IGusername=your_instagram_username
-   IGpassword=your_instagram_password 
-   
-   Xusername= #Twitter username
-   Xpassword= #Twitter password
-
-   MONGODB_URI= #MongoDB URI
-   MONGODB_REQUIRED=false
-   
-   # Gemini API keys (set only the ones you use)
-   GEMINI_API_KEY=your_primary_gemini_api_key
-   GEMINI_API_KEY_1=your_gemini_api_key_1
-   GEMINI_API_KEY_2=your_gemini_api_key_2
-   
-   # Optional: locale-specific ad/sponsored markers (comma-separated)
-   IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
-   IG_AD_BUTTON_MARKERS=learn more,shop now,sign up,install now,get offer,subscribe,book now
-
-   # Optional: run Instagram agent loop automatically
-   IG_AGENT_ENABLED=false
-   IG_AGENT_INTERVAL_MS=30000
-   
-   # Optional: daily limit for IG actions (likes/comments). 0 = unlimited
-   IG_DAILY_MAX_ACTIONS=0
-   
-   # Optional: logging backend ("winston" or "console")
-   LOGGER=console
-   ```
 
 ## MongoDB Setup (Using Docker)
 
 1. **Install Docker**:
    If you don't have Docker installed, download and install it from the [official website](https://www.docker.com/products/docker-desktop/)
 2. **Run MongoDB using Docker Container**:
-
-    **Option 1:**
-      ```sh
-      docker run -d -p 27017:27017 --name instagram-ai-mongodb mongodb/mongodb-community-server:latest
-      ```
+   **Option 1:**
+   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb mongodb/mongodb-community-server:latest`  
     **Option 2:**
-      ```sh
-      docker run -d -p 27017:27017 --name instagram-ai-mongodb -v mongodb_data:/data/db mongodb/mongodb-community-server:latest
-      ```   
-      (Option 2: use this if you want to have like a permanent storage in you so your data won't be lost or remove if you stop or remove your Docker container)
+   `sh     docker run -d -p 27017:27017 --name instagram-ai-mongodb -v mongodb_data:/data/db mongodb/mongodb-community-server:latest     `  
+    (Option 2: use this if you want to have like a permanent storage in you so your data won't be lost or remove if you stop or remove your Docker container)
 3. **Modify the MONGODB_URI in the .env file**:
-   ```dotenv
-   MONGODB_URI=mongodb://localhost:27017/instagram-ai-agent
-   ```
+
+```dotenv
+ MONGODB_URI=mongodb://localhost:27017/instagram-ai-agent
+```
+
 4. **Verify the connection**:
    Open a new terminal and run the following command:
-   ```sh
-   docker ps
-   ```
    You should see the MongoDB container running.
-
    Docker Commands (Additional Info):
-   - To stop the MongoDB container:
-     ```sh
-     docker stop instagram-ai-mongodb
-     ```
-   - To start the MongoDB container:
-       ```sh
-       docker start instagram-ai-mongodb
-       ```
-   - To remove the MongoDB container:
-      ```sh
-      docker rm instagram-ai-mongodb
-      ```
-   - To remove the MongoDB container and its data:
-      ```sh
-      docker rm -v instagram-ai-mongodb
-      ```
+
+- To stop the MongoDB container:
+  ```sh
+  docker stop instagram-ai-mongodb
+  ```
+- To start the MongoDB container:
+- To remove the MongoDB container:
+- To remove the MongoDB container and its data:
 
 ## Usage
 
 1. **Run the agent**:
-   ```sh
-   npm start
-   ```
-   Note: The specific platform (Instagram, Twitter) and actions performed by the agent are typically configured through environment variables in the `.env` file, or by selections made if the application prompts for choices at runtime.
 
-2. **Log in and trigger interactions via API**:
-   ```sh
-   curl -X POST http://localhost:3000/api/login \
-     -H "Content-Type: application/json" \
-     -d '{"username":"YOUR_IG_USERNAME","password":"YOUR_IG_PASSWORD"}'
-   ```
-   ```sh
-   curl -X POST http://localhost:3000/api/interact \
-     -H "Content-Type: application/json" \
-     --cookie "token=YOUR_JWT_TOKEN"
-   ```
+```sh
+ npm start
+```
+
+Note: The specific platform (Instagram, Twitter) and actions performed by the agent are typically configured through environment variables in the `.env` file, or by selections made if the application prompts for choices at runtime. 2. **Log in and trigger interactions via API**:
+
+```sh
+ curl -X POST http://localhost:3000/api/login \
+   -H "Content-Type: application/json" \
+   -d '{"username":"YOUR_IG_USERNAME","password":"YOUR_IG_PASSWORD"}'
+```
 
 3. **Optional: auto-run the Instagram agent loop**
    Set `IG_AGENT_ENABLED=true` in `.env` to run the interaction loop continuously.
-
 4. **Post a photo (by URL)**
-   ```sh
-   curl -X POST http://localhost:3000/api/post-photo \\
-     -H "Content-Type: application/json" \\
-     --cookie "token=YOUR_JWT_TOKEN" \\
-     -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Hello IG!"}'
-   ```
+
+```sh
+ curl -X POST http://localhost:3000/api/post-photo \\
+   -H "Content-Type: application/json" \\
+   --cookie "token=YOUR_JWT_TOKEN" \\
+   -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Hello IG!"}'
+```
 
 5. **Post a photo (file upload)**
-   ```sh
-   curl -X POST http://localhost:3000/api/post-photo-file \\
-     -H "Content-Type: multipart/form-data" \\
-     --cookie "token=YOUR_JWT_TOKEN" \\
-     -F "image=@/path/to/photo.jpg" \\
-     -F "caption=Hello IG!"
-   ```
+
+```sh
+ curl -X POST http://localhost:3000/api/post-photo-file \\
+   -H "Content-Type: multipart/form-data" \\
+   --cookie "token=YOUR_JWT_TOKEN" \\
+   -F "image=@/path/to/photo.jpg" \\
+   -F "caption=Hello IG!"
+```
 
 6. **Schedule a photo post**
-   ```sh
-   curl -X POST http://localhost:3000/api/schedule-post \\
-     -H "Content-Type: application/json" \\
-     --cookie "token=YOUR_JWT_TOKEN" \\
-     -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Scheduled post","cronTime":"0 9 * * *"}'
-   ```
+
+```sh
+ curl -X POST http://localhost:3000/api/schedule-post \\
+   -H "Content-Type: application/json" \\
+   --cookie "token=YOUR_JWT_TOKEN" \\
+   -d '{"imageUrl":"https://example.com/photo.jpg","caption":"Scheduled post","cronTime":"0 9 * * *"}'
+```
 
 ## Dashboard
 
@@ -259,46 +209,51 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 ## Configuration Reference
 
 ### Instagram
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `IGusername` | string | | Instagram username |
-| `IGpassword` | string | | Instagram password |
-| `IG_RUN_PROFILE` | string | `standard` | Run profile: `safe`, `standard`, `aggressive` |
-| `IG_AGENT_ENABLED` | boolean | `false` | Auto-run Instagram agent loop |
-| `IG_AGENT_INTERVAL_MS` | number | `30000` | Agent loop interval in ms |
-| `IG_DAILY_MAX_ACTIONS` | number | `0` | Daily max IG actions (0 = unlimited) |
-| `IG_MAX_POSTS_PER_RUN` | number | | Max posts per run (overrides profile) |
-| `IG_ACTION_DELAY_MIN_MS` | number | | Min action delay (overrides profile) |
-| `IG_ACTION_DELAY_MAX_MS` | number | | Max action delay (overrides profile) |
-| `IG_COOLDOWN_MINUTES` | number | | Cooldown duration in minutes |
-| `IG_COMMENT_ALLOWLIST` | string | | Comma-separated allowed comment terms |
-| `IG_COMMENT_DENYLIST` | string | | Comma-separated blocked comment terms |
-| `IG_COMMENT_SENTIMENT` | string | `any` | Sentiment filter: `any`, `positive`, `neutral` |
-| `IG_AD_MARKERS` | string | `sponsored,paid partnership,paid partnership with` | Comma-separated ad markers |
-| `IG_AD_BUTTON_MARKERS` | string | `learn more,shop now,sign up,install now,get offer,subscribe,book now` | Comma-separated ad button markers |
+
+| Variable                 | Type    | Default                                                                | Description                                    |
+| ------------------------ | ------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| `IGusername`             | string  |                                                                        | Instagram username                             |
+| `IGpassword`             | string  |                                                                        | Instagram password                             |
+| `IG_RUN_PROFILE`         | string  | `standard`                                                             | Run profile: `safe`, `standard`, `aggressive`  |
+| `IG_AGENT_ENABLED`       | boolean | `false`                                                                | Auto-run Instagram agent loop                  |
+| `IG_AGENT_INTERVAL_MS`   | number  | `30000`                                                                | Agent loop interval in ms                      |
+| `IG_DAILY_MAX_ACTIONS`   | number  | `0`                                                                    | Daily max IG actions (0 = unlimited)           |
+| `IG_MAX_POSTS_PER_RUN`   | number  |                                                                        | Max posts per run (overrides profile)          |
+| `IG_ACTION_DELAY_MIN_MS` | number  |                                                                        | Min action delay (overrides profile)           |
+| `IG_ACTION_DELAY_MAX_MS` | number  |                                                                        | Max action delay (overrides profile)           |
+| `IG_COOLDOWN_MINUTES`    | number  |                                                                        | Cooldown duration in minutes                   |
+| `IG_COMMENT_ALLOWLIST`   | string  |                                                                        | Comma-separated allowed comment terms          |
+| `IG_COMMENT_DENYLIST`    | string  |                                                                        | Comma-separated blocked comment terms          |
+| `IG_COMMENT_SENTIMENT`   | string  | `any`                                                                  | Sentiment filter: `any`, `positive`, `neutral` |
+| `IG_AD_MARKERS`          | string  | `sponsored,paid partnership,paid partnership with`                     | Comma-separated ad markers                     |
+| `IG_AD_BUTTON_MARKERS`   | string  | `learn more,shop now,sign up,install now,get offer,subscribe,book now` | Comma-separated ad button markers              |
 
 ### X/Twitter
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Xusername` | string | | X/Twitter username |
-| `Xpassword` | string | | X/Twitter password |
+
+| Variable    | Type   | Default | Description        |
+| ----------- | ------ | ------- | ------------------ |
+| `Xusername` | string |         | X/Twitter username |
+| `Xpassword` | string |         | X/Twitter password |
 
 ### AI & APIs
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `GEMINI_API_KEY` | string | | Primary Gemini API key |
-| `GEMINI_API_KEY_1` | string | | Secondary Gemini API key |
-| `GEMINI_API_KEY_2` | string | | Tertiary Gemini API key |
+
+| Variable           | Type   | Default | Description              |
+| ------------------ | ------ | ------- | ------------------------ |
+| `GEMINI_API_KEY`   | string |         | Primary Gemini API key   |
+| `GEMINI_API_KEY_1` | string |         | Secondary Gemini API key |
+| `GEMINI_API_KEY_2` | string |         | Tertiary Gemini API key  |
 
 ### Database
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `MONGODB_URI` | string | | MongoDB connection URI |
+
+| Variable           | Type    | Default | Description                |
+| ------------------ | ------- | ------- | -------------------------- |
+| `MONGODB_URI`      | string  |         | MongoDB connection URI     |
 | `MONGODB_REQUIRED` | boolean | `false` | Require MongoDB connection |
 
 ### Logging & General
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
+
+| Variable | Type   | Default   | Description                             |
+| -------- | ------ | --------- | --------------------------------------- |
 | `LOGGER` | string | `console` | Logging backend: `winston` or `console` |
 
 ## Multi-Account Support
@@ -340,21 +295,18 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Stargazers
+
 Thank you to all our supporters!
 
-[![Star History Chart](https://api.star-history.com/svg?repos=David-patrick-chuks/Riona-AI-Agent&type=Date)](https://www.star-history.com/#David-patrick-chuks/Riona-AI-Agent&Date)
+[Star History Chart](https://www.star-history.com/#David-patrick-chuks/Riona-AI-Agent&Date)
 
-## 
-
-<p align="center">
-Built with ❤️ by David Patrick 
-</p>
+Built with ❤️ by David Patrick
 
 ## Community & Contact
 
 - GitHub Discussions: use the Discussions tab for Q&A
 - Issues: bug reports and feature requests
 - Twitter: @david_patrick01
-- Email: davidchuksdev@gmail.com
+- Email: [davidchuksdev@gmail.com](mailto:davidchuksdev@gmail.com)
 
 Real-time chat is not set up yet. If you want a Discord server, open a discussion and we can spin it up based on interest.

@@ -1,17 +1,17 @@
-import express, { Application } from "express";
-import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
-import helmet from "helmet"; // For securing HTTP headers
-import cors from "cors";
+import express, { Application } from 'express';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+import helmet from 'helmet'; // For securing HTTP headers
+import cors from 'cors';
 import session from 'express-session';
 
-import logger, { setupErrorHandlers } from "./config/logger";
-import { setup_HandleError } from "./utils";
-import apiRoutes from "./routes/api";
-import { getIgClient, closeIgClient } from "./client/Instagram";
-import { getBoolEnv, getNumberEnv } from "./utils/env";
-import { getIgProfile } from "./config/igProfile";
-import { setIgCooldown, getIgCooldown } from "./utils";
+import logger, { setupErrorHandlers } from './config/logger';
+import { setup_HandleError } from './utils';
+import apiRoutes from './routes/api';
+import { getIgClient, closeIgClient } from './client/Instagram';
+import { getBoolEnv, getNumberEnv } from './utils/env';
+import { getIgProfile } from './config/igProfile';
+import { setIgCooldown, getIgCooldown } from './utils';
 // import { main as twitterMain } from './client/Twitter'; //
 // import { main as githubMain } from './client/GitHub'; //
 
@@ -25,24 +25,28 @@ dotenv.config();
 const app: Application = express();
 
 // Middleware setup
-app.use(helmet({
+app.use(
+  helmet({
     contentSecurityPolicy: {
-        directives: {
-            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "'unsafe-inline'"],
-        },
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': ["'self'", "'unsafe-inline'"],
+      },
     },
-}));
+  }),
+);
 app.use(cors());
 app.use(express.json()); // JSON body parsing
-app.use(express.urlencoded({ extended: true, limit: "1kb" })); // URL-encoded data
+app.use(express.urlencoded({ extended: true, limit: '1kb' })); // URL-encoded data
 app.use(cookieParser()); // Cookie parsing
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'supersecretkey',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 2 * 60 * 60 * 1000, sameSite: 'lax' },
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'supersecretkey',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 2 * 60 * 60 * 1000, sameSite: 'lax' },
+  }),
+);
 
 // Serve static files from the 'public' directory
 app.use(express.static('frontend/dist'));
@@ -436,7 +440,7 @@ app.get('/dashboard', (_req, res) => {
 });
 
 app.get(/.*/, (_req, res) => {
-    res.sendFile('index.html', { root: 'frontend/dist' });
+  res.sendFile('index.html', { root: 'frontend/dist' });
 });
 
 const runInstagramOnce = async () => {
@@ -456,31 +460,31 @@ const runAgents = async () => {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
 
-    logger.info("Starting Instagram agent iteration...");
+    logger.info('Starting Instagram agent iteration...');
     let didRelogin = false;
     try {
       await runInstagramOnce();
-      logger.info("Instagram agent iteration finished.");
+      logger.info('Instagram agent iteration finished.');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.error("Instagram agent iteration failed:", error);
-      if (message.toLowerCase().includes("login") || message.toLowerCase().includes("challenge")) {
+      logger.error('Instagram agent iteration failed:', error);
+      if (message.toLowerCase().includes('login') || message.toLowerCase().includes('challenge')) {
         if (!didRelogin) {
           didRelogin = true;
-          logger.warn("Attempting one re-login before stopping the loop...");
+          logger.warn('Attempting one re-login before stopping the loop...');
           try {
             await closeIgClient();
             await runInstagramOnce();
-            logger.info("Re-login attempt succeeded.");
+            logger.info('Re-login attempt succeeded.');
           } catch (retryError) {
-            logger.error("Re-login attempt failed:", retryError);
-            await setIgCooldown(getNumberEnv("IG_COOLDOWN_MINUTES", 60));
-            logger.error("Stopping agent loop due to login/challenge requirement.");
+            logger.error('Re-login attempt failed:', retryError);
+            await setIgCooldown(getNumberEnv('IG_COOLDOWN_MINUTES', 60));
+            logger.error('Stopping agent loop due to login/challenge requirement.');
             return;
           }
         } else {
-          await setIgCooldown(getNumberEnv("IG_COOLDOWN_MINUTES", 60));
-          logger.error("Stopping agent loop due to login/challenge requirement.");
+          await setIgCooldown(getNumberEnv('IG_COOLDOWN_MINUTES', 60));
+          logger.error('Stopping agent loop due to login/challenge requirement.');
           return;
         }
       }
@@ -491,12 +495,14 @@ const runAgents = async () => {
   }
 };
 
-if (getBoolEnv("IG_AGENT_ENABLED", false)) {
+if (getBoolEnv('IG_AGENT_ENABLED', false)) {
   runAgents().catch((error) => {
-    setup_HandleError(error, "Error running agents:");
+    setup_HandleError(error, 'Error running agents:');
   });
 } else {
-  logger.warn("Instagram automation is disabled. Set IG_AGENT_ENABLED=true to start the agent loop.");
+  logger.warn(
+    'Instagram automation is disabled. Set IG_AGENT_ENABLED=true to start the agent loop.',
+  );
 }
 
 // Error handling

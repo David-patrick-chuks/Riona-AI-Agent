@@ -3,6 +3,7 @@
 This model is integrated into the main repo and run via root npm scripts. It's a CNN-based image classifier for detecting reCAPTCHA challenges, built with TensorFlow.js.
 
 ## Project Structure
+
 ```
 riona-recaptcha-model/
 ├── data/
@@ -35,6 +36,7 @@ riona-recaptcha-model/
 ```
 
 ## Prerequisites
+
 - Node.js (v18+ recommended)
 - MongoDB (local or Atlas)
 - Required directories (created automatically if missing, but you can create them manually:
@@ -44,7 +46,9 @@ riona-recaptcha-model/
   - `training/knowledge/`
 
 ## Setup
+
 1. Ensure you have a `.env` file in the project root with:
+
    ```env
    MONGODB_URI=<your_mongodb_connection_string>
    PORT=8080 # Optional, defaults to 8080
@@ -56,26 +60,34 @@ riona-recaptcha-model/
    ```
 
 ## Run (dev)
+
 Starts the development server with hot reloading:
+
 ```bash
 npm run recaptcha:dev
 ```
 
 ## Train
+
 Train the model using images from `data/correct/` and `data/incorrect/`:
+
 ```bash
 npm run recaptcha:train
 ```
 
 ## Build + Serve
+
 Build the project and run in production mode:
+
 ```bash
 npm run recaptcha:build
 npm run recaptcha:serve
 ```
 
 ## Configuration
+
 Config lives in `riona-recaptcha-model/src/config/default.ts`. You can adjust:
+
 - Image size
 - Classification threshold
 - Augmentation factor

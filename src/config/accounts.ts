@@ -34,7 +34,9 @@ export const parseAccountsMap = (raw: unknown): AccountsMap => {
     const password = typeof entry.password === 'string' ? entry.password.trim() : '';
 
     if (!username || !password) {
-      logger.warn(`Skipping invalid accounts.json entry "${key}": username and password are required`);
+      logger.warn(
+        `Skipping invalid accounts.json entry "${key}": username and password are required`,
+      );
       continue;
     }
 

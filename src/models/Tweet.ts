@@ -1,4 +1,4 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export interface ITweet extends Document {
   tweetContent: string;
@@ -12,7 +12,6 @@ const tweetSchema = new Schema<ITweet>({
   timeTweeted: { type: Date, default: Date.now },
 });
 
-const Tweet: Model<ITweet> =
-  mongoose.models.Tweet || mongoose.model<ITweet>("Tweet", tweetSchema);
+const Tweet: Model<ITweet> = mongoose.models.Tweet || mongoose.model<ITweet>('Tweet', tweetSchema);
 
 export default Tweet;

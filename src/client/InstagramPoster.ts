@@ -16,7 +16,7 @@ const posterClients = new Map<string, PosterEntry>();
 const resolveCredentials = (
   username?: string,
   password?: string,
-  accountKey: string = 'default'
+  accountKey: string = 'default',
 ): { username: string; password: string } => {
   const fromAccount = getAccount(accountKey);
   const u = username || fromAccount?.username || process.env.IGusername || IGusername || '';
@@ -27,7 +27,7 @@ const resolveCredentials = (
 export const getPosterClient = async (
   username?: string,
   password?: string,
-  accountKey: string = 'default'
+  accountKey: string = 'default',
 ): Promise<InstagramClient> => {
   const { username: u, password: p } = resolveCredentials(username, password, accountKey);
   if (!u || !p) {
@@ -51,7 +51,11 @@ export const getPosterClient = async (
   return entry.client;
 };
 
-export const postPhotoBuffer = async (buffer: Buffer, caption: string = '', accountKey: string = 'default') => {
+export const postPhotoBuffer = async (
+  buffer: Buffer,
+  caption: string = '',
+  accountKey: string = 'default',
+) => {
   const client = await getPosterClient(undefined, undefined, accountKey);
   return client.postPhotoBuffer(buffer, caption);
 };
@@ -60,7 +64,7 @@ export const schedulePhotoPost = async (
   imageUrl: string,
   caption: string,
   cronTime: string,
-  accountKey: string = 'default'
+  accountKey: string = 'default',
 ): Promise<string> => {
   const client = await getPosterClient(undefined, undefined, accountKey);
   return schedulePostJob(accountKey, cronTime, imageUrl, caption, async () => {

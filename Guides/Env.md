@@ -1,15 +1,18 @@
 # Environment Variables
 
 ## Required
+
 - `IGusername`
 - `IGpassword`
 - `MONGODB_URI`
 
 ## Gemini
+
 - `GEMINI_API_KEY` (primary)
 - `GEMINI_API_KEY_1..N` (rotation)
 
 ## Instagram automation
+
 - `IG_AGENT_ENABLED` (true/false)
 - `IG_AGENT_INTERVAL_MS`
 - `IG_DAILY_MAX_ACTIONS`
@@ -20,20 +23,25 @@
 - `IG_COOLDOWN_MINUTES` (cooldown duration after errors)
 
 ## Multi-account
+
 - `src/config/accounts.json` (see `src/config/accounts.example.json`)
 
 ## Sponsored content filters
+
 - `IG_AD_MARKERS`
 - `IG_AD_BUTTON_MARKERS`
 
 ## Logging
+
 - `LOGGER` ("winston" | "console")
 
 ## Training
+
 - `TRAIN_MAX_FILE_MB`
 - `TRAIN_DRY_RUN` (true/false)
 
 ## Comment filters
+
 - `IG_COMMENT_ALLOWLIST` (comma-separated)
 - `IG_COMMENT_DENYLIST` (comma-separated)
 - `IG_COMMENT_SENTIMENT` (any | positive | neutral)

@@ -21,7 +21,7 @@ export const connectDB = async () => {
     try {
       await mongoose.connect(uri, {
         connectTimeoutMS: 60000, // Increase connection timeout to 60 seconds
-        serverSelectionTimeoutMS: 60000 // Increase server selection timeout
+        serverSelectionTimeoutMS: 60000, // Increase server selection timeout
       });
       logger.info('MongoDB connected');
       return true;
@@ -34,8 +34,10 @@ export const connectDB = async () => {
         return false;
       }
 
-      logger.warn(`MongoDB connection attempt failed. Retrying in ${delay / 1000} seconds... (${retries} attempts remaining)`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      logger.warn(
+        `MongoDB connection attempt failed. Retrying in ${delay / 1000} seconds... (${retries} attempts remaining)`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
       return connectWithRetry(retries - 1, delay);
     }
   };

@@ -1,8 +1,8 @@
-import fs from "fs/promises";
-import path from "path";
-import mongoose from "mongoose";
-import logger from "../config/logger";
-import ActionLog, { ActionLogStatus } from "../models/ActionLog";
+import fs from 'fs/promises';
+import path from 'path';
+import mongoose from 'mongoose';
+import logger from '../config/logger';
+import ActionLog, { ActionLogStatus } from '../models/ActionLog';
 
 export type ActionLogInput = {
   platform: string;
@@ -35,23 +35,23 @@ type ActionSummary = {
 };
 
 const getActionLogPath = () =>
-  process.env.ACTION_LOG_PATH || path.join(process.cwd(), "logs", "actionLogs.json");
+  process.env.ACTION_LOG_PATH || path.join(process.cwd(), 'logs', 'actionLogs.json');
 
 const mapRecord = (entry: any): ActionLogRecord => ({
   id: String(entry._id || entry.id || `${entry.createdAt}-${entry.action}`),
   platform: String(entry.platform),
   action: String(entry.action),
-  account: String(entry.account || "default"),
+  account: String(entry.account || 'default'),
   username: entry.username ? String(entry.username) : undefined,
-  status: entry.status === "error" ? "error" : "success",
+  status: entry.status === 'error' ? 'error' : 'success',
   error: entry.error ? String(entry.error) : undefined,
-  details: entry.details && typeof entry.details === "object" ? entry.details : undefined,
+  details: entry.details && typeof entry.details === 'object' ? entry.details : undefined,
   createdAt: new Date(entry.createdAt || Date.now()).toISOString(),
 });
 
 const readFileLogs = async (): Promise<ActionLogRecord[]> => {
   try {
-    const raw = await fs.readFile(getActionLogPath(), "utf-8");
+    const raw = await fs.readFile(getActionLogPath(), 'utf-8');
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
       return [];
@@ -59,10 +59,10 @@ const readFileLogs = async (): Promise<ActionLogRecord[]> => {
     return parsed.map(mapRecord).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch (error) {
     const err = error as NodeJS.ErrnoException;
-    if (err.code === "ENOENT") {
+    if (err.code === 'ENOENT') {
       return [];
     }
-    logger.warn("Failed to read action log file.", error);
+    logger.warn('Failed to read action log file.', error);
     return [];
   }
 };
@@ -80,7 +80,7 @@ const withFileLogLock = async <T>(fn: () => Promise<T>): Promise<T> => {
   const run = fileLogChain.then(fn, fn);
   fileLogChain = run.then(
     () => undefined,
-    () => undefined
+    () => undefined,
   );
   return run;
 };
@@ -106,7 +106,7 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
   const entry = {
     platform: input.platform,
     action: input.action,
-    account: input.account || "default",
+    account: input.account || 'default',
     username: input.username,
     status: input.status,
     error: input.error,
@@ -122,7 +122,7 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
 
     await appendFileLog(entry);
   } catch (error) {
-    logger.warn("Failed to persist action log entry.", error);
+    logger.warn('Failed to persist action log entry.', error);
   }
 };
 
@@ -176,7 +176,7 @@ export const getActionSummary = async (options?: {
         error: 0,
         byAction: {},
         byPlatform: {},
-      }
+      },
     );
 
   if (mongoose.connection.readyState === 1) {

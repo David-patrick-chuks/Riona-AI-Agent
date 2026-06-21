@@ -1,6 +1,6 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
-export type ActionLogStatus = "success" | "error";
+export type ActionLogStatus = 'success' | 'error';
 
 export interface IActionLog extends Document {
   platform: string;
@@ -18,21 +18,20 @@ const ActionLogSchema = new Schema<IActionLog>(
   {
     platform: { type: String, required: true, trim: true },
     action: { type: String, required: true, trim: true },
-    account: { type: String, required: true, trim: true, default: "default" },
+    account: { type: String, required: true, trim: true, default: 'default' },
     username: { type: String, trim: true },
     status: {
       type: String,
       required: true,
-      enum: ["success", "error"],
+      enum: ['success', 'error'],
     },
     error: { type: String, trim: true },
     details: { type: Schema.Types.Mixed },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const ActionLog: Model<IActionLog> =
-  mongoose.models.ActionLog ||
-  mongoose.model<IActionLog>("ActionLog", ActionLogSchema);
+  mongoose.models.ActionLog || mongoose.model<IActionLog>('ActionLog', ActionLogSchema);
 
 export default ActionLog;

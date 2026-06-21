@@ -1,10 +1,10 @@
-import dotenv from "dotenv";
-import logger from "./config/logger";
-import { shutdown } from "./services";
-import app from "./app";
-import { initAgent } from "./Agent/index";
-import { validateRequiredSecrets } from "./secret";
-import { connectDB } from "./config/db";
+import dotenv from 'dotenv';
+import logger from './config/logger';
+import { shutdown } from './services';
+import app from './app';
+import { initAgent } from './Agent/index';
+import { validateRequiredSecrets } from './secret';
+import { connectDB } from './config/db';
 
 dotenv.config();
 validateRequiredSecrets();
@@ -13,7 +13,7 @@ async function startServer() {
   try {
     await initAgent();
   } catch (err) {
-    logger.error("Error during agent initialization:", err);
+    logger.error('Error during agent initialization:', err);
     process.exit(1);
   }
 
@@ -23,12 +23,12 @@ async function startServer() {
     logger.info(`Server is running on port ${process.env.PORT || 3000}`);
   });
 
-  process.on("SIGTERM", () => {
-    logger.info("Received SIGTERM signal.");
+  process.on('SIGTERM', () => {
+    logger.info('Received SIGTERM signal.');
     shutdown(server);
   });
-  process.on("SIGINT", () => {
-    logger.info("Received SIGINT signal.");
+  process.on('SIGINT', () => {
+    logger.info('Received SIGINT signal.');
     shutdown(server);
   });
 }

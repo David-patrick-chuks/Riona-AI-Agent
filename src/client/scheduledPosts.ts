@@ -28,7 +28,7 @@ export function schedulePostJob(
   cronTime: string,
   url: string,
   caption: string,
-  onFire: () => Promise<void>
+  onFire: () => Promise<void>,
 ): string {
   const validation = validateCronExpression(cronTime);
   if (!validation.valid) {
@@ -59,7 +59,7 @@ export function schedulePostJob(
       })();
     },
     null,
-    true
+    true,
   );
 
   scheduledJobs.set(id, {

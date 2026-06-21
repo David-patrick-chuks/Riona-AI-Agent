@@ -1,6 +1,17 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getIgClient, closeIgClient, scrapeFollowersHandler, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
-import { getPosterClient, schedulePhotoPost, cancelScheduledPost, listScheduledPosts } from '../client/InstagramPoster';
+import {
+  getIgClient,
+  closeIgClient,
+  scrapeFollowersHandler,
+  getIgClientStatus,
+  getIgClientsSnapshot,
+} from '../client/Instagram';
+import {
+  getPosterClient,
+  schedulePhotoPost,
+  cancelScheduledPost,
+  listScheduledPosts,
+} from '../client/InstagramPoster';
 import logger from '../config/logger';
 import mongoose from 'mongoose';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
@@ -26,24 +37,26 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!payload || typeof payload !== 'object' || !('username' in payload)) {
     return res.status(401).json({ error: 'Invalid token' });
   }
-  (req as any).user = { username: payload.username, account: (payload as any).account || 'default' };
+  (req as any).user = {
+    username: payload.username,
+    account: (payload as any).account || 'default',
+  };
   next();
 }
 
 // Status endpoint
 router.get('/status', (_req: Request, res: Response) => {
-    const status = {
-        dbConnected: mongoose.connection.readyState === 1
-    };
-    return res.json(status);
+  const status = {
+    dbConnected: mongoose.connection.readyState === 1,
+  };
+  return res.json(status);
 });
 
 // Health endpoint — public minimal payload; full details when authenticated
 router.get('/health', (req: Request, res: Response) => {
   const token = getTokenFromRequest(req);
   const payload = token ? verifyToken(token) : null;
-  const isAuthenticated =
-    !!payload && typeof payload === 'object' && 'username' in payload;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
 
   if (!isAuthenticated) {
     return res.json({
@@ -71,7 +84,10 @@ router.get('/health', (req: Request, res: Response) => {
   }
 
   if (allQuery) {
-    const perAccount: Record<string, { configured: boolean; igClient: ReturnType<typeof getIgClientStatus> }> = {};
+    const perAccount: Record<
+      string,
+      { configured: boolean; igClient: ReturnType<typeof getIgClientStatus> }
+    > = {};
     for (const key of accountKeys) {
       perAccount[key] = {
         configured: !!accountsMap?.[key],
@@ -166,7 +182,10 @@ router.use(requireAuth);
 router.delete('/clear-cookies', async (req, res) => {
   const account = (req as any).user?.account || 'default';
   const { getInstagramCookiesPath } = await import('../utils');
-  const cookiesPath = path.join(process.cwd(), getInstagramCookiesPath(account).replace(/^\.\//, ''));
+  const cookiesPath = path.join(
+    process.cwd(),
+    getInstagramCookiesPath(account).replace(/^\.\//, ''),
+  );
   try {
     await fs.unlink(cookiesPath);
     await logAction({
@@ -197,7 +216,9 @@ router.delete('/clear-cookies', async (req, res) => {
         username: (req as any).user?.username,
         error: getErrorMessage(err),
       });
-      res.status(500).json({ success: false, message: 'Failed to clear cookies.', error: err.message });
+      res
+        .status(500)
+        .json({ success: false, message: 'Failed to clear cookies.', error: err.message });
     }
   }
 });
@@ -444,7 +465,7 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
       maxFollowers,
       acct?.username || (req as any).user.username,
       acct?.password,
-      account
+      account,
     );
     await logAction({
       platform: 'instagram',
@@ -490,7 +511,7 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       Number(maxFollowers),
       acct?.username || (req as any).user.username,
       acct?.password,
-      account
+      account,
     );
     await logAction({
       platform: 'instagram',
@@ -498,7 +519,10 @@ router.get('/scrape-followers', async (req: Request, res: Response) => {
       status: 'success',
       account: (req as any).user.account || 'default',
       username: (req as any).user.username,
-      details: { targetAccount: String(targetAccount), maxFollowers: Number(maxFollowers) || undefined },
+      details: {
+        targetAccount: String(targetAccount),
+        maxFollowers: Number(maxFollowers) || undefined,
+      },
     });
     if (Array.isArray(result)) {
       const filename = `${targetAccount}_followers.txt`;
@@ -630,4 +654,4 @@ router.post('/logout', (req: Request, res: Response) => {
   return res.json({ message: 'Logged out successfully' });
 });
 
-export default router; 
+export default router;

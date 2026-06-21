@@ -24,12 +24,12 @@ describe('IgClient', () => {
 
   test('isSponsoredInArticle returns evaluate result', async () => {
     const client = new IgClient();
-    const evaluate = jest.fn().mockResolvedValue({ sponsored: true, reason: "marker:sponsored" });
+    const evaluate = jest.fn().mockResolvedValue({ sponsored: true, reason: 'marker:sponsored' });
     (client as any).page = { evaluate };
 
     const result = await (client as any).isSponsoredInArticle(3);
     expect(evaluate).toHaveBeenCalled();
-    expect(result).toEqual({ sponsored: true, reason: "marker:sponsored" });
+    expect(result).toEqual({ sponsored: true, reason: 'marker:sponsored' });
   });
 
   test('loginWithCredentials throws when credentials are missing', async () => {
@@ -38,7 +38,7 @@ describe('IgClient', () => {
     (client as any).browser = {};
 
     await expect((client as any).loginWithCredentials()).rejects.toThrow(
-      /credentials are required/i
+      /credentials are required/i,
     );
   });
 

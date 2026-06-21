@@ -36,4 +36,4 @@ router.post('/scrape-followers', async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
-}); 
+});

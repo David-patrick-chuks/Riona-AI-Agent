@@ -19,7 +19,9 @@ Before running the bot, ensure the project has the following structure and files
 ## 2. Setup Checklist
 
 ### Credentials & Secret Management
+
 - Place your Instagram credentials in the `.env` file:
+
   ```env
   IGusername=your_instagram_username
   IGpassword=your_instagram_password
@@ -39,11 +41,12 @@ Before running the bot, ensure the project has the following structure and files
 
   # Optional: logging backend ("winston" or "console")
   LOGGER=console
-  
+
   # Gemini API keys (set only the ones you use)
   GEMINI_API_KEY=your_primary_gemini_api_key
   GEMINI_API_KEY_1=your_gemini_api_key_1
   GEMINI_API_KEY_2=your_gemini_api_key_2
+  ```
 
 ## Posting
 
@@ -55,16 +58,22 @@ Before running the bot, ensure the project has the following structure and files
 - If the server starts but no IG actions run, set `IG_AGENT_ENABLED=true` or use `/api/login` + `/api/interact`.
 - If cookie JSON is corrupted, delete it or let the app auto-backup and re-login.
 - If IG shows a challenge screen, login manually once and re-run the agent.
+
   ```
+
+  ```
+
 - Ensure `src/secret/index.ts` exports these credentials correctly.
 
 ### Cookie Management
+
 - On the first run, the bot will handle cookie creation automatically and store them in `cookies/Instagramcookies.json`.
 - For subsequent runs, ensure the `cookies` directory exists to allow the bot to load valid sessions.
 
 ## 3. Agent Training Data Configuration
 
 The bot uses training data to refine and tailor the comments it posts. In this context, "training" refers to the process where the bot:
+
 - **Uses Input Data Types Such As:**
   - **Text Files (.txt):** Provide sample responses and templates.
   - **PDF Documents:** Contain technical documents or guidelines to improve response relevancy.
@@ -81,6 +90,7 @@ The bot uses training data to refine and tailor the comments it posts. In this c
 ## 4. Core Customization Points
 
 ### Comment Generation Engine
+
 - **Location:** `src/Agent/schema/index.ts`
 - **Details:**
   - Defines response length limits (e.g., 300 characters).
@@ -88,6 +98,7 @@ The bot uses training data to refine and tailor the comments it posts. In this c
   - Specifies banned topics or phrases, maintaining compliance with Instagram's community guidelines.
 
 ### Interaction Patterns
+
 - **Location:** `src/client/Instagram.ts`
 - **Configurable Parameters:**
   - **maxPosts:** The maximum number of posts the bot will interact with (default is 50).
@@ -98,6 +109,7 @@ The bot uses training data to refine and tailor the comments it posts. In this c
   ```
 
 ### Personality Configuration
+
 - **Location:** `src/Agent/characters/`
 - **Details:**
   - Customize the bot's personality by modifying JSON files.
@@ -107,11 +119,12 @@ The bot uses training data to refine and tailor the comments it posts. In this c
     1. Add its JSON file to the `src/Agent/characters/` directory.
     2. Update the configuration in **`src/Agent/index.ts`**.
 - **Example usage:**
+
   ```javascript
   // In src/Agent/index.ts:
   // Set the character file path to the custom character JSON file you created:
   const characterFile = 'src/Agent/characters/YourCustomCharacter.json';
-  
+
   // Also, update the import statement to load your custom character:
   import character from './characters/YourCustomCharacter.json';
   ```
@@ -119,6 +132,7 @@ The bot uses training data to refine and tailor the comments it posts. In this c
 ## 5. Running the Bot
 
 Once the setup is complete:
+
 1. Confirm that your credentials and training data are correctly placed.
 2. Run the Instagram bot using your preferred method (e.g., via a start script or command line).
 3. Monitor console logs to verify successful login and post interactions.
