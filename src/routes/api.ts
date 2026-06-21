@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import { signToken, verifyToken, getTokenFromRequest } from '../secret';
 import { geminiApiKeys } from '../secret';
 import { getLastRunSummary } from '../utils/igRunSummary';
+import { getInstagramCookiesPath } from '../utils';
 import multer from 'multer';
 import fs from 'fs/promises';
 import path from 'path';
@@ -146,32 +147,38 @@ router.get('/me', (req: Request, res: Response) => {
 
 // Endpoint to clear Instagram cookies
 router.delete('/clear-cookies', async (req, res) => {
-  const cookiesPath = path.join(__dirname, '../../cookies/Instagramcookies.json');
+  const account =
+    typeof req.query.account === 'string'
+      ? req.query.account
+      : typeof req.body?.account === 'string'
+        ? req.body.account
+        : 'default';
+  const cookiesPath = getInstagramCookiesPath(account);
   try {
     await fs.unlink(cookiesPath);
     await logAction({
       platform: 'instagram',
       action: 'clear-cookies',
       status: 'success',
-      account: 'default',
+      account,
     });
-    res.json({ success: true, message: 'Instagram cookies cleared.' });
+    res.json({ success: true, message: 'Instagram cookies cleared.', account });
   } catch (err: any) {
     if (err.code === 'ENOENT') {
       await logAction({
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'success',
-        account: 'default',
+        account,
         details: { message: 'No cookies to clear.' },
       });
-      res.json({ success: true, message: 'No cookies to clear.' });
+      res.json({ success: true, message: 'No cookies to clear.', account });
     } else {
       await logAction({
         platform: 'instagram',
         action: 'clear-cookies',
         status: 'error',
-        account: 'default',
+        account,
         error: getErrorMessage(err),
       });
       res.status(500).json({ success: false, message: 'Failed to clear cookies.', error: err.message });

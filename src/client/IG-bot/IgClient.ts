@@ -6,7 +6,7 @@ import UserAgent from "user-agents";
 import { Server } from "proxy-chain";
 import { IGpassword, IGusername } from "../../secret";
 import logger from "../../config/logger";
-import { Instagram_cookiesExist, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown } from "../../utils";
+import { Instagram_cookiesExist, getInstagramCookiesPath, loadCookies, saveCookies, getIgDailyState, incrementIgDailyCount, getIgCooldown, setIgCooldown } from "../../utils";
 import { getIgProfile } from "../../config/igProfile";
 import { setLastRunSummary } from "../../utils/igRunSummary";
 import { getCommentFilterConfig, shouldSkipComment } from "../../utils/commentFilters";
@@ -32,10 +32,14 @@ export class IgClient {
     private page: puppeteer.Page | null = null;
     private username: string;
     private password: string;
+    private accountKey: string;
+    private cookiesPath: string;
 
-    constructor(username?: string, password?: string) {
+    constructor(username?: string, password?: string, accountKey = 'default') {
         this.username = username || '';
         this.password = password || '';
+        this.accountKey = accountKey || 'default';
+        this.cookiesPath = getInstagramCookiesPath(this.accountKey);
     }
 
     async init() {
@@ -63,7 +67,7 @@ export class IgClient {
         await this.page.setUserAgent(userAgent.toString());
         await this.page.setViewport({ width, height });
 
-        if (await Instagram_cookiesExist()) {
+        if (await Instagram_cookiesExist(this.accountKey)) {
             await this.loginWithCookies();
         } else {
             await this.loginWithCredentials();
@@ -72,7 +76,7 @@ export class IgClient {
 
     private async loginWithCookies() {
         if (!this.page) throw new Error("Page not initialized");
-        const cookies = await loadCookies("./cookies/Instagramcookies.json");
+        const cookies = await loadCookies(this.cookiesPath);
         if (cookies.length > 0) {
             await this.page.setCookie(...cookies);
         } else {
@@ -115,7 +119,7 @@ export class IgClient {
             await this.page.click('button[type="submit"]');
             await this.page.waitForNavigation({ waitUntil: "networkidle2" });
             const cookies = await this.page.cookies();
-            await saveCookies("./cookies/Instagramcookies.json", cookies);
+            await saveCookies(this.cookiesPath, cookies);
             logger.info("Successfully logged in and saved cookies.");
             await this.handleNotificationPopup();
         } catch (error) {

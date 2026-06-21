@@ -26,7 +26,7 @@ export const getIgClient = async (username?: string, password?: string, accountK
     const key = accountKey || 'default';
     const entry = igClients.get(key);
     if (!entry || (username && password && (entry.creds.username !== username || entry.creds.password !== password))) {
-        const client = new IgClient(username, password);
+        const client = new IgClient(username, password, key);
         const creds = { username: username || '', password: password || '' };
         try {
             await client.init();

@@ -3,9 +3,21 @@ import path from "path";
 import { geminiApiKeys } from "../secret";
 import logger from "../config/logger";
 
-export async function Instagram_cookiesExist(): Promise<boolean> {
+export const sanitizeAccountKey = (accountKey: string): string => {
+  const trimmed = (accountKey || "default").trim() || "default";
+  return trimmed.replace(/[^a-zA-Z0-9_-]/g, "_");
+};
+
+export const getInstagramCookiesPath = (accountKey = "default"): string => {
+  const safe = sanitizeAccountKey(accountKey);
+  const filename =
+    safe === "default" ? "Instagramcookies.json" : `Instagramcookies.${safe}.json`;
+  return path.join(process.cwd(), "cookies", filename);
+};
+
+export async function Instagram_cookiesExist(accountKey = "default"): Promise<boolean> {
   try {
-    const cookiesPath = "./cookies/Instagramcookies.json";
+    const cookiesPath = getInstagramCookiesPath(accountKey);
     await fs.access(cookiesPath);
 
     const cookiesData = await fs.readFile(cookiesPath, "utf-8");
