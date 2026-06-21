@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as tf from '@tensorflow/tfjs';
-import { createCanvas, loadImage } from 'canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 import CONFIG from '@/config/default';
 import { Request, Response } from 'express';
 import logger from '@/utils/logger';
