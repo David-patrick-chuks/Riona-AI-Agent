@@ -115,24 +115,28 @@ async function backupCorruptCookies(cookiesPath: string): Promise<void> {
 }
 
 // ---------------------- API key rotation ----------------------
-const triedApiKeys = new Set<number>();
 
 /**
- * Gets the next available API key for rotation
+ * Gets the next available API key for rotation.
+ * Stateless — callers pass their own triedKeys Set so concurrent requests
+ * do not share rotation state.
  * @param currentApiKeyIndex - Index of the current API key that failed
- * @returns The next API key string
+ * @param triedKeys - Caller-owned Set tracking which indices have been tried
+ * @returns The next API key string and its index
  * @throws Error if no keys are configured or all have been tried
  */
-export const getNextApiKey = (currentApiKeyIndex: number): { key: string; index: number } => {
+export const getNextApiKey = (
+  currentApiKeyIndex: number,
+  triedKeys: Set<number> = new Set(),
+): { key: string; index: number } => {
   if (geminiApiKeys.length === 0) {
     throw new Error('No valid GEMINI API keys configured.');
   }
-  triedApiKeys.add(currentApiKeyIndex);
+  triedKeys.add(currentApiKeyIndex);
 
   const nextIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length;
 
-  if (triedApiKeys.size >= geminiApiKeys.length) {
-    triedApiKeys.clear();
+  if (triedKeys.size >= geminiApiKeys.length) {
     throw new Error('All API keys have reached their rate limits. Please try again later.');
   }
   return { key: geminiApiKeys[nextIndex], index: nextIndex };

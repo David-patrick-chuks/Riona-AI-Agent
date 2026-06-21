@@ -95,16 +95,14 @@ async function scrapeAllRoutes(baseUrl: string): Promise<void> {
   }
 }
 
-// List of medical websites to scrape
-const medicalWebsites = [
+const DEFAULT_WEBSITES = [
   'https://www.docteur-guiga.com/fr/accueil/',
   'https://www.dranasgherissi.com/fr/',
   'https://medical-travel.fr/tarifs/',
 ];
 
-// Scrape all medical websites
-async function scrapeAllMedicalWebsites() {
-  for (const website of medicalWebsites) {
+async function scrapeWebsites(urls: string[]) {
+  for (const website of urls) {
     console.log(`Starting to scrape: ${website}`);
     try {
       await scrapeAllRoutes(website);
@@ -115,11 +113,24 @@ async function scrapeAllMedicalWebsites() {
   }
 }
 
-// Execute the scraping
-scrapeAllMedicalWebsites()
-  .then(() => {
-    console.log('All medical websites scraping completed.');
-  })
-  .catch((error) => {
-    console.error('Error in main scraping process:', error);
-  });
+if (require.main === module) {
+  // Accept URLs from CLI args, TRAIN_WEBSITES env var, or fall back to defaults
+  let websitesToScrape: string[];
+  if (process.argv.length > 2) {
+    websitesToScrape = process.argv.slice(2);
+  } else if (process.env.TRAIN_WEBSITES) {
+    websitesToScrape = process.env.TRAIN_WEBSITES.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } else {
+    websitesToScrape = DEFAULT_WEBSITES;
+  }
+
+  scrapeWebsites(websitesToScrape)
+    .then(() => {
+      console.log('All websites scraping completed.');
+    })
+    .catch((error) => {
+      console.error('Error in main scraping process:', error);
+    });
+}

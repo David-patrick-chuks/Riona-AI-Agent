@@ -7,43 +7,23 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 
-// Track API key state across requests
-let currentAgentApiKeyIndex = 0;
-const triedAgentApiKeys = new Set<number>();
-
 /**
- * Gets the next API key for the agent with rotation
- * @returns Next available Gemini API key
- * @throws Error if all keys have been tried
- */
-const getNextAgentApiKey = () => {
-  triedAgentApiKeys.add(currentAgentApiKeyIndex);
-
-  // Move to next key
-  currentAgentApiKeyIndex = (currentAgentApiKeyIndex + 1) % geminiApiKeys.length;
-
-  // Check if we've tried all keys
-  if (triedAgentApiKeys.size >= geminiApiKeys.length) {
-    triedAgentApiKeys.clear();
-    throw new Error('All API keys have reached their rate limits. Please try again later.');
-  }
-
-  return geminiApiKeys[currentAgentApiKeyIndex];
-};
-
-/**
- * Runs the AI agent with the given schema and prompt
+ * Runs the AI agent with the given schema and prompt.
+ * triedKeys is passed through recursive retries so each top-level call
+ * has its own isolated rotation state — concurrent requests do not interfere.
  * @param schema - JSON schema for the response
  * @param prompt - Prompt to send to the model
  * @param apiKeyIndex - Index of API key to use
+ * @param triedKeys - Caller-owned Set tracking exhausted key indices
  * @returns Parsed JSON response from the model
  */
 export async function runAgent(
   schema: InstagramCommentSchema,
   prompt: string,
-  apiKeyIndex: number = currentAgentApiKeyIndex,
+  apiKeyIndex: number = 0,
+  triedKeys: Set<number> = new Set(),
 ): Promise<any> {
-  let geminiApiKey = geminiApiKeys[apiKeyIndex];
+  const geminiApiKey = geminiApiKeys[apiKeyIndex];
 
   if (!geminiApiKey) {
     logger.error('No valid Gemini API key available.');
@@ -79,7 +59,7 @@ export async function runAgent(
     }
     return data;
   } catch (error: any) {
-    // Rotate API key on 429
+    // Rotate API key on 429 / rate-limit errors
     if (
       error instanceof Error &&
       (error.message.includes('429') ||
@@ -89,18 +69,12 @@ export async function runAgent(
       logger.error(
         `---GEMINI_API_KEY_${apiKeyIndex + 1} limit exhausted, switching to the next API key...`,
       );
-      try {
-        geminiApiKey = getNextAgentApiKey();
-        return runAgent(schema, prompt, currentAgentApiKeyIndex);
-      } catch (keyError) {
-        if (keyError instanceof Error) {
-          logger.error('API key error:', keyError.message);
-          return `Error: ${keyError.message}`;
-        } else {
-          logger.error('Unknown error when trying to get next API key');
-          return 'Error: All API keys have reached their rate limits. Please try again later.';
-        }
+      triedKeys.add(apiKeyIndex);
+      if (triedKeys.size >= geminiApiKeys.length) {
+        return 'Error: All API keys have reached their rate limits. Please try again later.';
       }
+      const nextIndex = (apiKeyIndex + 1) % geminiApiKeys.length;
+      return runAgent(schema, prompt, nextIndex, triedKeys);
     }
     return handleError(error, apiKeyIndex, schema, prompt, runAgent);
   }

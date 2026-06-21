@@ -11,7 +11,6 @@ interface IInstagramClient {
     buffer: Buffer,
     caption?: string,
   ): Promise<MediaRepositoryConfigureResponseRootObject>;
-  schedulePost(url: string, caption: string, cronTime: string): Promise<void>;
 }
 
 // InstagramClient Class
@@ -76,9 +75,4 @@ export class InstagramClient implements IInstagramClient {
     return response;
   }
 
-  async schedulePost(_url: string, _caption: string, _cronTime: string): Promise<void> {
-    throw new Error(
-      'Use schedulePhotoPost() from InstagramPoster instead — schedulePost no longer creates untracked cron jobs.',
-    );
-  }
 }

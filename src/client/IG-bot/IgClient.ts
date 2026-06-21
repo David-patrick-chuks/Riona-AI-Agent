@@ -435,7 +435,7 @@ export class IgClient {
     if (!this.page) return { sponsored: false };
     const page = this.page;
 
-    const defaultMarkers = ['sponsored', 'paid partnership'];
+    const defaultMarkers = ['sponsored', 'paid partnership', 'paid partnership with'];
     const defaultButtonMarkers = [
       'learn more',
       'shop now',
@@ -747,11 +747,12 @@ export class IgClient {
       const followers: string[] = [];
       let previousHeight = 0;
       let currentHeight = 0;
-      const limit = Number.isFinite(maxFollowers) && maxFollowers > 0 ? maxFollowers + 4 : 4;
-      maxFollowers = limit;
+      // 0 or negative means "no cap". We still add 4 to account for non-follower links
+      // at the top of the modal that get filtered out via slice(4, ...) below.
+      const unlimited = !Number.isFinite(maxFollowers) || maxFollowers <= 0;
+      const limit = unlimited ? Infinity : maxFollowers + 4;
       // Scroll and collect followers until we reach the desired amount or can't scroll anymore
-      console.log(maxFollowers);
-      while (followers.length < maxFollowers) {
+      while (followers.length < limit) {
         // Get all follower links in the current view
         const newFollowers = await page.evaluate(() => {
           const followerElements = document.querySelectorAll('div a[role="link"]');
@@ -794,8 +795,9 @@ export class IgClient {
         previousHeight = currentHeight;
       }
 
-      console.log(`Successfully scraped ${followers.length - 4} followers`);
-      return followers.slice(4, maxFollowers);
+      const realFollowers = followers.slice(4);
+      console.log(`Successfully scraped ${realFollowers.length} followers`);
+      return unlimited ? realFollowers : realFollowers.slice(0, maxFollowers);
     } catch (error) {
       console.error(`Error scraping followers for ${targetAccount}:`, error);
       throw error;
