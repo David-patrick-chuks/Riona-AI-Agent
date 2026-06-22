@@ -6,7 +6,7 @@ import { initAgent } from './Agent/index';
 import { validateRequiredSecrets } from './secret';
 import { connectDB } from './config/db';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 validateRequiredSecrets();
 
 async function startServer() {
@@ -33,4 +33,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  logger.error('Failed to start server:', err);
+  process.exit(1);
+});

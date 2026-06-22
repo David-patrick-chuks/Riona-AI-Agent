@@ -1,20 +1,22 @@
+require('dotenv').config();
+
 const required = ['IGusername', 'IGpassword'];
 const envMissing = required.filter((k) => !process.env[k]);
-const mongoUri = process.env.MONGODB_URI;
-const mongoRequired = (process.env.MONGODB_REQUIRED || 'false').toLowerCase() === 'true';
+const databaseUrl = process.env.DATABASE_URL;
+const dbRequired = (process.env.DB_REQUIRED || 'false').toLowerCase() === 'true';
 
 if (envMissing.length) {
   console.error(`Missing env vars: ${envMissing.join(', ')}`);
   process.exit(1);
 }
 
-if (!mongoUri) {
-  const msg = 'MONGODB_URI is not set.';
-  if (mongoRequired) {
+if (!databaseUrl) {
+  const msg = 'DATABASE_URL is not set.';
+  if (dbRequired) {
     console.error(`${msg} It is required, so the app will exit.`);
     process.exit(1);
   } else {
-    console.warn(`${msg} Continuing without DB.`);
+    console.warn(`${msg} Continuing without DB (file fallback for action logs).`);
   }
 }
 

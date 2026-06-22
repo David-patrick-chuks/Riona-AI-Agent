@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { Request } from 'express';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export const IGusername: string = process.env.IGusername || 'default_IGusername';
 export const IGpassword: string = process.env.IGpassword || 'default_IGpassword';

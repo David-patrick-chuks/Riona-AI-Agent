@@ -67,9 +67,15 @@ export const schedulePhotoPost = async (
   accountKey: string = 'default',
 ): Promise<string> => {
   const client = await getPosterClient(undefined, undefined, accountKey);
-  return schedulePostJob(accountKey, cronTime, imageUrl, caption, async () => {
-    await client.postPhoto(imageUrl, caption);
-  });
+  return schedulePostJob(
+    accountKey,
+    'instagram',
+    cronTime,
+    async () => {
+      await client.postPhoto(imageUrl, caption);
+    },
+    { url: imageUrl, caption },
+  );
 };
 
 export { cancelScheduledPost, listScheduledPosts, stopAllScheduledPosts };

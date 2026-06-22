@@ -4,6 +4,7 @@ import {
   Instagram_cookiesExist,
   getIgDailyState,
   incrementIgDailyCount,
+  isCookieValid,
   loadCookies,
 } from './index';
 
@@ -66,6 +67,46 @@ describe('utils', () => {
     const files = await fs.readdir(cookiesDir);
     const backup = files.find((f) => f.startsWith('Instagramcookies.corrupt-'));
     expect(backup).toBeTruthy();
+  });
+
+  test('Instagram_cookiesExist accepts session cookies with expires -1', async () => {
+    await fs.mkdir(cookiesDir, { recursive: true });
+    await fs.writeFile(
+      cookiesPath,
+      JSON.stringify([{ name: 'sessionid', value: 'abc', expires: -1 }]),
+      'utf-8',
+    );
+
+    expect(await Instagram_cookiesExist()).toBe(true);
+  });
+
+  test('Instagram_cookiesExist rejects expired timed cookies', async () => {
+    await fs.mkdir(cookiesDir, { recursive: true });
+    const past = Math.floor(Date.now() / 1000) - 3600;
+    await fs.writeFile(
+      cookiesPath,
+      JSON.stringify([{ name: 'sessionid', value: 'abc', expires: past }]),
+      'utf-8',
+    );
+
+    expect(await Instagram_cookiesExist()).toBe(false);
+  });
+
+  test('Instagram_cookiesExist accepts future timed cookies', async () => {
+    await fs.mkdir(cookiesDir, { recursive: true });
+    const future = Math.floor(Date.now() / 1000) + 3600;
+    await fs.writeFile(
+      cookiesPath,
+      JSON.stringify([{ name: 'sessionid', value: 'abc', expires: future }]),
+      'utf-8',
+    );
+
+    expect(await Instagram_cookiesExist()).toBe(true);
+  });
+
+  test('isCookieValid treats Puppeteer session cookies as valid', () => {
+    const now = Math.floor(Date.now() / 1000);
+    expect(isCookieValid({ name: 'sessionid', expires: -1 }, now)).toBe(true);
   });
 
   test('loadCookies returns [] for invalid JSON and backs up file', async () => {

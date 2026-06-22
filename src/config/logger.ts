@@ -95,10 +95,12 @@ const createWinstonLogger = (): Logger => {
     format: format.combine(
       format.timestamp({ format: customTimestamp }),
       format.colorize(),
-      format.printf(({ timestamp, level, message }: any) => {
-        const emoji = getEmojiForLevel(level);
-        return `${timestamp} ${emoji} [${level}]: ${message}`;
-      }),
+      format.printf(
+        ({ timestamp, level, message }: { timestamp: string; level: string; message: string }) => {
+          const emoji = getEmojiForLevel(level);
+          return `${timestamp} ${emoji} [${level}]: ${message}`;
+        },
+      ),
     ),
     transports: [
       new transports.Console({

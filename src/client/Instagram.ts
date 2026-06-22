@@ -135,7 +135,7 @@ export const closeIgClient = async (accountKey: string = 'default') => {
 };
 
 /**
- * Closes all Instagram clients across all accounts
+ * Closes all Instagram clients across all accounts.
  */
 export const closeAllIgClients = async () => {
   const keys = [...igClients.keys()];

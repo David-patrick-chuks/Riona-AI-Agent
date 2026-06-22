@@ -3,6 +3,153 @@ import path from 'path';
 import { geminiApiKeys } from '../secret';
 import logger from '../config/logger';
 
+// ---------------------- Input validation constants ----------------------
+const INPUT_LENGTH_LIMITS = {
+  caption: 2200, // Instagram caption limit
+  message: 1000, // DM message limit
+  username: 30, // Instagram username limit
+  filename: 255, // Standard filesystem limit
+  default: 500,
+};
+
+// ---------------------- Filename sanitization ----------------------
+/**
+ * Sanitizes a filename to prevent path traversal and header injection attacks.
+ * Removes or replaces dangerous characters while preserving readability.
+ * @param filename - The original filename
+ * @param maxLength - Maximum allowed length (default: 255)
+ * @returns Sanitized filename safe for use in Content-Disposition headers and filesystem
+ */
+export function sanitizeFilename(filename: string, maxLength: number = 255): string {
+  if (!filename || typeof filename !== 'string') {
+    return 'download';
+  }
+
+  let sanitized = filename
+    // Remove path traversal sequences
+    .replace(/\.\./g, '')
+    // Remove directory separators
+    .replace(/[/\\]/g, '')
+    // Remove null bytes and control characters (ASCII 0-31 and 127)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    // Remove characters problematic in HTTP headers (CR, LF)
+    .replace(/[\r\n]/g, '')
+    // Remove characters that could cause issues in filenames
+    .replace(/[<>:"|?*]/g, '')
+    // Replace multiple spaces/underscores with single underscore
+    .replace(/[\s_]+/g, '_')
+    // Remove leading/trailing dots and spaces
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+    .trim();
+
+  // Ensure filename is not empty after sanitization
+  if (!sanitized) {
+    return 'download';
+  }
+
+  // Truncate to max length while preserving extension
+  if (sanitized.length > maxLength) {
+    const extMatch = sanitized.match(/\.[^.]+$/);
+    const ext = extMatch ? extMatch[0] : '';
+    const nameMaxLen = maxLength - ext.length;
+    sanitized = sanitized.slice(0, nameMaxLen) + ext;
+  }
+
+  return sanitized;
+}
+
+// ---------------------- Input length validation ----------------------
+/**
+ * Validates that an input string doesn't exceed the maximum allowed length.
+ * @param input - The input string to validate
+ * @param field - The field type (caption, message, username, etc.)
+ * @param customLimit - Optional custom limit override
+ * @returns Validation result with valid flag and optional error message
+ */
+export function validateInputLength(
+  input: string,
+  field: keyof typeof INPUT_LENGTH_LIMITS | string = 'default',
+  customLimit?: number,
+): { valid: boolean; error?: string; maxLength: number } {
+  const maxLength =
+    customLimit ??
+    (INPUT_LENGTH_LIMITS[field as keyof typeof INPUT_LENGTH_LIMITS] || INPUT_LENGTH_LIMITS.default);
+
+  if (input === undefined || input === null) {
+    return { valid: true, maxLength }; // Optional fields are valid when empty
+  }
+
+  if (typeof input !== 'string') {
+    return { valid: false, error: `${field} must be a string`, maxLength };
+  }
+
+  if (input.length > maxLength) {
+    return {
+      valid: false,
+      error: `${field} exceeds maximum length of ${maxLength} characters (got ${input.length})`,
+      maxLength,
+    };
+  }
+
+  return { valid: true, maxLength };
+}
+
+/**
+ * Truncates a string to the specified maximum length with optional suffix.
+ * @param input - The input string to truncate
+ * @param maxLength - Maximum allowed length
+ * @param suffix - Optional suffix to append when truncated (default: '...')
+ * @returns Truncated string
+ */
+export function truncateInput(input: string, maxLength: number, suffix: string = '...'): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
+  if (input.length <= maxLength) {
+    return input;
+  }
+
+  const truncateAt = maxLength - suffix.length;
+  return input.slice(0, Math.max(0, truncateAt)) + suffix;
+}
+
+const fileLocks = new Map<string, Promise<void>>();
+
+async function withFileLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+  const existingLock = fileLocks.get(filePath);
+  let resolveLock: () => void;
+  const newLock = new Promise<void>((resolve) => {
+    resolveLock = resolve;
+  });
+  fileLocks.set(filePath, newLock);
+
+  if (existingLock) {
+    await existingLock;
+  }
+
+  try {
+    return await fn();
+  } finally {
+    resolveLock!();
+    if (fileLocks.get(filePath) === newLock) {
+      fileLocks.delete(filePath);
+    }
+  }
+}
+
+type CookieLike = { name: string; expires?: number };
+
+/** Puppeteer session cookies use expires -1; timed cookies use a Unix timestamp. */
+export const isCookieValid = (cookie: CookieLike | undefined, nowSec: number): boolean => {
+  if (!cookie) return false;
+  const { expires } = cookie;
+  if (expires === -1 || expires === undefined) return true;
+  if (typeof expires !== 'number') return false;
+  return expires > nowSec;
+};
+
 /** Cookie file path for a given account key (legacy default path kept for "default"). */
 export function getInstagramCookiesPath(accountKey: string = 'default'): string {
   const key = accountKey || 'default';
@@ -11,12 +158,6 @@ export function getInstagramCookiesPath(accountKey: string = 'default'): string 
   }
   return `./cookies/Instagramcookies-${key}.json`;
 }
-
-const isCookieValid = (cookie: { expires?: number } | undefined, now: number): boolean => {
-  if (!cookie) return false;
-  if (cookie.expires === undefined || cookie.expires === -1) return true;
-  return cookie.expires > now;
-};
 
 /**
  * Checks if valid Instagram cookies exist and are not expired
@@ -118,8 +259,6 @@ async function backupCorruptCookies(cookiesPath: string): Promise<void> {
 
 /**
  * Gets the next available API key for rotation.
- * Stateless — callers pass their own triedKeys Set so concurrent requests
- * do not share rotation state.
  * @param currentApiKeyIndex - Index of the current API key that failed
  * @param triedKeys - Caller-owned Set tracking which indices have been tried
  * @returns The next API key string and its index
@@ -132,6 +271,7 @@ export const getNextApiKey = (
   if (geminiApiKeys.length === 0) {
     throw new Error('No valid GEMINI API keys configured.');
   }
+
   triedKeys.add(currentApiKeyIndex);
 
   const nextIndex = (currentApiKeyIndex + 1) % geminiApiKeys.length;
@@ -158,7 +298,12 @@ export async function handleError(
   currentApiKeyIndex: number,
   schema: any,
   prompt: string,
-  runAgent: (schema: any, prompt: string, apiKeyIndex?: number) => Promise<string>,
+  runAgent: (
+    schema: any,
+    prompt: string,
+    apiKeyIndex?: number,
+    triedKeys?: Set<number>,
+  ) => Promise<string>,
   retryCount = 0,
   triedKeys: Set<number> = new Set(),
 ): Promise<string> {
@@ -169,7 +314,7 @@ export async function handleError(
       );
       try {
         const { index: nextIndex } = getNextApiKey(currentApiKeyIndex, triedKeys);
-        return runAgent(schema, prompt, nextIndex);
+        return runAgent(schema, prompt, nextIndex, triedKeys);
       } catch (keyError) {
         if (keyError instanceof Error) {
           logger.error('API key error:', keyError.message);
@@ -186,7 +331,7 @@ export async function handleError(
       logger.error('Service is temporarily unavailable. Retrying...');
       await new Promise((resolve) => setTimeout(resolve, 5000 * (retryCount + 1)));
       try {
-        return await runAgent(schema, prompt, currentApiKeyIndex);
+        return await runAgent(schema, prompt, currentApiKeyIndex, triedKeys);
       } catch (retryError) {
         if (retryError instanceof Error && retryError.message.includes('503 Service Unavailable')) {
           return handleError(
@@ -247,20 +392,27 @@ export const saveTweetData = async (
   const tweetDataPath = path.join(__dirname, '../data/tweetData.json');
   const tweetData = { tweetContent, imageUrl: imageUrl || null, timeTweeted };
 
-  try {
-    await fs.access(tweetDataPath);
-    const data = await fs.readFile(tweetDataPath, 'utf-8');
-    const json = JSON.parse(data);
-    json.push(tweetData);
-    await fs.writeFile(tweetDataPath, JSON.stringify(json, null, 2));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
-    } else {
-      logger.error('Error saving tweet data:', error);
-      throw error;
+  await withFileLock(tweetDataPath, async () => {
+    try {
+      await fs.access(tweetDataPath);
+      const data = await fs.readFile(tweetDataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (!Array.isArray(json)) {
+        logger.warn('tweetData.json contains non-array data, resetting to array');
+        await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
+        return;
+      }
+      json.push(tweetData);
+      await fs.writeFile(tweetDataPath, JSON.stringify(json, null, 2));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await fs.writeFile(tweetDataPath, JSON.stringify([tweetData], null, 2));
+      } else {
+        logger.error('Error saving tweet data:', error);
+        throw error;
+      }
     }
-  }
+  });
 };
 
 export const checkAndDeleteOldTweetData = async (): Promise<void> => {
@@ -324,16 +476,28 @@ export const getIgDailyState = async (): Promise<{ date: string; count: number }
 export const incrementIgDailyCount = async (by = 1): Promise<void> => {
   const dataPath = path.join(__dirname, '../data/igActionData.json');
   const dataDir = path.dirname(dataPath);
-  const today = new Date().toISOString().slice(0, 10);
-  const current = await getIgDailyState();
-  const next = current.date === today ? current.count + by : by;
-  const payload = { date: today, count: next };
-  try {
-    await fs.mkdir(dataDir, { recursive: true });
-    await fs.writeFile(dataPath, JSON.stringify(payload, null, 2));
-  } catch (error) {
-    logger.error('Error writing igActionData:', error);
-  }
+
+  await withFileLock(dataPath, async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    let currentCount = 0;
+    try {
+      await fs.access(dataPath);
+      const data = await fs.readFile(dataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (json.date === today) {
+        currentCount = Number(json.count) || 0;
+      }
+    } catch {
+      // start from 0 when file is missing or invalid
+    }
+    const payload = { date: today, count: currentCount + by };
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(dataPath, JSON.stringify(payload, null, 2));
+    } catch (error) {
+      logger.error('Error writing igActionData:', error);
+    }
+  });
 };
 
 // ---------------------- IG cooldown ----------------------
@@ -371,19 +535,26 @@ export const saveScrapedData = async (link: string, content: string): Promise<vo
   const scrapedDataDir = path.dirname(scrapedDataPath);
   const scrapedData = { link, content };
 
-  try {
-    await fs.mkdir(scrapedDataDir, { recursive: true });
-    await fs.access(scrapedDataPath);
-    const data = await fs.readFile(scrapedDataPath, 'utf-8');
-    const json = JSON.parse(data);
-    json.push(scrapedData);
-    await fs.writeFile(scrapedDataPath, JSON.stringify(json, null, 2));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
-    } else {
-      logger.error('Error saving scraped data:', error);
-      throw error;
+  await withFileLock(scrapedDataPath, async () => {
+    try {
+      await fs.mkdir(scrapedDataDir, { recursive: true });
+      await fs.access(scrapedDataPath);
+      const data = await fs.readFile(scrapedDataPath, 'utf-8');
+      const json = JSON.parse(data);
+      if (!Array.isArray(json)) {
+        logger.warn('scrapedData.json contains non-array data, resetting to array');
+        await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
+        return;
+      }
+      json.push(scrapedData);
+      await fs.writeFile(scrapedDataPath, JSON.stringify(json, null, 2));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await fs.writeFile(scrapedDataPath, JSON.stringify([scrapedData], null, 2));
+      } else {
+        logger.error('Error saving scraped data:', error);
+        throw error;
+      }
     }
-  }
+  });
 };

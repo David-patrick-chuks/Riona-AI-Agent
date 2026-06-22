@@ -8,18 +8,21 @@ import session from 'express-session';
 import logger, { setupErrorHandlers } from './config/logger';
 import { setup_HandleError } from './utils';
 import apiRoutes from './routes/api';
+import { metricsMiddleware } from './services/metrics';
+import { verifyToken, getTokenFromRequest } from './secret';
 import { getIgClient, closeIgClient } from './client/Instagram';
 import { getBoolEnv, getNumberEnv } from './utils/env';
 import { getIgProfile } from './config/igProfile';
 import { setIgCooldown, getIgCooldown } from './utils';
-// import { main as twitterMain } from './client/Twitter'; //
-// import { main as githubMain } from './client/GitHub'; //
+import { dashboardHtml } from './views/dashboard';
+
+import { metricsHtml } from './views/metrics';
 
 // Set up process-level error handlers
 setupErrorHandlers();
 
 // Initialize environment variables
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Initialize Express app
 const app: Application = express();
@@ -47,6 +50,7 @@ app.use(
     cookie: { maxAge: 2 * 60 * 60 * 1000, sameSite: 'lax' },
   }),
 );
+app.use(metricsMiddleware);
 
 // Serve static files from the 'public' directory
 app.use(express.static('frontend/dist'));
@@ -262,6 +266,48 @@ app.get('/dashboard', (_req, res) => {
         </table>
       </div>
     </div>
+
+    <div class="grid two">
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Application Logs</div>
+        <div class="muted">Latest lines from the server log files</div>
+        <div style="overflow:auto; margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Level</th>
+                <th>File</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Error Feed</div>
+        <div class="muted">Failed actions and server errors</div>
+        <div style="overflow:auto; margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Source</th>
+                <th>Context</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody id="errors-table">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
   <script>
     const authResult = document.getElementById('auth-result');
@@ -269,6 +315,8 @@ app.get('/dashboard', (_req, res) => {
     const sessionState = document.getElementById('session-state');
     const sessionMeta = document.getElementById('session-meta');
     const actionsTable = document.getElementById('actions-table');
+    const logsTable = document.getElementById('logs-table');
+    const errorsTable = document.getElementById('errors-table');
     let refreshTimer = null;
 
     const escapeHtml = (value) => String(value)
@@ -364,8 +412,52 @@ app.get('/dashboard', (_req, res) => {
       }
     };
 
+    const formatTime = (value) => {
+      if (!value) return '-';
+      const time = new Date(value);
+      return Number.isNaN(time.getTime()) ? value : time.toLocaleString();
+    };
+
+    const renderLogs = async () => {
+      try {
+        const response = await fetch('/api/admin/logs?limit=20');
+        if (!response.ok) throw new Error('auth required');
+        const payload = await response.json();
+        const rows = (payload.logs || []).map((entry) => (
+          '<tr>' +
+            '<td>' + escapeHtml(formatTime(entry.timestamp)) + '</td>' +
+            '<td class="' + (entry.level === 'error' ? 'bad' : '') + '">' + escapeHtml(entry.level) + '</td>' +
+            '<td>' + escapeHtml(entry.file) + '</td>' +
+            '<td>' + escapeHtml(entry.message) + '</td>' +
+          '</tr>'
+        )).join('');
+        logsTable.innerHTML = rows || '<tr><td colspan="4">No application logs found.</td></tr>';
+      } catch (_err) {
+        logsTable.innerHTML = '<tr><td colspan="4">Log in to view application logs.</td></tr>';
+      }
+    };
+
+    const renderErrors = async () => {
+      try {
+        const response = await fetch('/api/admin/errors?limit=20');
+        if (!response.ok) throw new Error('auth required');
+        const payload = await response.json();
+        const rows = (payload.errors || []).map((entry) => (
+          '<tr>' +
+            '<td>' + escapeHtml(formatTime(entry.timestamp)) + '</td>' +
+            '<td>' + escapeHtml(entry.source) + '</td>' +
+            '<td>' + escapeHtml(entry.context || entry.platform || '-') + '</td>' +
+            '<td class="bad">' + escapeHtml(entry.message) + '</td>' +
+          '</tr>'
+        )).join('');
+        errorsTable.innerHTML = rows || '<tr><td colspan="4">No errors logged yet.</td></tr>';
+      } catch (_err) {
+        errorsTable.innerHTML = '<tr><td colspan="4">Log in to view errors.</td></tr>';
+      }
+    };
+
     const refreshAll = async () => {
-      await Promise.all([renderHealth(), renderSession(), renderActions()]);
+      await Promise.all([renderHealth(), renderSession(), renderActions(), renderLogs(), renderErrors()]);
     };
 
     const runControlAction = async (url, options = {}) => {
@@ -418,25 +510,20 @@ app.get('/dashboard', (_req, res) => {
     document.getElementById('clear-cookies-btn').addEventListener('click', () => {
       void runControlAction('/api/clear-cookies', { method: 'DELETE' });
     });
+  `);
+});
 
-    document.getElementById('exit-btn').addEventListener('click', () => {
-      void runControlAction('/api/exit', { method: 'POST' });
-    });
+// Metrics dashboard (requires authentication)
+app.get('/metrics', (req, res) => {
+  const token = getTokenFromRequest(req);
+  const payload = token ? verifyToken(token) : null;
+  const isAuthenticated = !!payload && typeof payload === 'object' && 'username' in payload;
 
-    document.getElementById('cooldown-btn').addEventListener('click', () => {
-      const minutes = Number(document.getElementById('cooldown-minutes').value || 60);
-      void runControlAction('/api/cooldown', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minutes }),
-      });
-    });
+  if (!isAuthenticated) {
+    return res.redirect('/dashboard');
+  }
 
-    refreshAll();
-    refreshTimer = setInterval(refreshAll, 15000);
-  </script>
-</body>
-</html>`);
+  res.type('html').send(metricsHtml);
 });
 
 app.get(/.*/, (_req, res) => {
@@ -448,9 +535,18 @@ const runInstagramOnce = async () => {
   await igClient.interactWithPosts();
 };
 
+const isLoginError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  return lower.includes('login') || lower.includes('challenge');
+};
+
 const runAgents = async () => {
   const profile = getIgProfile();
   const intervalMs = profile.intervalMs;
+  // Declared outside the loop so the re-login guard persists across iterations.
+  let didRelogin = false;
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const cooldown = await getIgCooldown();
@@ -461,14 +557,13 @@ const runAgents = async () => {
     }
 
     logger.info('Starting Instagram agent iteration...');
-    let didRelogin = false;
     try {
       await runInstagramOnce();
       logger.info('Instagram agent iteration finished.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       logger.error('Instagram agent iteration failed:', error);
-      if (message.toLowerCase().includes('login') || message.toLowerCase().includes('challenge')) {
+
+      if (isLoginError(error)) {
         if (!didRelogin) {
           didRelogin = true;
           logger.warn('Attempting one re-login before stopping the loop...');
@@ -483,8 +578,9 @@ const runAgents = async () => {
             return;
           }
         } else {
+          // Re-login already attempted in a prior iteration — give up.
           await setIgCooldown(getNumberEnv('IG_COOLDOWN_MINUTES', 60));
-          logger.error('Stopping agent loop due to login/challenge requirement.');
+          logger.error('Stopping agent loop due to repeated login/challenge failures.');
           return;
         }
       }

@@ -1,23 +1,21 @@
 services:
-  instagram-ai-mongodb:
-    image: mongodb/mongodb-community-server:latest
-    container_name: instagram-ai-mongodb
+  postgres:
+    image: postgres:16-alpine
+    container_name: riona-postgres
     ports:
-      - '27017:27017'
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: riona_ai_agent
     volumes:
-      - mongodb_data:/data/db
-    networks:
-      - instagram-ai-network
-    restart: always
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.runCommand({ ping: 1 })']
-      interval: 10s
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d riona_ai_agent']
+      interval: 5s
       timeout: 5s
       retries: 5
-
-networks:
-  instagram-ai-network:
-    driver: bridge
+    restart: unless-stopped
 
 volumes:
-  mongodb_data:
+  postgres_data:
