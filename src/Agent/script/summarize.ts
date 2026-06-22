@@ -71,7 +71,7 @@ export async function generateTrainingPrompt(
     return 'No API key available.';
   }
 
-  const schema = await getYouTubeTranscriptSchema();
+  const schema = getYouTubeTranscriptSchema();
   const generationConfig = {
     responseMimeType: 'application/json',
     responseJsonSchema: schema,

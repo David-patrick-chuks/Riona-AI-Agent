@@ -39,7 +39,7 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json()); // JSON body parsing
+app.use(express.json({ limit: '1mb' })); // JSON body parsing
 app.use(express.urlencoded({ extended: true, limit: '1kb' })); // URL-encoded data
 app.use(cookieParser()); // Cookie parsing
 app.use(

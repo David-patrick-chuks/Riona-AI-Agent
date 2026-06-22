@@ -59,7 +59,7 @@ export async function runAgent(
     }
     return data;
   } catch (error: any) {
-    // Rotate API key on 429
+    // Rotate API key on 429 / rate-limit errors
     if (
       error instanceof Error &&
       (error.message.includes('429') ||

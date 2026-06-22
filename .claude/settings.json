@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "allow": ["Bash(node_modules/.bin/prettier --check src/client/IG-bot/index.ts)"]
+  }
+}

@@ -69,10 +69,7 @@ export function getTokenFromRequest(req: Request): string | null {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
-  const cookie = req.headers['cookie'];
-  if (cookie) {
-    const match = cookie.match(/token=([^;]+)/);
-    if (match) return match[1];
-  }
-  return null;
+  // Use cookie-parser's pre-parsed cookies to avoid partial-name matching bugs
+  // (e.g. regex /token=/ would wrongly match a cookie named "supertoken")
+  return (req as any).cookies?.token || null;
 }

@@ -103,20 +103,24 @@ export async function Train_Agent_with_Multiple_YouTube_URLs(urls: string[]) {
   return results;
 }
 
-// Example usage with the provided URLs
-const urls = [
-  'https://www.youtube.com/watch?v=4dp8W1lCw0Y',
-  'https://www.youtube.com/watch?v=NXXH3wB7VU8',
-  'https://www.youtube.com/watch?v=X0VuB3xo0Ms',
-  'https://www.youtube.com/shorts/JDOWP76OJ08',
-];
+if (require.main === module) {
+  const urlArgs = process.argv.slice(2);
+  const urls =
+    urlArgs.length > 0
+      ? urlArgs
+      : [
+          'https://www.youtube.com/watch?v=4dp8W1lCw0Y',
+          'https://www.youtube.com/watch?v=NXXH3wB7VU8',
+          'https://www.youtube.com/watch?v=X0VuB3xo0Ms',
+          'https://www.youtube.com/shorts/JDOWP76OJ08',
+        ];
 
-// Execute the training
-Train_Agent_with_Multiple_YouTube_URLs(urls)
-  .then((results) => {
-    logger.info('Training completed for all videos');
-    console.log('Training results:', results);
-  })
-  .catch((error) => {
-    logger.error('Error during batch training:', error);
-  });
+  Train_Agent_with_Multiple_YouTube_URLs(urls)
+    .then((results) => {
+      logger.info('Training completed for all videos');
+      console.log('Training results:', results);
+    })
+    .catch((error) => {
+      logger.error('Error during batch training:', error);
+    });
+}
