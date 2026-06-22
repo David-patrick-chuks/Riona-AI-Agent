@@ -74,5 +74,4 @@ export class InstagramClient implements IInstagramClient {
     console.log('Photo posted successfully!');
     return response;
   }
-
 }
