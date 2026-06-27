@@ -1,145 +1,119 @@
 # Instagram Bot Guide
 
-This guide provides all the necessary steps for configuring and running the Instagram Bot.
+This guide covers configuring and running the Instagram bot in **`apps/api`** (`@riona/api`).
 
-## 1. Prerequisites & File Structure
-
-Before running the bot, ensure the project has the following structure and files:
+## 1. Prerequisites & file structure
 
 ```
-├── .env              # Environment variables including IGusername and IGpassword
-├── cookies/          # Directory for storing session cookies (Instagramcookies.json)
-└── src/
-    ├── secret/
-    │   └── index.ts  # Exports Instagram credentials (IGusername and IGpassword)
-    └── Agent/
-        └── training/ # Directory containing training data files (PDFs, MP3s, TXT, URLs)
+Riona-AI-Agent/
+├── .env                          # IGusername, IGpassword, DATABASE_URL, etc.
+├── apps/
+│   └── api/
+│       ├── cookies/              # Instagramcookies.json (runtime)
+│       ├── logs/                 # Application logs (runtime)
+│       └── src/
+│           ├── secret/
+│           │   └── index.ts      # Credential exports
+│           ├── Agent/
+│           │   ├── training/     # Training data (PDF, MP3, TXT, URLs)
+│           │   └── characters/   # Personality JSON files
+│           ├── client/
+│           │   ├── Instagram.ts
+│           │   └── IG-bot/         # Puppeteer IG client
+│           └── config/
+│               └── accounts.json # Multi-account (optional)
 ```
 
-## 2. Setup Checklist
+Install and run from the **repo root**:
 
-### Credentials & Secret Management
+```sh
+pnpm install
+pnpm dev          # or: pnpm start
+```
 
-- Place your Instagram credentials in the `.env` file:
+## 2. Setup checklist
 
-  ```env
-  IGusername=your_instagram_username
-  IGpassword=your_instagram_password
-  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/riona_ai_agent
-  DB_REQUIRED=false
+### Credentials
 
-  # Optional: locale-specific ad/sponsored markers (comma-separated)
-  IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
-  IG_AD_BUTTON_MARKERS=learn more,shop now,sign up,install now,get offer,subscribe,book now
+Place Instagram credentials in the root `.env`:
 
-  # Optional: run Instagram agent loop automatically
-  IG_AGENT_ENABLED=false
-  IG_AGENT_INTERVAL_MS=30000
+```env
+IGusername=your_instagram_username
+IGpassword=your_instagram_password
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/riona_ai_agent
+DB_REQUIRED=false
 
-  # Optional: daily limit for IG actions (likes/comments). 0 = unlimited
-  IG_DAILY_MAX_ACTIONS=0
+# Optional
+IG_AD_MARKERS=sponsored,paid partnership,paid partnership with
+IG_AD_BUTTON_MARKERS=learn more,shop now,sign up
+IG_AGENT_ENABLED=false
+IG_AGENT_INTERVAL_MS=30000
+IG_DAILY_MAX_ACTIONS=0
+IG_RUN_PROFILE=standard
+LOGGER=console
 
-  # Optional: logging backend ("winston" or "console")
-  LOGGER=console
+GEMINI_API_KEY=your_primary_gemini_api_key
+```
 
-  # Gemini API keys (set only the ones you use)
-  GEMINI_API_KEY=your_primary_gemini_api_key
-  GEMINI_API_KEY_1=your_gemini_api_key_1
-  GEMINI_API_KEY_2=your_gemini_api_key_2
-  ```
+Validate env: `pnpm check:env`
 
-## Posting
+### Cookie management
 
-- Use `/api/post-photo` with a public image URL and caption.
-- Use `/api/schedule-post` with a cron expression.
+- First run creates `apps/api/cookies/Instagramcookies.json`
+- If cookie JSON is corrupted, delete the file and re-login via `/api/login`
+
+## Posting & interactions
+
+- `POST /api/post-photo` — image URL + caption
+- `POST /api/schedule-post` — cron-scheduled post
+- `POST /api/login` then `POST /api/interact` — manual agent run
+- Set `IG_AGENT_ENABLED=true` for continuous loop
 
 ## Troubleshooting
 
-- If the server starts but no IG actions run, set `IG_AGENT_ENABLED=true` or use `/api/login` + `/api/interact`.
-- If cookie JSON is corrupted, delete it or let the app auto-backup and re-login.
-- If IG shows a challenge screen, login manually once and re-run the agent.
+- **No IG actions:** set `IG_AGENT_ENABLED=true` or call `/api/login` + `/api/interact`
+- **Challenge screen:** login manually once; the agent records risk and applies cooldown
+- **Cookie errors:** delete `apps/api/cookies/Instagramcookies.json` and restart
 
-  ```
+## 3. Agent training data
 
-  ```
+Supported input types in `apps/api/src/Agent/training/`:
 
-- Ensure `src/secret/index.ts` exports these credentials correctly.
+- Text files (`.txt`)
+- PDF documents
+- Audio files (`.mp3`)
+- Website URLs (via `pnpm train:link`)
 
-### Cookie Management
+See [Training.md](./Training.md) for commands.
 
-- On the first run, the bot will handle cookie creation automatically and store them in `cookies/Instagramcookies.json`.
-- For subsequent runs, ensure the `cookies` directory exists to allow the bot to load valid sessions.
+## 4. Core customization points
 
-## 3. Agent Training Data Configuration
+| Area                                    | Location                                 |
+| --------------------------------------- | ---------------------------------------- |
+| Comment schema & tone rules             | `apps/api/src/Agent/schema/index.ts`     |
+| IG client & interaction flow            | `apps/api/src/client/Instagram.ts`       |
+| Puppeteer IG bot                        | `apps/api/src/client/IG-bot/IgClient.ts` |
+| Personality JSON                        | `apps/api/src/Agent/characters/`         |
+| Character loader                        | `apps/api/src/Agent/index.ts`            |
+| Run profiles (safe/standard/aggressive) | `apps/api/src/config/igProfile.ts`       |
+| Challenge risk & downgrade              | `apps/api/src/config/igRisk.ts`          |
 
-The bot uses training data to refine and tailor the comments it posts. In this context, "training" refers to the process where the bot:
+To add a custom character:
 
-- **Uses Input Data Types Such As:**
-  - **Text Files (.txt):** Provide sample responses and templates.
-  - **PDF Documents:** Contain technical documents or guidelines to improve response relevancy.
-  - **Audio Files (.mp3):** Supply samples for tone and conversational style.
-  - **URLs:** Allow scraping of website content for context.
-- **Training Process:**
-  1. Add your training files to `src/Agent/training/`.
-  2. On execution, the bot processes these files to update its response generation model.
-  3. The model updates periodically (e.g., weekly) as new data is added.
-- **Customization:**
-  - Modify the training data to adjust how the bot crafts its responses.
-  - Supported formats offer flexibility in providing contextual data for improved accuracy.
+1. Add `YourCharacter.json` to `apps/api/src/Agent/characters/`
+2. Point `apps/api/src/Agent/index.ts` at your file (or use `adrian-style` config)
 
-## 4. Core Customization Points
+## 5. Running the bot
 
-### Comment Generation Engine
+```sh
+pnpm db:up          # optional: local Postgres
+pnpm dev            # dev server on :3000
+```
 
-- **Location:** `src/Agent/schema/index.ts`
-- **Details:**
-  - Defines response length limits (e.g., 300 characters).
-  - Sets tone rules to ensure responses are professional and empathetic.
-  - Specifies banned topics or phrases, maintaining compliance with Instagram's community guidelines.
+Open `http://localhost:3000/dashboard` for status, logs, and runtime config.
 
-### Interaction Patterns
+## 6. Safety
 
-- **Location:** `src/client/Instagram.ts`
-- **Configurable Parameters:**
-  - **maxPosts:** The maximum number of posts the bot will interact with (default is 50).
-  - **waitTime:** A randomized delay between interactions to mimic natural behavior.
-  ```javascript
-  const maxPosts = 50; // Maximum posts to process
-  const waitTime = Math.floor(Math.random() * 5000) + 5000; // Delay range: 5 to 10 seconds
-  ```
-
-### Personality Configuration
-
-- **Location:** `src/Agent/characters/`
-- **Details:**
-  - Customize the bot's personality by modifying JSON files.
-  - Adjust vocabulary, tone, and emoji usage.
-  - Set cultural reference preferences to better tailor interactions.
-  - To use a new custom character:
-    1. Add its JSON file to the `src/Agent/characters/` directory.
-    2. Update the configuration in **`src/Agent/index.ts`**.
-- **Example usage:**
-
-  ```javascript
-  // In src/Agent/index.ts:
-  // Set the character file path to the custom character JSON file you created:
-  const characterFile = 'src/Agent/characters/YourCustomCharacter.json';
-
-  // Also, update the import statement to load your custom character:
-  import character from './characters/YourCustomCharacter.json';
-  ```
-
-## 5. Running the Bot
-
-Once the setup is complete:
-
-1. Confirm that your credentials and training data are correctly placed.
-2. Run the Instagram bot using your preferred method (e.g., via a start script or command line).
-3. Monitor console logs to verify successful login and post interactions.
-4. Check the `cookies/Instagramcookies.json` file after the first run for session management.
-
-## 6. Additional Considerations
-
-- **Safety & Rate Limiting:** The bot includes built-in delays and interaction limits to avoid spam-like behavior.
-- **Proxy & Stealth Settings:** Proxy configurations and stealth plugins (configured in `src/client/Instagram.ts`) help reduce detection risks.
-- **Maintenance:** Regularly update your training data in `src/Agent/training/` to keep the bot effective and engaging.
+- Built-in delays and daily caps via `IG_RUN_PROFILE` and `IG_DAILY_MAX_ACTIONS`
+- Sponsored-post filtering via `IG_AD_MARKERS`
+- Challenge detection triggers cooldown and profile downgrade — see `apps/api/src/services/igChallenge.ts`

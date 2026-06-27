@@ -1,64 +1,54 @@
 # Training Guide
 
-This project supports generating prompts or summaries from external content
-and preparing “character” styles for the agent.
+Training scripts live in **`apps/api`** (`@riona/api`). Run them from the repo root via pnpm.
 
 ## Prerequisites
 
 - Valid `GEMINI_API_KEY` (or `GEMINI_API_KEY_1..N`)
-- `.env` configured
+- `.env` at the repo root
 
 ## Train from a website
 
-Command:
-
-```
-npm run train:link
+```sh
+pnpm train:link
 ```
 
-This runs `src/Agent/training/WebsiteScraping.ts` after build. Provide the
-URL when prompted.
+Runs `apps/api/src/Agent/training/WebsiteScraping.ts` after build. Provide the URL when prompted.
 
 ## Train from a YouTube URL
 
-Command:
-
-```
-npm run train:youtube
+```sh
+pnpm train:youtube
 ```
 
-This uses `src/Agent/training/youtubeURL.ts` to fetch transcripts and
-create training prompts.
+Uses `apps/api/src/Agent/training/youtubeURL.ts` to fetch transcripts and create training prompts.
 
 ## Train from an audio file
 
-Command:
-
-```
-npm run train:audio
+```sh
+pnpm train:audio
 ```
 
-This uses `src/Agent/training/TrainWithAudio.ts` to upload an audio file
-and generate a summary or transcript.
+Uses `apps/api/src/Agent/training/TrainWithAudio.ts` to upload an audio file and generate a summary or transcript.
 
 ## Character styles
 
-Character JSON lives in `src/Agent/characters/`. At runtime, the agent will
-load either `src/config/adrian-style` (if present) or fall back to the first
-JSON character found.
+Character JSON lives in `apps/api/src/Agent/characters/`. At runtime, the agent loads either `apps/api/src/config/adrian-style` (if present) or falls back to the first JSON character found.
 
 ## Output
 
-Training scripts typically write structured data to `src/data/` or log
-results to the console. Review and curate outputs before use.
+Training scripts typically write structured data to `apps/api/src/data/` or log results to the console. Review and curate outputs before use.
 
-## ReCAPTCHA Model Training
+## reCAPTCHA model training
 
-The project includes a reCAPTCHA solving model in `apps/recaptcha/`.
+The reCAPTCHA app is a separate workspace package under `apps/recaptcha/`:
 
-- `pnpm recaptcha:dev`
-- `pnpm recaptcha:train`
-- `pnpm recaptcha:collect`
-- `pnpm recaptcha:build`
-- `pnpm recaptcha:serve`
-  See the [apps/recaptcha README](../apps/recaptcha/README.md) for full details.
+```sh
+pnpm recaptcha:dev
+pnpm recaptcha:train
+pnpm recaptcha:collect
+pnpm recaptcha:build
+pnpm recaptcha:serve
+```
+
+See [apps/recaptcha/README.md](../apps/recaptcha/README.md) for full details.

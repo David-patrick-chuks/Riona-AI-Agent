@@ -1,60 +1,70 @@
 # FAQ
 
+## The bot is not commenting or liking
+
 This usually happens when the Instagram automation loop is not enabled.
 
-### Fix:
+**Fix:** enable the loop in your root `.env`:
 
-Enable the loop in your `.env` file:
-
+```env
 IG_AGENT_ENABLED=true
+```
 
-Then restart the server.
+Then restart: `pnpm dev`
 
-### Alternative:
-
-You can manually trigger interactions using:
-
-POST /api/interact
+**Alternative:** manually trigger via `POST /api/login` then `POST /api/interact`.
 
 ## Cookie errors
 
-If Instagram login fails or session breaks:
+If Instagram login fails or the session breaks:
 
-### Fix:
+**Fix:**
 
-- Delete this file:
-  cookies/Instagramcookies.json
-
-- Restart the application
-
-- The system will automatically re-login and generate fresh cookies.
+1. Delete `apps/api/cookies/Instagramcookies.json`
+2. Restart: `pnpm dev`
+3. Re-login via `/api/login` or the dashboard
 
 ## Sponsored posts
 
-You can improve sponsored post detection using environment variables:
+Improve detection with:
 
-- IG_AD_MARKERS
-- IG_AD_BUTTON_MARKERS
+- `IG_AD_MARKERS`
+- `IG_AD_BUTTON_MARKERS`
 
-### Note:
+Use comma-separated values in `.env`.
 
-Make sure values are properly comma-separated in your .env file.
+## Which package manager should I use?
 
-## Should I run `npm audit fix --force`?
+This repo is a **pnpm workspace**. Use:
 
-Avoid using --force unless absolutely necessary, as it may break dependencies.
+```sh
+pnpm install
+pnpm dev
+pnpm check
+```
 
-### Recommended steps:
+Do not use `npm install` — there is no `package-lock.json`.
 
-1. Check vulnerabilities:
-   npm audit
+## Should I run `pnpm audit --fix`?
 
-2. Apply safe fixes:
-   npm audit fix
+Avoid `--force` unless necessary; it can break dependencies.
 
-3. If issues remain, update specific packages manually and test the application before deploying.
-   Recommended path:
+**Recommended:**
 
-- Run `npm audit` to see details
-- Run `npm audit fix` first
-- For remaining issues, update specific packages intentionally and test
+```sh
+pnpm audit
+pnpm audit --fix
+```
+
+For remaining issues, update specific packages in `apps/api/package.json` or `apps/recaptcha/package.json`, then run `pnpm check`.
+
+## Where is the source code?
+
+| What           | Where                 |
+| -------------- | --------------------- |
+| API & IG/X bot | `apps/api/src/`       |
+| reCAPTCHA ML   | `apps/recaptcha/src/` |
+| Docs           | `Guides/`             |
+| Env file       | `.env` (repo root)    |
+
+See [Monorepo.md](./Monorepo.md) for the full tree.

@@ -1,5 +1,7 @@
 # Environment Variables
 
+All variables are defined in **`.env` at the repo root**. `apps/api` loads this file on startup.
+
 ## Required
 
 - `IGusername`
@@ -10,7 +12,7 @@
 - `DATABASE_URL` — PostgreSQL connection URL (see `.env.example`)
 - `DB_REQUIRED` — set to `true` to fail startup without a database
 
-If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
+If `DATABASE_URL` is unset, action logs use `apps/api/logs/actionLogs.json`.
 
 ## Gemini
 
@@ -30,7 +32,7 @@ If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
 
 ## Multi-account
 
-- `src/config/accounts.json` (see `src/config/accounts.example.json`)
+- `apps/api/src/config/accounts.json` (see `apps/api/src/config/accounts.example.json`)
 
 ## Twitter / X API
 

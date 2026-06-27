@@ -22,6 +22,7 @@
 - [Usage](#usage)
 - [Dashboard](#dashboard)
 - [Development](#development)
+- [Monorepo](#monorepo)
 - [Guides](#guides)
 - [reCAPTCHA Model](#recaptcha-model)
 - [Configuration Reference](#configuration-reference)
@@ -100,11 +101,31 @@ pnpm install
 ```
 
 3. **Set up environment variables**:
-   Rename the `.env.example` file to `.env` in the root directory and add your Instagram credentials. Refer to the `.env.example` file for the required variables.
+   Copy `.env.example` to `.env` in the **repo root** and add your credentials. All apps read from this file.
+
+## Monorepo
+
+This repository is a **pnpm workspace** with two apps and shared tooling:
+
+| Package            | Path                 | Description                                 |
+| ------------------ | -------------------- | ------------------------------------------- |
+| `@riona/api`       | `apps/api/`          | Main API, Instagram/X automation, dashboard |
+| `@riona/recaptcha` | `apps/recaptcha/`    | reCAPTCHA ML model & solver                 |
+| `@riona/tsconfig`  | `packages/tsconfig/` | Shared TypeScript config                    |
+
+```sh
+pnpm install              # install all workspace deps
+pnpm dev                  # run API (@riona/api)
+pnpm dev:recaptcha        # run reCAPTCHA app
+pnpm dev:all              # run both in parallel
+pnpm --filter @riona/api <script>   # run any API script
+```
+
+Full layout, paths, and contributor workflow: [Guides/Monorepo.md](Guides/Monorepo.md).
 
 ## PostgreSQL Setup
 
-The app uses PostgreSQL for action logs. If `DATABASE_URL` is not set, action logs fall back to a local JSON file (`logs/actionLogs.json`).
+The app uses PostgreSQL for action logs. If `DATABASE_URL` is not set, action logs fall back to `apps/api/logs/actionLogs.json`.
 
 ### Option A: Docker (recommended for contributors)
 
@@ -218,28 +239,35 @@ actions, application logs, and errors.
 
 ## Development
 
-- Run all checks: `pnpm check`
-- Run tests: `pnpm test`
-- Lint: `pnpm lint`
-- Format: `pnpm format`
-- Env check: `pnpm check:env`
-- Setup check: `pnpm setup`
-- API only: `pnpm --filter @riona/api dev`
-- reCAPTCHA only: `pnpm --filter @riona/recaptcha dev`
-- Both apps: `pnpm dev:all`
+| Command              | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `pnpm check`         | Lint + typecheck + test + format (CI parity) |
+| `pnpm test`          | Run API test suite                           |
+| `pnpm test:coverage` | Tests with coverage report                   |
+| `pnpm lint`          | ESLint on `apps/api`                         |
+| `pnpm format`        | Prettier write                               |
+| `pnpm check:env`     | Validate required env vars                   |
+| `pnpm setup`         | Setup health check                           |
+| `pnpm dev`           | API dev server (`@riona/api`)                |
+| `pnpm dev:recaptcha` | reCAPTCHA dev server                         |
+| `pnpm dev:all`       | All apps in parallel                         |
+| `pnpm build`         | Build all packages                           |
+
+Per-package: `pnpm --filter @riona/api <script>` or `pnpm --filter @riona/recaptcha <script>`.
 
 ## Guides
 
+- [Guides/Monorepo.md](Guides/Monorepo.md) — workspace layout & commands
 - `Guides/Instagram-Bot.md`
 - `Guides/Operations.md`
 - `Guides/API.md`
 - `Guides/Env.md`
 - `Guides/Testing.md`
 - `Guides/CI.md`
-- `Guides/FAQ.md`
-- `Guides/Logging.md`
 - `Guides/Scripts.md`
 - `Guides/Training.md`
+- `Guides/FAQ.md`
+- `Guides/Logging.md`
 
 ## reCAPTCHA Model Integration
 
@@ -321,20 +349,28 @@ Then pass `account` in `/api/login` to select which account to use.
 
 ```
 apps/
-  api/          @riona/api — main API, agent, Instagram/X automation
-  recaptcha/    @riona/recaptcha — reCAPTCHA ML model and solver
+  api/          @riona/api — REST API, agent loop, IG/X clients, dashboard
+    src/
+      Agent/      AI training, characters, schema
+      client/     Instagram & X/Twitter automation
+      config/     accounts, igProfile, logger, database
+      routes/     Express API (api.ts)
+      services/   action logs, webhooks, metrics, igChallenge
+      views/      Admin dashboard HTML
+    scripts/      env check, setup, DB migrate
+  recaptcha/    @riona/recaptcha — TensorFlow reCAPTCHA solver
 packages/
-  tsconfig/     @riona/tsconfig — shared TypeScript base config
+  tsconfig/     @riona/tsconfig — shared compiler base
+Guides/         Documentation
+docker-compose.yml
+pnpm-workspace.yaml
 ```
 
-- **apps/api/src/client**: Social platform clients (Instagram, X).
-- **apps/api/src/config**: Configuration, logger, accounts.
-- **apps/api/src/Agent**: AI agent logic and training scripts.
-- **apps/api/src/views**: Admin dashboard HTML.
+See [Guides/Monorepo.md](Guides/Monorepo.md) for paths, runtime directories, and CI details.
 
 ## Logging
 
-The project uses a custom logger to record information, warnings, and errors. Logs are stored in the `logs/` directory.
+Winston writes rotating logs to `apps/api/logs/`. Set `LOGGER=console` to log only to stdout. See [Guides/Logging.md](Guides/Logging.md).
 
 ## Error Handling
 
@@ -346,11 +382,11 @@ Contributions are welcome and appreciated.
 
 1. Fork the repository.
 2. Create a feature branch.
-3. Commit your changes.
-4. Push your changes to your fork.
-5. Open a pull request for review.
+3. Install deps: `pnpm install`
+4. Run checks: `pnpm check`
+5. Commit your changes and open a pull request.
 
-Please ensure your changes follow the existing code style and include documentation updates when necessary.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [Guides/Monorepo.md](Guides/Monorepo.md).
 
 ## License
 

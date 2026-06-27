@@ -20,6 +20,8 @@ Tests live next to source as `*.test.ts` under `apps/api/src/`:
 | Routes   | `routes/api.test.ts` (supertest HTTP integration)                     |
 | Utils    | `utils/index.test.ts`, `utils/tweetLimit.test.ts`                     |
 
+**151+ tests** across 20 suites. Run from repo root or `apps/api`.
+
 ## CI
 
-`pnpm check` runs lint, typecheck, format check, and the full test suite on every push/PR.
+`pnpm check` runs lint, typecheck, format check, and the full test suite on every push/PR. See [CI.md](./CI.md) and [Monorepo.md](./Monorepo.md).
