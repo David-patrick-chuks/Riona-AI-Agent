@@ -4,8 +4,8 @@ The CI workflow runs on every push and pull request.
 
 Steps:
 
-- Install deps
-- Lint
-- Typecheck
-- Format check
-- Tests
+- `pnpm install --frozen-lockfile`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm format:check`
+- `pnpm test`

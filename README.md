@@ -48,7 +48,7 @@ Riona is built to automate social activity while keeping control surfaces explic
 - AI content generation using Gemini for captions and comments
 - Training inputs from YouTube, audio, files, and websites
 - API endpoints, health checks, dashboards, cooldowns, summaries, and logging
-- A separate reCAPTCHA ML subproject under `riona-recaptcha-model/`
+- A separate reCAPTCHA ML app under `apps/recaptcha/` (`@riona/recaptcha`)
 
 ## Quick Links
 
@@ -93,8 +93,10 @@ Before running automation, you can shape the agent with:
 
 2. **Install dependencies**:
 
+This is a **pnpm workspace** monorepo. Install [pnpm](https://pnpm.io/installation), then:
+
 ```sh
- npm install
+pnpm install
 ```
 
 3. **Set up environment variables**:
@@ -107,7 +109,7 @@ The app uses PostgreSQL for action logs. If `DATABASE_URL` is not set, action lo
 ### Option A: Docker (recommended for contributors)
 
 ```sh
-npm run db:up
+pnpm db:up
 ```
 
 This starts PostgreSQL on port `5432` with credentials that match `.env.example`.
@@ -129,7 +131,7 @@ createdb riona_ai_agent
 Schema is applied automatically on startup. To run migrations manually:
 
 ```sh
-npm run db:migrate
+pnpm db:migrate
 ```
 
 ### Verify
@@ -143,7 +145,7 @@ psql "$DATABASE_URL" -c '\dt'
 Stop Docker Postgres:
 
 ```sh
-npm run db:down
+pnpm db:down
 ```
 
 ### Upgrading from a MongoDB fork
@@ -152,8 +154,8 @@ If your fork still uses `MONGODB_URI`, merge this branch and update `.env`:
 
 1. Remove `MONGODB_URI` / `MONGODB_REQUIRED`
 2. Add `DATABASE_URL` and `DB_REQUIRED=false` (see `.env.example`)
-3. Run `npm install` (mongoose removed, `pg` added)
-4. Start Postgres with `npm run db:up` or use your local instance
+3. Run `pnpm install`
+4. Start Postgres with `pnpm db:up` or use your local instance
 
 No data migration script is provided — MongoDB action logs were optional and the app still works without a database.
 
@@ -162,7 +164,9 @@ No data migration script is provided — MongoDB action logs were optional and t
 1. **Run the agent**:
 
 ```sh
-npm start
+pnpm start
+# or during development:
+pnpm dev
 ```
 
 This starts the API server on port 3000 and opens the dashboard at `http://localhost:3000/dashboard`. The Instagram browser only launches when you log in or trigger interactions — it does not auto-comment on its own unless `IG_AGENT_ENABLED=true`.
@@ -214,11 +218,15 @@ actions, application logs, and errors.
 
 ## Development
 
-- Run tests: `npm test`
-- Lint: `npm run lint`
-- Format: `npm run format`
-- Env check: `npm run check:env`
-- Setup check: `npm run setup`
+- Run all checks: `pnpm check`
+- Run tests: `pnpm test`
+- Lint: `pnpm lint`
+- Format: `pnpm format`
+- Env check: `pnpm check:env`
+- Setup check: `pnpm setup`
+- API only: `pnpm --filter @riona/api dev`
+- reCAPTCHA only: `pnpm --filter @riona/recaptcha dev`
+- Both apps: `pnpm dev:all`
 
 ## Guides
 
@@ -235,15 +243,15 @@ actions, application logs, and errors.
 
 ## reCAPTCHA Model Integration
 
-This repo now includes the reCAPTCHA model under `riona-recaptcha-model/` and is run via root scripts:
+The reCAPTCHA app lives in `apps/recaptcha/` (`@riona/recaptcha`):
 
-- `npm run recaptcha:dev`
-- `npm run recaptcha:train`
-- `npm run recaptcha:collect`
-- `npm run recaptcha:build`
-- `npm run recaptcha:serve`
+- `pnpm recaptcha:dev` (or `pnpm --filter @riona/recaptcha dev`)
+- `pnpm recaptcha:train`
+- `pnpm recaptcha:collect`
+- `pnpm recaptcha:build`
+- `pnpm recaptcha:serve`
 
-See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.md) for more details.
+See [apps/recaptcha/README.md](./apps/recaptcha/README.md) for more details.
 
 ## Configuration Reference
 
@@ -299,7 +307,7 @@ See the separate [riona-recaptcha-model README](./riona-recaptcha-model/README.m
 
 ## Multi-Account Support
 
-Create `src/config/accounts.json` (not committed) based on `src/config/accounts.example.json`.
+Create `apps/api/src/config/accounts.json` (not committed) based on `apps/api/src/config/accounts.example.json`.
 Then pass `account` in `/api/login` to select which account to use.
 
 ## Project Policies
@@ -311,13 +319,18 @@ Then pass `account` in `/api/login` to select which account to use.
 
 ## Project Structure
 
-- **src/client**: Contains the main logic for interacting with social media platforms like Instagram.
-- **src/config**: Configuration files, including the logger setup.
-- **src/utils**: Utility functions for handling errors, cookies, data saving, etc.
-- **src/Agent**: Contains the AI agent logic and training scripts.
-- **src/Agent/training**: Training scripts for the AI agent.
-- **src/Agent/schema**: Schema definitions for AI-generated content and database models.
-- **src/test**: Contains test data and scripts, such as example tweets.
+```
+apps/
+  api/          @riona/api — main API, agent, Instagram/X automation
+  recaptcha/    @riona/recaptcha — reCAPTCHA ML model and solver
+packages/
+  tsconfig/     @riona/tsconfig — shared TypeScript base config
+```
+
+- **apps/api/src/client**: Social platform clients (Instagram, X).
+- **apps/api/src/config**: Configuration, logger, accounts.
+- **apps/api/src/Agent**: AI agent logic and training scripts.
+- **apps/api/src/views**: Admin dashboard HTML.
 
 ## Logging
 

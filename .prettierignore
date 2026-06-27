@@ -4,3 +4,4 @@ node_modules/
 logs/
 coverage/
 package-lock.json
+pnpm-lock.yaml

@@ -54,11 +54,11 @@ results to the console. Review and curate outputs before use.
 
 ## ReCAPTCHA Model Training
 
-The project includes a reCAPTCHA solving model in the `riona-recaptcha-model/` directory.
+The project includes a reCAPTCHA solving model in `apps/recaptcha/`.
 
-- `npm run recaptcha:dev` - Start reCAPTCHA model dev server
-- `npm run recaptcha:train` - Train reCAPTCHA model
-- `npm run recaptcha:collect` - Collect reCAPTCHA training data
-- `npm run recaptcha:build` - Build reCAPTCHA model
-- `npm run recaptcha:serve` - Serve trained reCAPTCHA model
-  See the [riona-recaptcha-model README](../riona-recaptcha-model/README.md) for full details.
+- `pnpm recaptcha:dev`
+- `pnpm recaptcha:train`
+- `pnpm recaptcha:collect`
+- `pnpm recaptcha:build`
+- `pnpm recaptcha:serve`
+  See the [apps/recaptcha README](../apps/recaptcha/README.md) for full details.

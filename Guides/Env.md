@@ -32,6 +32,16 @@ If `DATABASE_URL` is unset, action logs use `logs/actionLogs.json`.
 
 - `src/config/accounts.json` (see `src/config/accounts.example.json`)
 
+## Twitter / X API
+
+Required for `POST /api/post-tweet`, engagement routes, and media tweets:
+
+- `TWITTER_API_KEY`
+- `TWITTER_API_SECRET`
+- `TWITTER_ACCESS_TOKEN`
+- `TWITTER_ACCESS_SECRET`
+- `TWITTER_BEARER_TOKEN`
+
 ## Sponsored content filters
 
 - `IG_AD_MARKERS`

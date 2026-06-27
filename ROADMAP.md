@@ -23,7 +23,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [x] Training utilities (YouTube, file parsing, website scraping)
 - [x] Simple dashboard for health + last run
 - [x] reCAPTCHA ML service (train/serve/admin UI)
-- [ ] Twitter/X full workflow (compose, schedule, media, metrics)
+- [ ] Twitter/X full workflow (compose, schedule, media, metrics) — **partial** (API routes + media upload on main)
 - [ ] GitHub automation (planned)
 - [ ] Analytics and reporting (cross‑platform)
 - [ ] Production hardening and compliance features
@@ -32,7 +32,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 
 | Phase   | Goals                                                                       | Status                                                                                                                                                              |
 | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 1 | Twitter/X MVP, IG reliability pass, admin UI basics                         | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#8a4f00;border:1px solid #ffd9a8;font-size:12px;">In progress</span> |
+| Phase 1 | Twitter/X MVP, IG reliability pass, admin UI basics                         | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e7f8ef;color:#0f7b47;border:1px solid #bfead4;font-size:12px;">Mostly done</span> |
 | Phase 2 | Analytics, observability, policy/rules engine, compliance guardrails        | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
 | Phase 3 | Multi‑platform orchestration, model evaluation + A/B, scale & cost controls | <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e9f1ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;">Planned</span>     |
 
@@ -45,11 +45,11 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [x] Instagram scheduling (cron)
 - [x] Instagram follower scraping
 - [x] Cookie persistence and relogin handling
-- [ ] Instagram reliability pass: captcha/challenge escalation workflow
-- [ ] Instagram action throttling by risk profile (dynamic)
-- [ ] Twitter/X end‑to‑end publish pipeline
-- [ ] Twitter/X scheduling and media upload
-- [ ] Twitter/X engagement actions (like/retweet/reply)
+- [ ] Instagram reliability pass: captcha/challenge escalation workflow — **partial** (detect + cooldown + webhooks + dynamic profile downgrade)
+- [ ] Instagram action throttling by risk profile (dynamic) — **partial** (`getEffectiveIgProfile` downgrades after challenges)
+- [ ] Twitter/X end‑to‑end publish pipeline — **partial** (text + media API)
+- [x] Twitter/X scheduling and media upload
+- [x] Twitter/X engagement actions (like/retweet/reply)
 - [ ] GitHub automation: issues, PRs, releases
 
 ### 2) AI and Training
@@ -66,9 +66,9 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 
 ### 3) Data and Storage
 
-- [x] MongoDB connection and models
+- [x] MongoDB connection and models (legacy; app uses PostgreSQL for action logs)
 - [x] Tweet schema for rate limiting
-- [ ] Unified action log (IG/Twitter/GitHub)
+- [ ] Unified action log (IG/Twitter/GitHub) — **partial** (IG + Twitter logged; GitHub pending)
 - [ ] Content cache + dedupe layer
 - [ ] Audit trail for moderation and compliance
 
@@ -77,10 +77,10 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [x] REST API (login, interact, post, schedule)
 - [x] /dashboard summary UI
 - [x] Health endpoint
-- [ ] Web UI for configuring accounts and profiles
-- [ ] Admin panel for viewing actions, logs, and errors
-- [ ] Webhook endpoints for external triggers
-- [ ] API rate limiting and API keys for third‑party usage
+- [ ] Web UI for configuring accounts and profiles — **partial** (`GET /api/accounts` + dashboard config panel)
+- [x] Admin panel for viewing actions, logs, and errors
+- [x] Webhook endpoints for external triggers
+- [x] API rate limiting and API keys for third‑party usage — **partial** (rate limits done; third-party API keys pending)
 
 ### 5) Ops, Security, Reliability
 
@@ -88,7 +88,7 @@ This roadmap is based on the current codebase state and is meant to guide ongoin
 - [x] Logging with Winston
 - [x] Docker‑based MongoDB setup docs
 - [ ] Secrets management for production (vault/parameter store)
-- [ ] Observability: metrics + alerts
+- [ ] Observability: metrics + alerts — **partial** (metrics dashboard; alerts pending)
 - [ ] CI coverage for integration tests
 - [ ] Chaos testing for IG loops
 - [ ] Legal/compliance guardrails and TOS risk toggles
