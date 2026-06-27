@@ -52,6 +52,10 @@ app.use(
 );
 app.use(metricsMiddleware);
 
+app.get('/hello', (_req, res) => {
+  res.json({ ok: true });
+});
+
 // Serve static files from the 'public' directory
 app.use(express.static('frontend/dist'));
 
