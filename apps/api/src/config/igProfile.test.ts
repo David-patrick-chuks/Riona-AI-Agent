@@ -32,3 +32,35 @@ describe('getIgProfile', () => {
     expect(profile.name).toBe('standard');
   });
 });
+
+describe('getEffectiveIgProfile', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(async () => {
+    const { resetIgRiskState } = await import('./igRisk');
+    await resetIgRiskState();
+    process.env.IG_RUN_PROFILE = 'aggressive';
+  });
+
+  afterEach(async () => {
+    process.env = { ...originalEnv };
+    const { resetIgRiskState } = await import('./igRisk');
+    await resetIgRiskState();
+  });
+
+  test('returns configured profile when no recent challenges', async () => {
+    const { getEffectiveIgProfile } = await import('./igProfile');
+    const profile = await getEffectiveIgProfile();
+    expect(profile.name).toBe('aggressive');
+    expect(profile.maxPostsPerRun).toBe(30);
+  });
+
+  test('downgrades profile after recorded challenges', async () => {
+    const { recordIgChallenge } = await import('./igRisk');
+    const { getEffectiveIgProfile } = await import('./igProfile');
+
+    await recordIgChallenge('checkpoint');
+    const profile = await getEffectiveIgProfile();
+    expect(profile.name).toBe('standard');
+  });
+});

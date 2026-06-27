@@ -12,6 +12,7 @@
     "start": "pnpm --filter @riona/api start",
     "build": "pnpm -r build",
     "test": "pnpm --filter @riona/api test",
+    "test:coverage": "pnpm --filter @riona/api test:coverage",
     "lint": "pnpm --filter @riona/api lint",
     "lint:fix": "pnpm --filter @riona/api lint:fix",
     "typecheck": "pnpm -r typecheck",
