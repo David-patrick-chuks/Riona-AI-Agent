@@ -78,6 +78,12 @@ const apiEndpoints = [
   },
   {
     method: 'GET',
+    path: '/api/hello',
+    auth: false,
+    description: 'Bot detection verification endpoint (returns { ok: true })',
+  },
+  {
+    method: 'GET',
     path: '/api/version',
     auth: false,
     description: 'Server version and uptime info',
@@ -271,6 +277,11 @@ const serverStartTime = Date.now();
 // Simple ping endpoint for load balancers and uptime monitors
 router.get('/ping', (_req: Request, res: Response) => {
   return res.send('pong');
+});
+
+// Hello-world endpoint for bot detection verification (closes #120)
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.status(200).json({ ok: true });
 });
 
 // Version and build info endpoint
