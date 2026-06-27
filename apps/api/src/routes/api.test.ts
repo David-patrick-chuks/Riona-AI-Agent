@@ -52,9 +52,22 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api', apiRoutes);
+app.get('/hello', (_req, res) => res.json({ ok: true }));
 
 describe('API routes', () => {
   describe('public endpoints', () => {
+    test('GET /hello on main app returns { ok: true }', async () => {
+      const res = await request(app).get('/hello');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
+
+    test('GET /api/hello returns { ok: true }', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
+
     test('GET /api/ping returns pong', async () => {
       const res = await request(app).get('/api/ping');
       expect(res.status).toBe(200);
