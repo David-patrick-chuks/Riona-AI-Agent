@@ -6,6 +6,7 @@ const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
 router.get('/ping', controller.ping);
+router.get('/hello', controller.hello);
 router.post('/predict', upload.array('images'), controller.predict);
 
 export default router;

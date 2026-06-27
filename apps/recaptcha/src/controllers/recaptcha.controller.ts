@@ -126,6 +126,13 @@ const RecaptchaController = {
   ping: (req: Request, res: Response): void => {
     res.json({ status: 'ok', message: 'Server is running' });
   },
+
+  /**
+   * Hello World - Bot Detection Test Endpoint
+   */
+  hello: (_req: Request, res: Response): void => {
+    res.json({ ok: true });
+  },
 };
 
 export default RecaptchaController;
