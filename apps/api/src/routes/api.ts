@@ -1474,6 +1474,11 @@ router.post('/exit', async (req: Request, res: Response) => {
   }
 });
 
+// Hello endpoint for bot detection verification
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.json({ ok: true });
+});
+
 // Trigger cooldown manually
 router.post('/cooldown', async (req: Request, res: Response) => {
   try {
