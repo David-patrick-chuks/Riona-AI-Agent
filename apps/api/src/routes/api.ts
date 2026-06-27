@@ -72,6 +72,12 @@ const apiEndpoints = [
   // Public endpoints
   {
     method: 'GET',
+    path: '/hello',
+    auth: false,
+    description: 'Bounty hello test route',
+  },
+  {
+    method: 'GET',
     path: '/api/ping',
     auth: false,
     description: 'Simple health check (returns "pong")',
@@ -271,6 +277,11 @@ const serverStartTime = Date.now();
 // Simple ping endpoint for load balancers and uptime monitors
 router.get('/ping', (_req: Request, res: Response) => {
   return res.send('pong');
+});
+
+// Hello endpoint to verify automated bounty hunter
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.json({ ok: true });
 });
 
 // Version and build info endpoint
