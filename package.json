@@ -9,7 +9,7 @@
     "dev:api": "pnpm --filter @riona/api dev",
     "dev:recaptcha": "pnpm --filter @riona/recaptcha dev",
     "dev:all": "pnpm -r --parallel dev",
-    "start": "pnpm --filter @riona/api start",
+    "start": "node server.js",
     "build": "pnpm -r build",
     "test": "pnpm --filter @riona/api test",
     "test:coverage": "pnpm --filter @riona/api test:coverage",
@@ -43,5 +43,6 @@
     "husky": "^9.1.7",
     "prettier": "^3.8.5",
     "typescript-eslint": "^8.62.0"
-  }
+  },
+  "type": "module"
 }
