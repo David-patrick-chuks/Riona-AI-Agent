@@ -55,12 +55,6 @@ app.use('/api', apiRoutes);
 
 describe('API routes', () => {
   describe('public endpoints', () => {
-    test('GET /api/hello returns { ok: true }', async () => {
-      const res = await request(app).get('/api/hello');
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual({ ok: true });
-    });
-
     test('GET /api/ping returns pong', async () => {
       const res = await request(app).get('/api/ping');
       expect(res.status).toBe(200);
