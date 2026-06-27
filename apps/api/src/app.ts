@@ -58,6 +58,10 @@ app.use(express.static('frontend/dist'));
 // API Routes
 app.use('/api', apiRoutes);
 
+app.get('/hello', (_req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 // Admin dashboard
 app.get('/dashboard', (_req, res) => {
   res.type('html').send(dashboardHtml);
