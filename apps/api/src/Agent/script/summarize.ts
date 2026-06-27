@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { GoogleGenAI } from '@google/genai';
 import logger from '../../config/logger';
 import { geminiApiKeys } from '../../secret';

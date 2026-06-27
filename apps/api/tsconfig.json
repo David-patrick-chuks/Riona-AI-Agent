@@ -1,5 +1,5 @@
 {
-  "extends": "@riona/tsconfig/base.json",
+  "extends": "../../packages/tsconfig/base.json",
   "compilerOptions": {
     "target": "es6",
     "module": "commonjs",

@@ -163,7 +163,7 @@ export class IgClient {
       } else {
         logger.info('Successfully logged in with cookies.');
       }
-    } catch (error) {
+    } catch (_error) {
       logger.warn('Login with cookies failed. Falling back to credentials login.');
       await this.loginWithCredentials();
     }
@@ -224,7 +224,7 @@ export class IgClient {
                 console.log(`Found 'Not Now' button with selector: ${selector}`);
                 break;
               }
-            } catch (e) {
+            } catch (_e) {
               // Ignore errors from stale elements
             }
           }
@@ -245,7 +245,7 @@ export class IgClient {
           console.log("'Not Now' button not found within the dialog.");
         }
       }
-    } catch (error) {
+    } catch (_error) {
       console.log('No notification popup appeared within the timeout period.');
       // If it times out, it means no popup, which is fine.
     }

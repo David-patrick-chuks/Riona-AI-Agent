@@ -172,7 +172,7 @@ export async function Instagram_cookiesExist(accountKey: string = 'default'): Pr
     let cookies: any[] = [];
     try {
       cookies = JSON.parse(cookiesData);
-    } catch (parseError) {
+    } catch (_parseError) {
       logger.warn('Cookies file is invalid JSON. Backing up and forcing re-login.');
       await backupCorruptCookies(cookiesPath);
       return false;
@@ -227,7 +227,7 @@ export async function loadCookies(cookiesPath: string): Promise<any[]> {
     const cookiesData = await fs.readFile(cookiesPath, 'utf-8');
     try {
       return JSON.parse(cookiesData);
-    } catch (parseError) {
+    } catch (_parseError) {
       logger.warn('Cookies file is invalid JSON. Backing up and forcing re-login.');
       await backupCorruptCookies(cookiesPath);
       return [];

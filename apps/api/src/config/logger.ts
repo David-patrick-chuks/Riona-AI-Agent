@@ -78,9 +78,9 @@ const createConsoleLogger = (): Logger => {
 
 const createWinstonLogger = (): Logger => {
   // Lazy-load winston only when needed
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   const winston = require('winston');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   require('winston-daily-rotate-file');
   const { createLogger, format, transports } = winston;
 

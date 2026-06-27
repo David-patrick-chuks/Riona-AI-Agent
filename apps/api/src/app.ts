@@ -95,7 +95,6 @@ const runAgents = async () => {
   // Declared outside the loop so the re-login guard persists across iterations.
   let didRelogin = false;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const profile = await getEffectiveIgProfile();
     const intervalMs = profile.intervalMs;
