@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.get('/hello', (req, res) => {
+router.get('/hello', (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
@@ -11,12 +11,16 @@ import express from 'express';
 import helloRouter from './routes/hello';
 
 const app = express();
-const port = process.env.PORT || 3000;
+
+appexpress.json());
 
 app.use(helloRouter);
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
 export default app;
+import app from './app';
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
