@@ -12,6 +12,39 @@ dotenv.config({ quiet: true });
 validateRequiredSecrets();
 
 async function startServer() {
+{
+  "name": "@riona/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
+}
+
   try {
     await initAgent();
   } catch (err) {
@@ -38,18 +71,19 @@ async function startServer() {
 startServer().catch((err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);
-import express from "express";
+import express from 'express';
 
 const app = express();
+const port = process.env.PORT || 3000;
 
-app.get("/hello", (_req, res) => {
+app.get('/hello', (req, res) => {
   res.status(200).json({ ok: true });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`API server listening on port ${port}`);
 });
 
 export default app;
+
 });
