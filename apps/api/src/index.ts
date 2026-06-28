@@ -25,9 +25,11 @@ async function startServer() {
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
   }
 }
+
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -35,10 +37,12 @@ async function startServer() {
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*"]
 }
+
   try {
     await initAgent();
   } catch (err) {
@@ -68,14 +72,14 @@ startServer().catch((err) => {
 import express from 'express';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.get('/hello', (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
-app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
