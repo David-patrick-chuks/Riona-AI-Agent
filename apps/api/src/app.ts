@@ -58,6 +58,12 @@ app.use(express.static('frontend/dist'));
 // API Routes
 app.use('/api', apiRoutes);
 
+// Hello-world test endpoint (bounty Issue #120)
+app.get('/hello', (_req, res) => {
+  res.json({ ok: true });
+});
+
+
 // Admin dashboard
 app.get('/dashboard', (_req, res) => {
   res.type('html').send(dashboardHtml);
