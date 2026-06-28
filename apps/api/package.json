@@ -93,4 +93,18 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.0"
   }
+{
+  "name": "@riona/api",
+  "version": "1.0.0",
+  "description": "Riona AI Agent API",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
 }
