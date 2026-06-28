@@ -155,4 +155,31 @@ describe('API routes', () => {
       expect(res.body.account).toBe('default');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // GET /hello — bot-detection verification endpoint (#120)
+  // ---------------------------------------------------------------------------
+  describe('GET /hello', () => {
+    test('returns 200 with { ok: true } without authentication', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
+
+    test('Content-Type is application/json', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.headers['content-type']).toMatch(/application\/json/);
+    });
+
+    test('response body has exactly one key: ok', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(Object.keys(res.body)).toEqual(['ok']);
+    });
+
+    test('ok value is boolean true, not string or 1', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.body.ok).toBe(true);
+      expect(typeof res.body.ok).toBe('boolean');
+    });
+  });
 });

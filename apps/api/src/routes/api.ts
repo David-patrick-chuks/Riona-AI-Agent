@@ -1506,4 +1506,11 @@ router.post('/cooldown', async (req: Request, res: Response) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// GET /hello — bot-detection verification endpoint (closes #120)
+// ---------------------------------------------------------------------------
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.status(200).json({ ok: true });
+});
+
 export default router;
