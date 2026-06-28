@@ -1,30 +1,18 @@
-import path from 'path';
-import dotenv from 'dotenv';
-import logger from './config/logger';
-import { shutdown } from './services';
-import app from './app';
-import { initAgent } from './Agent/index';
-import { validateRequiredSecrets } from './secret';
-import { connectDB } from './config/db';
-
-dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
-dotenv.config({ quiet: true });
-validateRequiredSecrets();
-
 import express from 'express';
+import healthRouter from './routes/health';
+import helloRouter from './routes/hello';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
+import { initAgent } from './Agent/index';
+app.use(express.json());
 
-app.get('/hello', (req, res) => {
-  res.status(200).json({ ok: true });
-});
+app.use('/api', healthRouter);
+app.use('/api', helloRouter);
 
-app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
-});
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 
-export default app;
 async function startServer() {
   try {
     await initAgent();
@@ -52,18 +40,4 @@ async function startServer() {
 startServer().catch((err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);
-import express from 'express';
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/hello', (req, res) => {
-  res.status(200).json({ ok: true });
-});
-
-app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
-});
-
-export default app;
 });
