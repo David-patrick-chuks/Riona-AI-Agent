@@ -1,15 +1,24 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import helloRouter from "./routes/hello";
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import helloRouter from './routes/hello';
 
 dotenv.config();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use("/hello", helloRouter);
+app.use('/hello', helloRouter);
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+import { Router } from 'express';
+
+const router = Router();
+
+router.get('/', (req, res) => {
+  res.status(200).json({ ok: true });
 });
+
+export default router;
