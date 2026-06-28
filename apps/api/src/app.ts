@@ -1,12 +1,14 @@
-import express, { Application } from 'express';
-import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
-import helmet from 'helmet'; // For securing HTTP headers
-import cors from 'cors';
-import session from 'express-session';
+import express from 'express';
+import healthRouter from './routes/health';
+import helloRouter from './routes/hello';
 
-import logger, { setupErrorHandlers } from './config/logger';
-import { setup_HandleError } from './utils';
+const app = express();
+
+app.use(express.json());
+app.use('/api', healthRouter);
+app.use('/api', helloRouter);
+
+export default app;
 import apiRoutes from './routes/api';
 import { metricsMiddleware } from './services/metrics';
 import { verifyToken, getTokenFromRequest } from './secret';

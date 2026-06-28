@@ -44,4 +44,9 @@
     "prettier": "^3.8.5",
     "typescript-eslint": "^8.62.0"
   }
+{
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
 }

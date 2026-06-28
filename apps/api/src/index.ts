@@ -1,15 +1,17 @@
-import path from 'path';
-import dotenv from 'dotenv';
-import logger from './config/logger';
-import { shutdown } from './services';
-import app from './app';
-import { initAgent } from './Agent/index';
-import { validateRequiredSecrets } from './secret';
-import { connectDB } from './config/db';
+import express from 'express';
+import healthRouter from './routes/health';
+import helloRouter from './routes/hello';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
-dotenv.config({ quiet: true });
-validateRequiredSecrets();
+const app = express();
+const PORT = process.env.PORT || 3000;
+import { initAgent } from './Agent/index';
+app.use(express.json());
+
+app.use('/api', healthRouter);
+app.use('/api', helloRouter);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 
 async function startServer() {
   try {
