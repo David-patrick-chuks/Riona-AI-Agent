@@ -22,7 +22,7 @@
     "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
-    "@google/genai": "^1.52.0",
+    "@google/genai": "^2.10.0",
     "axios": "^1.18.1",
     "cookie-parser": "^1.4.7",
     "copyfiles": "^2.4.1",
