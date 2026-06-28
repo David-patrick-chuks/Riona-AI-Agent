@@ -1506,4 +1506,10 @@ router.post('/cooldown', async (req: Request, res: Response) => {
   }
 });
 
+
+// Health-check endpoint — returns `{ "ok": true }` for bot-detection verification
+router.get('/hello', (_req: Request, res: Response) => {
+  res.json({ ok: true });
+});
+
 export default router;
