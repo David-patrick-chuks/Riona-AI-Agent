@@ -12,20 +12,6 @@ dotenv.config({ quiet: true });
 validateRequiredSecrets();
 
 async function startServer() {
-import express from 'express';
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/hello', (req, res) => {
-  res.status(200).json({ ok: true });
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
-export default app;
   try {
     await initAgent();
   } catch (err) {
@@ -52,19 +38,18 @@ export default app;
 startServer().catch((err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);
-import express from 'express';
+import express from "express";
 
 const app = express();
-const port = process.env.PORT || 3000;
 
-app.get('/hello', (req, res) => {
+app.get("/hello", (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
---- /dev/null
 });
