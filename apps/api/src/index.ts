@@ -13,6 +13,35 @@ validateRequiredSecrets();
 
 async function startServer() {
   try {
+{
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+{
+  "name": "@riona/api",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "strict": true
+  },
+  "include": ["src/**/*"]
+}
     await initAgent();
   } catch (err) {
     logger.error('Error during agent initialization:', err);
@@ -38,4 +67,20 @@ async function startServer() {
 startServer().catch((err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);
+import express from 'express';
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.json());
+
+app.get('/hello', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+export default app;
 });
