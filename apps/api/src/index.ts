@@ -12,6 +12,33 @@ dotenv.config({ quiet: true });
 validateRequiredSecrets();
 
 async function startServer() {
+{
+  "name": "@riona/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.3"
+  }
+}
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*"]
+}
   try {
     await initAgent();
   } catch (err) {
@@ -48,8 +75,9 @@ app.get('/hello', (_req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`API server listening on port ${port}`);
+  console.log(`API listening on port ${port}`);
 });
 
 export default app;
+
 });
