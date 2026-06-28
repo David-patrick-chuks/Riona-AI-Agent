@@ -36,8 +36,8 @@ importers:
   apps/api:
     dependencies:
       '@google/genai':
-        specifier: ^1.52.0
-        version: 1.52.0
+        specifier: ^2.10.0
+        version: 2.10.0
       axios:
         specifier: ^1.18.1
         version: 1.18.1
@@ -625,8 +625,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@google/genai@1.52.0':
-    resolution: {integrity: sha512-gwSvbpiN/17O9TbsqSsE/OzZcpv5Fo4RQjdngGgogtuB9RsyJ8ZHhX5KjHj1bp5N9snN2eK8LDGXSaWW2hof8Q==}
+  '@google/genai@2.10.0':
+    resolution: {integrity: sha512-e4cFxj3tiuMtsgOT4G9c1hXyGJhg7/Buj7VVeBacRY3fRtkRZZ59Q3nuVp2xbq8BGQXLXCDB253qMhklMOeUDg==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.25.2
@@ -5162,7 +5162,7 @@ snapshots:
     optionalDependencies:
       '@noble/hashes': 1.8.0
 
-  '@google/genai@1.52.0':
+  '@google/genai@2.10.0':
     dependencies:
       google-auth-library: 10.9.0
       p-retry: 4.6.2
