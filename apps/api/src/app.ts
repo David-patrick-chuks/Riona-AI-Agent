@@ -56,6 +56,9 @@ app.use(metricsMiddleware);
 app.use(express.static('frontend/dist'));
 
 // API Routes
+app.get('/hello', (_req, res) => {
+  res.status(200).json({ ok: true });
+});
 app.use('/api', apiRoutes);
 
 // Admin dashboard
