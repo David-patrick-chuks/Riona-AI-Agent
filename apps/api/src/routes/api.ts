@@ -273,6 +273,10 @@ router.get('/ping', (_req: Request, res: Response) => {
   return res.send('pong');
 });
 
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.json({ ok: true });
+});
+
 // Version and build info endpoint
 router.get('/version', (_req: Request, res: Response) => {
   return res.json({
