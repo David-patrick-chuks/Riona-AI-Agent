@@ -106,6 +106,12 @@ describe('API routes', () => {
       expect(res.body.uptime).toBe(120);
       expect(res.body.requests).toBeUndefined();
     });
+
+    test('GET /api/hello returns ok: true (Issue #120)', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
   });
 
   describe('authenticated endpoints', () => {
