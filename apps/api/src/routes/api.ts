@@ -67,6 +67,11 @@ router.use((req: Request, _res: Response, next: NextFunction) => {
 // Apply general rate limiter to all API routes
 router.use(generalLimiter);
 
+// Hello-world test endpoint for bot detection (Issue #120)
+router.get('/hello', (_req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
+});
+
 // API Documentation endpoint - lists all available endpoints
 const apiEndpoints = [
   // Public endpoints
