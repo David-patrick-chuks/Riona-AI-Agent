@@ -64,6 +64,11 @@ router.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// Health-check route for bounty verification: GET /hello -> { ok: true }
+router.get('/hello', (_req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
+});
+
 // Apply general rate limiter to all API routes
 router.use(generalLimiter);
 
