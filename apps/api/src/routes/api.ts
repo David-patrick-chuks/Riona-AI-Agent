@@ -67,11 +67,6 @@ router.use((req: Request, _res: Response, next: NextFunction) => {
 // Apply general rate limiter to all API routes
 router.use(generalLimiter);
 
-// Hello-world test endpoint for bot detection (Issue #120)
-router.get('/hello', (_req: Request, res: Response) => {
-  res.status(200).json({ ok: true });
-});
-
 // API Documentation endpoint - lists all available endpoints
 const apiEndpoints = [
   // Public endpoints
@@ -80,6 +75,12 @@ const apiEndpoints = [
     path: '/api/ping',
     auth: false,
     description: 'Simple health check (returns "pong")',
+  },
+  {
+    method: 'GET',
+    path: '/api/hello',
+    auth: false,
+    description: 'Hello world test endpoint (returns { ok: true })',
   },
   {
     method: 'GET',
@@ -276,6 +277,11 @@ const serverStartTime = Date.now();
 // Simple ping endpoint for load balancers and uptime monitors
 router.get('/ping', (_req: Request, res: Response) => {
   return res.send('pong');
+});
+
+// Hello world test endpoint for bot detection verification
+router.get('/hello', (_req: Request, res: Response) => {
+  return res.json({ ok: true });
 });
 
 // Version and build info endpoint
