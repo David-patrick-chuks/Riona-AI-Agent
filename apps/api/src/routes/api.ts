@@ -265,6 +265,11 @@ const apiEndpoints = [
   { method: 'POST', path: '/api/logout', auth: true, description: 'Logout and clear session' },
 ];
 
+// Hello endpoint - returns { ok: true }
+router.get("/hello", (_req, res) => {
+  return res.json({ ok: true });
+});
+
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
