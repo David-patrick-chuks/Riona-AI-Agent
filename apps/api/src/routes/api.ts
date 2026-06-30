@@ -241,6 +241,12 @@ const apiEndpoints = [
   },
   { method: 'GET', path: '/api/actions/stats', auth: true, description: 'Get action statistics' },
   {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Get unified action log (IG + Twitter merged, paginated)',
+  },
+  {
     method: 'DELETE',
     path: '/api/actions/cleanup',
     auth: true,
@@ -1249,6 +1255,49 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+// Unified action log: merges Instagram and Twitter actions, sorted by time
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const sort = req.query.sort === 'asc' ? 'asc' : 'desc';
+
+    // Fetch Instagram and Twitter actions separately
+    const [igResult, twitterResult] = await Promise.all([
+      listActionLogs({ limit: 100, offset: 0, platform: 'instagram', account, sort }),
+      listActionLogs({ limit: 100, offset: 0, platform: 'twitter', account, sort }),
+    ]);
+
+    // Merge and sort by createdAt
+    const merged = [...igResult.actions, ...twitterResult.actions]
+      .sort((a, b) =>
+        sort === 'asc'
+          ? a.createdAt.localeCompare(b.createdAt)
+          : b.createdAt.localeCompare(a.createdAt)
+      );
+
+    const total = merged.length;
+    const paginated = merged.slice(offset, offset + limit);
+
+    return res.json({
+      actions: paginated,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + paginated.length < total,
+        sources: { instagram: igResult.pagination.total, twitter: twitterResult.pagination.total },
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action log' });
   }
 });
 
