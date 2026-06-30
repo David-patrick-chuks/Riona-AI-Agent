@@ -232,6 +232,12 @@ const apiEndpoints = [
     auth: true,
     description: 'List action logs with filtering',
   },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'List unified Instagram and Twitter action logs',
+  },
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
     method: 'GET',
@@ -1235,6 +1241,53 @@ router.get('/actions', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions listing error:', error);
     return res.status(500).json({ error: 'Failed to load action logs' });
+  }
+});
+
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+    const fetchLimit = Math.min(limit + offset, 100);
+
+    const [instagram, twitter] = await Promise.all([
+      listActionLogs({ platform: 'instagram', limit: fetchLimit, offset: 0 }),
+      listActionLogs({ platform: 'twitter', limit: fetchLimit, offset: 0 }),
+    ]);
+
+    const actions = [...instagram.actions, ...twitter.actions]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(offset, offset + limit)
+      .map((entry) => ({
+        platform: entry.platform,
+        action: entry.action,
+        timestamp: entry.createdAt,
+        status: entry.status,
+        metadata: {
+          id: entry.id,
+          account: entry.account,
+          username: entry.username,
+          details: entry.details,
+          error: entry.error,
+        },
+      }));
+
+    const total = instagram.pagination.total + twitter.pagination.total;
+
+    return res.json({
+      actions,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + actions.length < total,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
   }
 });
 
