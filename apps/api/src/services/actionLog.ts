@@ -386,3 +386,26 @@ export const getActionSummary = async (options?: {
   const filtered = filterFileLogs(entries, { platform, account }).slice(0, fileLimit);
   return summarize(filtered);
 };
+
+// Unified schema for cross-platform action logs
+export type UnifiedAction = {
+  platform: string;
+  action: string;
+  timestamp: string;
+  status: ActionLogStatus;
+  metadata: Record<string, unknown>;
+};
+
+/** Transform an ActionLogRecord into the unified schema. */
+export const toUnified = (record: ActionLogRecord): UnifiedAction => ({
+  platform: record.platform,
+  action: record.action,
+  timestamp: record.createdAt,
+  status: record.status,
+  metadata: {
+    ...(record.account && { account: record.account }),
+    ...(record.username && { username: record.username }),
+    ...(record.error && { error: record.error }),
+    ...(record.details && { details: record.details }),
+  },
+});
