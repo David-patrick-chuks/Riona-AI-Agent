@@ -1,0 +1,16 @@
+{
+  "issue": "https://github.com/David-patrick-chuks/Riona-AI-Agent/issues/118",
+  "author": "lb1192176991-lab",
+  "branch": "feat/hello-world-118",
+  "changes": [
+    {
+      "file": "apps/api/src/routes/api.ts",
+      "description": "Added GET /hello endpoint returning { ok: true }"
+    },
+    {
+      "file": "apps/api/src/routes/api.test.ts",
+      "description": "Added test for GET /api/hello endpoint"
+    }
+  ],
+  "submitted_at": "2026-07-01T00:00:00Z"
+}
