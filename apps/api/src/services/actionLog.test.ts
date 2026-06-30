@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { closeDB } from '../config/db';
-import { getActionSummary, listActionLogs, logAction } from './actionLog';
+import { getActionSummary, listActionLogs, listUnifiedActionLogs, logAction } from './actionLog';
 
 describe('action log service', () => {
   const originalPath = process.env.ACTION_LOG_PATH;
@@ -224,6 +224,79 @@ describe('action log service', () => {
       const actions = result.actions.map((a) => a.action);
       // First entry should be action5 (newest) in descending order
       expect(actions[0]).toBe('action5');
+    });
+  });
+
+  test('returns unified Instagram and Twitter actions with pagination', async () => {
+    await fs.writeFile(
+      process.env.ACTION_LOG_PATH!,
+      JSON.stringify([
+        {
+          id: 'system-1',
+          platform: 'system',
+          action: 'logout',
+          account: 'default',
+          status: 'success',
+          createdAt: '2026-01-04T00:00:00.000Z',
+        },
+        {
+          id: 'twitter-1',
+          platform: 'twitter',
+          action: 'post-tweet',
+          account: 'x-main',
+          status: 'error',
+          error: 'rate limit',
+          details: { tweetId: 'tweet-42' },
+          createdAt: '2026-01-03T00:00:00.000Z',
+        },
+        {
+          id: 'instagram-1',
+          platform: 'instagram',
+          action: 'follow-user',
+          account: 'ig-main',
+          username: 'riona',
+          status: 'success',
+          details: { target: 'alice' },
+          createdAt: '2026-01-02T00:00:00.000Z',
+        },
+      ]),
+    );
+
+    const firstPage = await listUnifiedActionLogs({ limit: 1, offset: 0 });
+    expect(firstPage.pagination).toEqual({
+      total: 2,
+      limit: 1,
+      offset: 0,
+      hasMore: true,
+    });
+    expect(firstPage.actions).toEqual([
+      {
+        platform: 'twitter',
+        action: 'post-tweet',
+        timestamp: '2026-01-03T00:00:00.000Z',
+        status: 'error',
+        metadata: {
+          id: 'twitter-1',
+          account: 'x-main',
+          error: 'rate limit',
+          tweetId: 'tweet-42',
+        },
+      },
+    ]);
+
+    const secondPage = await listUnifiedActionLogs({ limit: 1, offset: 1 });
+    expect(secondPage.pagination.hasMore).toBe(false);
+    expect(secondPage.actions[0]).toMatchObject({
+      platform: 'instagram',
+      action: 'follow-user',
+      timestamp: '2026-01-02T00:00:00.000Z',
+      status: 'success',
+      metadata: {
+        id: 'instagram-1',
+        account: 'ig-main',
+        username: 'riona',
+        target: 'alice',
+      },
     });
   });
 });

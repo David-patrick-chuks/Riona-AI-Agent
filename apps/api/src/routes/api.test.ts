@@ -27,6 +27,10 @@ jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
+  listUnifiedActionLogs: jest.fn().mockResolvedValue({
+    actions: [],
+    pagination: { total: 0, limit: 20, offset: 0, hasMore: false },
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,11 +51,16 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listUnifiedActionLogs } from '../services/actionLog';
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api', apiRoutes);
+
+const mockedListUnifiedActionLogs = listUnifiedActionLogs as jest.MockedFunction<
+  typeof listUnifiedActionLogs
+>;
 
 describe('API routes', () => {
   describe('public endpoints', () => {
@@ -153,6 +162,61 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged Instagram and Twitter actions', async () => {
+      mockedListUnifiedActionLogs.mockResolvedValueOnce({
+        actions: [
+          {
+            platform: 'instagram',
+            action: 'follow-user',
+            timestamp: '2026-01-02T00:00:00.000Z',
+            status: 'success',
+            metadata: { id: 'ig-1', account: 'ig-main', target: 'alice' },
+          },
+          {
+            platform: 'twitter',
+            action: 'post-tweet',
+            timestamp: '2026-01-01T00:00:00.000Z',
+            status: 'error',
+            metadata: { id: 'tw-1', account: 'x-main', error: 'rate limit' },
+          },
+        ],
+        pagination: {
+          total: 2,
+          limit: 2,
+          offset: 0,
+          hasMore: false,
+        },
+      });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=2&offset=0')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(mockedListUnifiedActionLogs).toHaveBeenCalledWith({ limit: 2, offset: 0 });
+      expect(res.body.actions).toHaveLength(2);
+      expect(res.body.actions[0]).toMatchObject({
+        platform: 'instagram',
+        action: 'follow-user',
+        timestamp: '2026-01-02T00:00:00.000Z',
+        status: 'success',
+        metadata: { id: 'ig-1', account: 'ig-main', target: 'alice' },
+      });
+      expect(res.body.actions[1]).toMatchObject({
+        platform: 'twitter',
+        action: 'post-tweet',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        status: 'error',
+        metadata: { id: 'tw-1', account: 'x-main', error: 'rate limit' },
+      });
+      expect(res.body.pagination).toEqual({
+        total: 2,
+        limit: 2,
+        offset: 0,
+        hasMore: false,
+      });
     });
   });
 });
