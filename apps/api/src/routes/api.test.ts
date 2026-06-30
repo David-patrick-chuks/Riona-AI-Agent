@@ -26,7 +26,10 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn().mockResolvedValue({
+    actions: [],
+    pagination: { total: 0, limit: 20, offset: 0, hasMore: false },
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,6 +50,9 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listActionLogs } from '../services/actionLog';
+
+const mockedListActionLogs = listActionLogs as jest.MockedFunction<typeof listActionLogs>;
 
 const app = express();
 app.use(express.json());
@@ -153,6 +159,98 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged paginated IG and Twitter actions', async () => {
+      mockedListActionLogs.mockImplementation(async (options) => {
+        if (options?.platform === 'instagram') {
+          return {
+            actions: [
+              {
+                id: 'ig-1',
+                platform: 'instagram',
+                action: 'login',
+                account: 'default',
+                username: 'ig-user',
+                status: 'success',
+                details: { source: 'test' },
+                createdAt: '2026-06-30T10:00:00.000Z',
+              },
+              {
+                id: 'ig-2',
+                platform: 'instagram',
+                action: 'interact',
+                account: 'default',
+                status: 'error',
+                error: 'challenge',
+                createdAt: '2026-06-30T08:00:00.000Z',
+              },
+            ],
+            pagination: { total: 2, limit: 3, offset: 0, hasMore: false },
+          };
+        }
+
+        return {
+          actions: [
+            {
+              id: 'tw-1',
+              platform: 'twitter',
+              action: 'post-tweet',
+              account: 'default',
+              username: 'tw-user',
+              status: 'success',
+              createdAt: '2026-06-30T09:00:00.000Z',
+            },
+          ],
+          pagination: { total: 1, limit: 3, offset: 0, hasMore: false },
+        };
+      });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=2&offset=1')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(mockedListActionLogs).toHaveBeenCalledWith({
+        platform: 'instagram',
+        limit: 3,
+        offset: 0,
+      });
+      expect(mockedListActionLogs).toHaveBeenCalledWith({
+        platform: 'twitter',
+        limit: 3,
+        offset: 0,
+      });
+      expect(res.body.actions).toEqual([
+        {
+          platform: 'twitter',
+          action: 'post-tweet',
+          timestamp: '2026-06-30T09:00:00.000Z',
+          status: 'success',
+          metadata: {
+            id: 'tw-1',
+            account: 'default',
+            username: 'tw-user',
+          },
+        },
+        {
+          platform: 'instagram',
+          action: 'interact',
+          timestamp: '2026-06-30T08:00:00.000Z',
+          status: 'error',
+          metadata: {
+            id: 'ig-2',
+            account: 'default',
+            error: 'challenge',
+          },
+        },
+      ]);
+      expect(res.body.pagination).toEqual({
+        total: 3,
+        limit: 2,
+        offset: 1,
+        hasMore: false,
+      });
     });
   });
 });
