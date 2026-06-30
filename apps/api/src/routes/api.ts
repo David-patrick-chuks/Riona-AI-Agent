@@ -232,6 +232,13 @@ const apiEndpoints = [
     auth: true,
     description: 'List action logs with filtering',
   },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description:
+      'Get unified action log combining IG + Twitter actions with {platform, action, timestamp, status, metadata} schema',
+  },
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
     method: 'GET',
@@ -1249,6 +1256,56 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+/**
+ * GET /actions/unified — Unified action log endpoint.
+ *
+ * Returns actions from both Instagram and Twitter combined into a single
+ * array with a normalized schema: { platform, action, timestamp, status, metadata }.
+ *
+ * Query params:
+ *   ?limit=   (default 20, max 100)
+ *   ?offset=  (default 0)
+ *   ?status=  optional filter: 'success' | 'error'
+ *   ?sort=    optional: 'asc' | 'desc' (default desc)
+ */
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+    const status =
+      req.query.status === 'success' || req.query.status === 'error'
+        ? req.query.status
+        : undefined;
+    const sort = req.query.sort === 'asc' ? 'asc' : 'desc';
+
+    const result = await listActionLogs({ limit, offset, status, sort });
+
+    // Normalize to unified schema: { platform, action, timestamp, status, metadata }
+    const unifiedActions = result.actions.map((entry) => ({
+      platform: entry.platform,
+      action: entry.action,
+      timestamp: entry.createdAt,
+      status: entry.status,
+      metadata: {
+        account: entry.account,
+        ...(entry.username ? { username: entry.username } : {}),
+        ...(entry.error ? { error: entry.error } : {}),
+        ...(entry.details ? { details: entry.details } : {}),
+      },
+    }));
+
+    return res.json({
+      actions: unifiedActions,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    logger.error('Unified actions error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action log' });
   }
 });
 
