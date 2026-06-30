@@ -232,6 +232,12 @@ const apiEndpoints = [
     auth: true,
     description: 'List action logs with filtering',
   },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Merged IG + Twitter action log with consistent schema',
+  },
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
     method: 'GET',
@@ -1195,6 +1201,60 @@ router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Respons
       error: getErrorMessage(error),
     });
     res.status(500).send('Error scraping followers.');
+  }
+});
+
+/**
+ * GET /api/actions/unified
+ * Returns a merged, paginated action log from Instagram and Twitter actions
+ * in a single consistent JSON schema.
+ */
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    // Fetch actions from both platforms in parallel
+    const [igResult, twitterResult] = await Promise.all([
+      listActionLogs({ limit: 100, offset: 0, platform: 'instagram', sort: 'desc' }),
+      listActionLogs({ limit: 100, offset: 0, platform: 'twitter', sort: 'desc' }),
+    ]);
+
+    // Merge, normalise, and sort by createdAt descending
+    const unified = [...igResult.actions, ...twitterResult.actions]
+      .map((a) => ({
+        platform: a.platform,
+        action: a.action,
+        timestamp: a.createdAt,
+        status: a.status,
+        metadata: {
+          id: a.id,
+          account: a.account,
+          username: a.username,
+          error: a.error,
+          details: a.details,
+        },
+      }))
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    // Apply pagination on the merged result
+    const total = unified.length;
+    const paginated = unified.slice(offset, offset + limit);
+
+    return res.json({
+      actions: paginated,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + paginated.length < total,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action log' });
   }
 });
 
