@@ -148,6 +148,45 @@ describe('API routes', () => {
       });
     });
 
+    test('GET /api/actions/unified returns unified action log with platform, action, timestamp, status, metadata', async () => {
+      const res = await request(app)
+        .get('/api/actions/unified')
+        .set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('actions');
+      expect(res.body).toHaveProperty('pagination');
+      expect(Array.isArray(res.body.actions)).toBe(true);
+      expect(res.body.pagination).toMatchObject({
+        total: expect.any(Number),
+        limit: expect.any(Number),
+        offset: expect.any(Number),
+        hasMore: expect.any(Boolean),
+      });
+      // Verify unified schema on each action (if any exists)
+      for (const action of res.body.actions) {
+        expect(action).toHaveProperty('platform');
+        expect(action).toHaveProperty('action');
+        expect(action).toHaveProperty('timestamp');
+        expect(action).toHaveProperty('status');
+        expect(action).toHaveProperty('metadata');
+        expect(action.metadata).toHaveProperty('account');
+      }
+    });
+
+    test('GET /api/actions/unified respects limit and offset query params', async () => {
+      const res = await request(app)
+        .get('/api/actions/unified?limit=5&offset=0')
+        .set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.pagination.limit).toBe(5);
+      expect(res.body.pagination.offset).toBe(0);
+    });
+
+    test('GET /api/actions/unified returns 401 without auth', async () => {
+      const res = await request(app).get('/api/actions/unified');
+      expect(res.status).toBe(401);
+    });
+
     test('GET /api/me returns current user', async () => {
       const res = await request(app).get('/api/me').set('Cookie', `token=${token}`);
       expect(res.status).toBe(200);
