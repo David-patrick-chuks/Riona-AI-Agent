@@ -31,7 +31,12 @@ import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getIgProfile, getEffectiveIgProfile } from '../config/igProfile';
 import { getIgRiskSummary } from '../config/igRisk';
-import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import {
+  getActionSummary,
+  listActionLogs,
+  listUnifiedActionLogs,
+  logAction,
+} from '../services/actionLog';
 import { AdminLogLevel, listAdminErrors, listAdminLogs } from '../services/adminLogs';
 import {
   createWebhook,
@@ -231,6 +236,12 @@ const apiEndpoints = [
     path: '/api/actions',
     auth: true,
     description: 'List action logs with filtering',
+  },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'List unified Instagram and Twitter action logs',
   },
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
@@ -1235,6 +1246,21 @@ router.get('/actions', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions listing error:', error);
     return res.status(500).json({ error: 'Failed to load action logs' });
+  }
+});
+
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const result = await listUnifiedActionLogs({ limit, offset });
+    return res.json(result);
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
   }
 });
 
