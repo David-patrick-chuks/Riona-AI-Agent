@@ -26,7 +26,36 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn().mockImplementation(
+    (opts?: { platform?: string }) =>
+      Promise.resolve({
+        actions:
+          opts?.platform === 'instagram'
+            ? [
+                {
+                  id: 'ig-1',
+                  platform: 'instagram',
+                  action: 'login',
+                  account: 'default',
+                  status: 'success',
+                  createdAt: '2026-06-30T12:00:00.000Z',
+                },
+              ]
+            : opts?.platform === 'twitter'
+              ? [
+                  {
+                    id: 'tw-1',
+                    platform: 'twitter',
+                    action: 'post_tweet',
+                    account: 'default',
+                    status: 'success',
+                    createdAt: '2026-06-30T13:00:00.000Z',
+                  },
+                ]
+              : [],
+        pagination: { total: 1, limit: 20, offset: 0, hasMore: false },
+      }),
+  ),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -153,6 +182,38 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged IG + Twitter actions', async () => {
+      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        actions: expect.any(Array),
+        pagination: expect.any(Object),
+      });
+
+      // Should have 2 actions (1 IG + 1 Twitter)
+      expect(res.body.actions).toHaveLength(2);
+
+      // Check consistent schema
+      const first = res.body.actions[0];
+      expect(first).toHaveProperty('platform');
+      expect(first).toHaveProperty('action');
+      expect(first).toHaveProperty('timestamp');
+      expect(first).toHaveProperty('status');
+      expect(first).toHaveProperty('metadata');
+
+      // Should be sorted by timestamp desc (Twitter newer = first)
+      expect(res.body.actions[0].platform).toBe('twitter');
+      expect(res.body.actions[1].platform).toBe('instagram');
+
+      // Test pagination
+      const resLimited = await request(app)
+        .get('/api/actions/unified?limit=1&offset=0')
+        .set('Cookie', `token=${token}`);
+      expect(resLimited.status).toBe(200);
+      expect(resLimited.body.actions).toHaveLength(1);
+      expect(resLimited.body.pagination.hasMore).toBe(true);
     });
   });
 });
