@@ -52,6 +52,7 @@ import {
 } from '../middleware/rateLimit';
 import { getMetrics } from '../services/metrics';
 import { sanitizeFilename, validateInputLength, getIgCooldown } from '../utils';
+import actionsUnifiedRouter from './actionsUnified';
 
 const router = express.Router();
 
@@ -240,6 +241,12 @@ const apiEndpoints = [
     description: 'Export logs as CSV/JSON',
   },
   { method: 'GET', path: '/api/actions/stats', auth: true, description: 'Get action statistics' },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Unified action log (IG + Twitter) with consistent schema',
+  },
   {
     method: 'DELETE',
     path: '/api/actions/cleanup',
@@ -1251,6 +1258,9 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to load action summary' });
   }
 });
+
+// Unified action log route (merged IG + Twitter in consistent schema)
+router.use('/actions/unified', actionsUnifiedRouter);
 
 router.get('/admin/logs', async (req: Request, res: Response) => {
   try {
