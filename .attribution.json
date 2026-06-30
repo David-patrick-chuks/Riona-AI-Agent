@@ -1,0 +1,13 @@
+{
+  "contributor": "lb1192176991-lab",
+  "task": "Add hello-world test endpoint to verify bot deployment",
+  "issue": "https://github.com/David-patrick-chuks/Riona-AI-Agent/issues/120",
+  "bounty": "$50",
+  "branch": "feat/hello-world-120",
+  "files_modified": [
+    "apps/api/src/routes/api.ts"
+  ],
+  "endpoints_added": [
+    "GET /api/hello"
+  ]
+}
