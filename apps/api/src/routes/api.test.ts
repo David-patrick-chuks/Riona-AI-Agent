@@ -26,7 +26,8 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn().mockResolvedValue({ actions: [], pagination: { total: 0, limit: 20, offset: 0, hasMore: false } }),
+  toUnified: jest.fn((r) => r),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -153,6 +154,30 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged paginated actions', async () => {
+      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('actions');
+      expect(Array.isArray(res.body.actions)).toBe(true);
+      expect(res.body).toHaveProperty('pagination');
+      expect(res.body.pagination).toHaveProperty('total');
+      expect(res.body.pagination).toHaveProperty('hasMore');
+    });
+
+    test('GET /api/actions/unified respects limit and offset params', async () => {
+      const mockList = require('../services/actionLog').listActionLogs;
+      mockList.mockResolvedValueOnce({
+        actions: [],
+        pagination: { total: 0, limit: 5, offset: 10, hasMore: false },
+      });
+      const res = await request(app)
+        .get('/api/actions/unified?limit=5&offset=10')
+        .set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.pagination.limit).toBe(5);
+      expect(res.body.pagination.offset).toBe(10);
     });
   });
 });

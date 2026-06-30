@@ -31,7 +31,7 @@ import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getIgProfile, getEffectiveIgProfile } from '../config/igProfile';
 import { getIgRiskSummary } from '../config/igRisk';
-import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import { getActionSummary, listActionLogs, logAction, toUnified } from '../services/actionLog';
 import { AdminLogLevel, listAdminErrors, listAdminLogs } from '../services/adminLogs';
 import {
   createWebhook,
@@ -1249,6 +1249,28 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+// Unified action log endpoint — merges IG + Twitter into one consistent schema
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const result = await listActionLogs({ limit, offset });
+
+    const actions = result.actions.map(toUnified);
+
+    return res.json({
+      actions,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    logger.error('Unified action log error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
   }
 });
 
