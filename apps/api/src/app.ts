@@ -60,6 +60,11 @@ app.get('/hello', (_req, res) => {
   res.json({ ok: true });
 });
 
+// Health check for bounty testing
+app.get('/hello', (_req, res) => {
+  res.json({ ok: true });
+});
+
 // API Routes
 app.use('/api', apiRoutes);
 
