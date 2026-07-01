@@ -37,6 +37,7 @@ const cleanupInterval = setInterval(
   },
   5 * 60 * 1000,
 );
+cleanupInterval.unref();
 
 /** Stop the cleanup interval (useful for tests) */
 export function stopCleanupInterval(): void {

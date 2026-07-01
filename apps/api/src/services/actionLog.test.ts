@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { closeDB } from '../config/db';
-import { getActionSummary, listActionLogs, logAction } from './actionLog';
+import { getActionSummary, listActionLogs, listUnifiedActionLogs, logAction } from './actionLog';
 
 describe('action log service', () => {
   const originalPath = process.env.ACTION_LOG_PATH;
@@ -155,6 +155,33 @@ describe('action log service', () => {
       const result = await listActionLogs({ platform: 'twitter' });
       expect(result.actions).toHaveLength(1);
       expect(result.actions[0].platform).toBe('twitter');
+    });
+
+    test('returns unified Instagram and Twitter actions with consistent metadata', async () => {
+      const result = await listUnifiedActionLogs({ limit: 10 });
+
+      expect(result.pagination.total).toBe(4);
+      expect(result.actions).toHaveLength(4);
+      expect(result.actions.map((entry) => entry.platform).sort()).toEqual([
+        'instagram',
+        'instagram',
+        'instagram',
+        'twitter',
+      ]);
+      expect(result.actions[0]).toEqual(
+        expect.objectContaining({
+          action: expect.any(String),
+          timestamp: expect.any(String),
+          status: expect.stringMatching(/success|error/),
+          metadata: expect.any(Object),
+        }),
+      );
+      expect(result.actions[0].metadata).toEqual(
+        expect.objectContaining({
+          sourceId: expect.any(String),
+          account: expect.any(String),
+        }),
+      );
     });
 
     test('filters by error keyword', async () => {
