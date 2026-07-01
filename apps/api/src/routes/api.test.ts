@@ -47,6 +47,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listActionLogs } from '../services/actionLog';
 
 const app = express();
 app.use(express.json());
@@ -153,6 +154,78 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+  });
+
+  describe('unified action log', () => {
+    const mockedListActionLogs = listActionLogs as jest.Mock;
+    const token = signToken({ username: 'testuser', account: 'default' });
+
+    test('GET /api/actions/unified merges IG + Twitter into one consistent schema', async () => {
+      mockedListActionLogs.mockResolvedValueOnce({
+        actions: [
+          {
+            id: '1',
+            platform: 'instagram',
+            action: 'like',
+            account: 'default',
+            status: 'success',
+            details: { postId: 'abc' },
+            createdAt: '2026-07-01T10:00:00.000Z',
+          },
+          {
+            id: '2',
+            platform: 'twitter',
+            action: 'retweet',
+            account: 'default',
+            status: 'error',
+            error: 'rate limited',
+            createdAt: '2026-07-01T09:00:00.000Z',
+          },
+        ],
+        pagination: { total: 2, limit: 20, offset: 0, hasMore: false },
+      });
+
+      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      // Query is restricted to the Instagram + Twitter platforms.
+      expect(mockedListActionLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ platforms: ['instagram', 'twitter'], limit: 20, offset: 0 }),
+      );
+      // Both sources appear in a single array.
+      expect(res.body.actions.map((a: { platform: string }) => a.platform)).toEqual([
+        'instagram',
+        'twitter',
+      ]);
+      // Each action has the consistent shape: platform, action, timestamp, status, metadata.
+      expect(res.body.actions[0]).toEqual({
+        platform: 'instagram',
+        action: 'like',
+        timestamp: '2026-07-01T10:00:00.000Z',
+        status: 'success',
+        metadata: { postId: 'abc' },
+      });
+      // A record without details still exposes an object metadata field.
+      expect(res.body.actions[1].metadata).toEqual({});
+      expect(res.body.pagination).toEqual({ total: 2, limit: 20, offset: 0, hasMore: false });
+    });
+
+    test('GET /api/actions/unified forwards ?limit= and ?offset= pagination params', async () => {
+      mockedListActionLogs.mockResolvedValueOnce({
+        actions: [],
+        pagination: { total: 0, limit: 5, offset: 10, hasMore: false },
+      });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=5&offset=10')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(mockedListActionLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ platforms: ['instagram', 'twitter'], limit: 5, offset: 10 }),
+      );
+      expect(res.body.actions).toEqual([]);
     });
   });
 });

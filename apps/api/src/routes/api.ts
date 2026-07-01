@@ -235,6 +235,12 @@ const apiEndpoints = [
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
     method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Merged IG + Twitter action log (paginated)',
+  },
+  {
+    method: 'GET',
     path: '/api/actions/export',
     auth: true,
     description: 'Export logs as CSV/JSON',
@@ -1249,6 +1255,42 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+// Platforms merged into the unified action log (Roadmap: Data and Storage —
+// Unified action log; GitHub is pending, so only IG + Twitter for now).
+const UNIFIED_ACTION_PLATFORMS = ['instagram', 'twitter'];
+
+// Unified action log: merged Instagram + Twitter actions in a single, consistent
+// schema (platform, action, timestamp, status, metadata), most-recent first,
+// paginated via ?limit= (default 20, max 100) and ?offset= (default 0).
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const result = await listActionLogs({
+      platforms: UNIFIED_ACTION_PLATFORMS,
+      limit,
+      offset,
+      sort: 'desc',
+    });
+
+    const actions = result.actions.map((entry) => ({
+      platform: entry.platform,
+      action: entry.action,
+      timestamp: entry.createdAt,
+      status: entry.status,
+      metadata: entry.details ?? {},
+    }));
+
+    return res.json({ actions, pagination: result.pagination });
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action log' });
   }
 });
 

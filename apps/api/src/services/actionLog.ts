@@ -39,6 +39,7 @@ export type ActionLogFilterOptions = {
   limit?: number;
   offset?: number;
   platform?: string;
+  platforms?: string[]; // match ANY of these platforms (e.g. the unified IG + Twitter log)
   account?: string;
   status?: ActionLogStatus;
   action?: string;
@@ -173,11 +174,15 @@ const queryDbLogs = async (
   if (!pool) return { records: [], total: 0 };
 
   const conditions: string[] = [];
-  const values: (string | number)[] = [];
+  const values: (string | number | string[])[] = [];
 
   if (options.platform) {
     values.push(options.platform);
     conditions.push(`platform = $${values.length}`);
+  }
+  if (options.platforms && options.platforms.length > 0) {
+    values.push(options.platforms);
+    conditions.push(`platform = ANY($${values.length}::text[])`);
   }
   if (options.account) {
     values.push(options.account);
@@ -271,6 +276,8 @@ const filterFileLogs = (
 ): ActionLogRecord[] => {
   return entries.filter((entry) => {
     if (options.platform && entry.platform !== options.platform) return false;
+    if (options.platforms && options.platforms.length > 0 && !options.platforms.includes(entry.platform))
+      return false;
     if (options.account && entry.account !== options.account) return false;
     if (options.status && entry.status !== options.status) return false;
     if (options.action && entry.action !== options.action) return false;
