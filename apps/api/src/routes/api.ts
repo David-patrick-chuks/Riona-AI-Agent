@@ -241,6 +241,12 @@ const apiEndpoints = [
   },
   { method: 'GET', path: '/api/actions/stats', auth: true, description: 'Get action statistics' },
   {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Get unified action feed merging IG + Twitter into a consistent shape',
+  },
+  {
     method: 'DELETE',
     path: '/api/actions/cleanup',
     auth: true,
@@ -1249,6 +1255,39 @@ router.get('/actions/summary', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions summary error:', error);
     return res.status(500).json({ error: 'Failed to load action summary' });
+  }
+});
+
+// Unified action feed — merges IG + Twitter actions into a consistent shape
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const result = await listActionLogs({ limit, offset });
+
+    const unified = result.actions.map((entry) => ({
+      platform: entry.platform,
+      action: entry.action,
+      timestamp: entry.createdAt,
+      status: entry.status,
+      metadata: entry.details || null,
+    }));
+
+    return res.json({
+      actions: unified,
+      pagination: {
+        total: result.pagination.total,
+        limit: result.pagination.limit,
+        offset: result.pagination.offset,
+        hasMore: result.pagination.hasMore,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action feed' });
   }
 });
 

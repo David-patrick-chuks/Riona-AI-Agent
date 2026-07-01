@@ -26,7 +26,37 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn().mockImplementation(async (opts?: any) => {
+    const testActions = [
+      {
+        id: '1',
+        platform: 'instagram',
+        action: 'login',
+        account: 'default',
+        username: 'testuser',
+        status: 'success',
+        createdAt: '2026-07-01T10:00:00.000Z',
+        details: { ip: '127.0.0.1' },
+      },
+      {
+        id: '2',
+        platform: 'twitter',
+        action: 'post-tweet',
+        account: 'default',
+        username: 'testuser',
+        status: 'success',
+        createdAt: '2026-07-01T10:05:00.000Z',
+        details: { textSnippet: 'Hello world' },
+      },
+    ];
+    const limit = opts?.limit || 20;
+    const offset = opts?.offset || 0;
+    const paginated = testActions.slice(offset, offset + limit);
+    return {
+      actions: paginated,
+      pagination: { total: testActions.length, limit, offset, hasMore: offset + limit < testActions.length },
+    };
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -153,6 +183,39 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged IG + Twitter action feed', async () => {
+      const res = await request(app)
+        .get('/api/actions/unified?limit=10&offset=0')
+        .set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.actions).toHaveLength(2);
+      expect(res.body.pagination).toMatchObject({ total: 2, limit: 10, offset: 0 });
+
+      // Check consistent shape
+      const ig = res.body.actions[0];
+      expect(ig).toMatchObject({
+        platform: 'instagram',
+        action: 'login',
+        timestamp: expect.any(String),
+        status: 'success',
+        metadata: { ip: '127.0.0.1' },
+      });
+
+      const tw = res.body.actions[1];
+      expect(tw).toMatchObject({
+        platform: 'twitter',
+        action: 'post-tweet',
+        timestamp: expect.any(String),
+        status: 'success',
+        metadata: { textSnippet: 'Hello world' },
+      });
+    });
+
+    test('GET /api/actions/unified requires authentication', async () => {
+      const res = await request(app).get('/api/actions/unified');
+      expect(res.status).toBe(401);
     });
   });
 });
