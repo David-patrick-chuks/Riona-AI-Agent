@@ -27,6 +27,10 @@ jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
+  listUnifiedActionLogs: jest.fn().mockResolvedValue({
+    actions: [],
+    pagination: { total: 0, limit: 20, offset: 0, hasMore: false },
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,6 +51,11 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listUnifiedActionLogs } from '../services/actionLog';
+
+const mockedListUnifiedActionLogs = listUnifiedActionLogs as jest.MockedFunction<
+  typeof listUnifiedActionLogs
+>;
 
 const app = express();
 app.use(express.json());
@@ -153,6 +162,37 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged IG and Twitter actions with pagination', async () => {
+      const unifiedResult = {
+        actions: [
+          {
+            platform: 'instagram' as const,
+            action: 'interact',
+            timestamp: '2026-07-01T08:00:00.000Z',
+            status: 'success' as const,
+            metadata: { account: 'default' },
+          },
+          {
+            platform: 'twitter' as const,
+            action: 'post-tweet',
+            timestamp: '2026-07-01T08:01:00.000Z',
+            status: 'error' as const,
+            metadata: { account: 'default', error: 'rate limit exceeded' },
+          },
+        ],
+        pagination: { total: 2, limit: 2, offset: 1, hasMore: false },
+      };
+      mockedListUnifiedActionLogs.mockResolvedValueOnce(unifiedResult);
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=2&offset=1')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(mockedListUnifiedActionLogs).toHaveBeenLastCalledWith({ limit: 2, offset: 1 });
+      expect(res.body).toEqual(unifiedResult);
     });
   });
 });
