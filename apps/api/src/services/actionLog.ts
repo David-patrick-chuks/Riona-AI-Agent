@@ -34,21 +34,41 @@ type ActionSummary = {
   byPlatform: Record<string, number>;
 };
 
-// Enhanced filter options for action log queries
+const UNIFIED_PLATFORMS = ['instagram', 'twitter'] as const;
+export type UnifiedPlatform = (typeof UNIFIED_PLATFORMS)[number];
+
+export type UnifiedActionRecord = {
+  platform: UnifiedPlatform;
+  action: string;
+  timestamp: string;
+  status: ActionLogStatus;
+  metadata: Record<string, unknown>;
+};
+
+export type PaginatedUnifiedActions = {
+  actions: UnifiedActionRecord[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+};
+
 export type ActionLogFilterOptions = {
   limit?: number;
   offset?: number;
   platform?: string;
+  platforms?: string[];
   account?: string;
   status?: ActionLogStatus;
   action?: string;
-  fromDate?: string; // ISO date string
-  toDate?: string; // ISO date string
+  fromDate?: string;
+  toDate?: string;
   errorKeyword?: string;
   sort?: 'asc' | 'desc';
 };
 
-// Paginated result with metadata
 export type PaginatedActionLogs = {
   actions: ActionLogRecord[];
   pagination: {
@@ -110,7 +130,6 @@ const writeFileLogs = async (entries: ActionLogRecord[]) => {
   await fs.writeFile(filePath, JSON.stringify(entries, null, 2));
 };
 
-/** Serializes file-based log writes to prevent read-modify-write races. */
 let fileLogChain: Promise<void> = Promise.resolve();
 
 const withFileLogLock = async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -175,7 +194,13 @@ const queryDbLogs = async (
   const conditions: string[] = [];
   const values: (string | number)[] = [];
 
-  if (options.platform) {
+  if (options.platforms?.length) {
+    const placeholders = options.platforms.map((platform) => {
+      values.push(platform);
+      return `$${values.length}`;
+    });
+    conditions.push(`platform IN (${placeholders.join(', ')})`);
+  } else if (options.platform) {
     values.push(options.platform);
     conditions.push(`platform = $${values.length}`);
   }
@@ -206,7 +231,6 @@ const queryDbLogs = async (
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Get total count for pagination metadata
   const countResult = await pool.query(
     `SELECT COUNT(*) as total FROM action_logs ${where}`,
     values,
@@ -262,15 +286,14 @@ export const logAction = async (input: ActionLogInput): Promise<void> => {
   }
 };
 
-/**
- * Filter and apply file-based log entries based on filter options
- */
 const filterFileLogs = (
   entries: ActionLogRecord[],
   options: ActionLogFilterOptions,
 ): ActionLogRecord[] => {
   return entries.filter((entry) => {
-    if (options.platform && entry.platform !== options.platform) return false;
+    if (options.platforms?.length && !options.platforms.includes(entry.platform)) return false;
+    if (!options.platforms?.length && options.platform && entry.platform !== options.platform)
+      return false;
     if (options.account && entry.account !== options.account) return false;
     if (options.status && entry.status !== options.status) return false;
     if (options.action && entry.action !== options.action) return false;
@@ -286,9 +309,6 @@ const filterFileLogs = (
   });
 };
 
-/**
- * List action logs with enhanced filtering and pagination support
- */
 export const listActionLogs = async (
   options?: ActionLogFilterOptions,
 ): Promise<PaginatedActionLogs> => {
@@ -309,20 +329,14 @@ export const listActionLogs = async (
     };
   }
 
-  // File-based filtering
   let entries = await readFileLogs();
-
-  // Apply filters
   entries = filterFileLogs(entries, options || {});
 
-  // Apply sort
   if (sort === 'asc') {
     entries = entries.reverse();
   }
 
   const total = entries.length;
-
-  // Apply pagination
   const paginatedEntries = entries.slice(offset, offset + limit);
 
   return {
@@ -336,10 +350,206 @@ export const listActionLogs = async (
   };
 };
 
-/**
- * Legacy function for backward compatibility - returns just the array
- * @deprecated Use listActionLogs which returns paginated results
- */
+const compareActionRecords = (
+  left: ActionLogRecord,
+  right: ActionLogRecord,
+  sort: 'asc' | 'desc',
+): number => {
+  const byTime = left.createdAt.localeCompare(right.createdAt);
+  if (byTime !== 0) {
+    return sort === 'asc' ? byTime : -byTime;
+  }
+
+  const byPlatform = left.platform.localeCompare(right.platform);
+  if (byPlatform !== 0) {
+    return byPlatform;
+  }
+
+  return left.id.localeCompare(right.id);
+};
+
+type MergeHeapItem = {
+  record: ActionLogRecord;
+  listIndex: number;
+  itemIndex: number;
+};
+
+const heapPush = (heap: MergeHeapItem[], item: MergeHeapItem, sort: 'asc' | 'desc') => {
+  heap.push(item);
+  let index = heap.length - 1;
+
+  while (index > 0) {
+    const parent = Math.floor((index - 1) / 2);
+    if (compareActionRecords(heap[index].record, heap[parent].record, sort) >= 0) {
+      break;
+    }
+    [heap[index], heap[parent]] = [heap[parent], heap[index]];
+    index = parent;
+  }
+};
+
+const heapPop = (heap: MergeHeapItem[], sort: 'asc' | 'desc'): MergeHeapItem => {
+  const top = heap[0];
+  const last = heap.pop();
+  if (!last || heap.length === 0) {
+    return top;
+  }
+
+  heap[0] = last;
+  let index = 0;
+
+  while (true) {
+    const leftChild = index * 2 + 1;
+    const rightChild = index * 2 + 2;
+    let smallest = index;
+
+    if (
+      leftChild < heap.length &&
+      compareActionRecords(heap[leftChild].record, heap[smallest].record, sort) < 0
+    ) {
+      smallest = leftChild;
+    }
+    if (
+      rightChild < heap.length &&
+      compareActionRecords(heap[rightChild].record, heap[smallest].record, sort) < 0
+    ) {
+      smallest = rightChild;
+    }
+    if (smallest === index) {
+      break;
+    }
+
+    [heap[index], heap[smallest]] = [heap[smallest], heap[index]];
+    index = smallest;
+  }
+
+  return top;
+};
+
+export const mergeSortedActionLists = (
+  lists: ActionLogRecord[][],
+  sort: 'asc' | 'desc' = 'desc',
+): ActionLogRecord[] => {
+  const heap: MergeHeapItem[] = [];
+
+  lists.forEach((list, listIndex) => {
+    if (list.length > 0) {
+      heapPush(heap, { record: list[0], listIndex, itemIndex: 0 }, sort);
+    }
+  });
+
+  const merged: ActionLogRecord[] = [];
+  while (heap.length > 0) {
+    const current = heapPop(heap, sort);
+    merged.push(current.record);
+
+    const source = lists[current.listIndex];
+    const nextIndex = current.itemIndex + 1;
+    if (nextIndex < source.length) {
+      heapPush(
+        heap,
+        { record: source[nextIndex], listIndex: current.listIndex, itemIndex: nextIndex },
+        sort,
+      );
+    }
+  }
+
+  return merged;
+};
+
+const sortActionRecords = (entries: ActionLogRecord[], sort: 'asc' | 'desc'): ActionLogRecord[] => {
+  const sorted = [...entries];
+  sorted.sort((left, right) => compareActionRecords(left, right, sort));
+  return sorted;
+};
+
+const fetchPlatformActionLists = async (
+  options: ActionLogFilterOptions,
+): Promise<ActionLogRecord[][]> => {
+  const sort = options.sort || 'desc';
+  const sharedFilters = {
+    account: options.account,
+    status: options.status,
+    action: options.action,
+    fromDate: options.fromDate,
+    toDate: options.toDate,
+    errorKeyword: options.errorKeyword,
+    sort,
+  };
+
+  if (isDbConnected()) {
+    return Promise.all(
+      UNIFIED_PLATFORMS.map(async (platform) => {
+        const { records } = await queryDbLogs({
+          ...sharedFilters,
+          platform,
+          limit: 500,
+          offset: 0,
+          sort,
+        });
+        return records;
+      }),
+    );
+  }
+
+  const entries = await readFileLogs();
+  return UNIFIED_PLATFORMS.map((platform) =>
+    sortActionRecords(filterFileLogs(entries, { ...sharedFilters, platform }), sort),
+  );
+};
+
+const toUnifiedAction = (entry: ActionLogRecord): UnifiedActionRecord => {
+  const metadata: Record<string, unknown> = {
+    ...(entry.details || {}),
+    account: entry.account,
+  };
+
+  if (entry.username) {
+    metadata.username = entry.username;
+  }
+  if (entry.error) {
+    metadata.error = entry.error;
+  }
+
+  return {
+    platform: entry.platform as UnifiedPlatform,
+    action: entry.action,
+    timestamp: entry.createdAt,
+    status: entry.status,
+    metadata,
+  };
+};
+
+export const listUnifiedActionLogs = async (options?: {
+  limit?: number;
+  offset?: number;
+  account?: string;
+  status?: ActionLogStatus;
+  action?: string;
+  fromDate?: string;
+  toDate?: string;
+  errorKeyword?: string;
+  sort?: 'asc' | 'desc';
+}): Promise<PaginatedUnifiedActions> => {
+  const limit = Math.max(1, Math.min(options?.limit || 20, 100));
+  const offset = Math.max(0, options?.offset || 0);
+  const sort = options?.sort || 'desc';
+
+  const platformLists = await fetchPlatformActionLists({ ...options, sort });
+  const merged = mergeSortedActionLists(platformLists, sort);
+  const page = merged.slice(offset, offset + limit);
+
+  return {
+    actions: page.map(toUnifiedAction),
+    pagination: {
+      total: merged.length,
+      limit,
+      offset,
+      hasMore: offset + page.length < merged.length,
+    },
+  };
+};
+
 export const listActionLogsLegacy = async (options?: {
   limit?: number;
   platform?: string;

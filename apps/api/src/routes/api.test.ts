@@ -27,6 +27,10 @@ jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
+  listUnifiedActionLogs: jest.fn().mockResolvedValue({
+    actions: [],
+    pagination: { total: 0, limit: 20, offset: 0, hasMore: false },
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,6 +51,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listUnifiedActionLogs } from '../services/actionLog';
 
 const app = express();
 app.use(express.json());
@@ -153,6 +158,60 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns merged IG and Twitter actions', async () => {
+      const mockActions = [
+        {
+          platform: 'instagram',
+          action: 'login',
+          timestamp: '2026-06-30T10:00:00.000Z',
+          status: 'success',
+          metadata: { account: 'default', username: 'testuser' },
+        },
+        {
+          platform: 'twitter',
+          action: 'post-tweet',
+          timestamp: '2026-06-30T09:00:00.000Z',
+          status: 'success',
+          metadata: { account: 'default', textSnippet: 'hello' },
+        },
+      ];
+
+      (listUnifiedActionLogs as jest.Mock).mockResolvedValueOnce({
+        actions: mockActions,
+        pagination: { total: 2, limit: 20, offset: 0, hasMore: false },
+      });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=20&offset=0')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.actions).toHaveLength(2);
+      expect(res.body.actions[0]).toMatchObject({
+        platform: 'instagram',
+        action: 'login',
+        timestamp: expect.any(String),
+        status: 'success',
+        metadata: expect.any(Object),
+      });
+      expect(res.body.actions[1].platform).toBe('twitter');
+      expect(res.body.pagination).toEqual({
+        total: 2,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      expect(listUnifiedActionLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 20, offset: 0 }),
+      );
+    });
+
+    test('GET /api/actions/unified requires authentication', async () => {
+      const res = await request(app).get('/api/actions/unified');
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/authenticated/i);
     });
   });
 });
