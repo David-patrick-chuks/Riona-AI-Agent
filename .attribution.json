@@ -5,12 +5,16 @@
   "changes": [
     {
       "file": "apps/api/src/routes/api.ts",
-      "description": "Added GET /hello endpoint returning { ok: true }"
+      "description": "Changed GET /hello → GET /hello-world returning { message, status, timestamp } per issue #118 spec"
     },
     {
       "file": "apps/api/src/routes/api.test.ts",
-      "description": "Added test for GET /api/hello endpoint"
+      "description": "Updated test for GET /api/hello-world with message, status, timestamp validation"
+    },
+    {
+      "file": ".attribution.json",
+      "description": "Updated attribution for issue #118 compliance"
     }
   ],
-  "submitted_at": "2026-07-01T00:00:00Z"
+  "submitted_at": "2026-07-02T00:00:00Z"
 }

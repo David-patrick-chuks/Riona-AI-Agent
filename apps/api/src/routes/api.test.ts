@@ -61,10 +61,16 @@ describe('API routes', () => {
       expect(res.text).toBe('pong');
     });
 
-    test('GET /api/hello returns ok', async () => {
-      const res = await request(app).get('/api/hello');
+    test('GET /api/hello-world returns Hello World with timestamp', async () => {
+      const res = await request(app).get('/api/hello-world');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ ok: true });
+      expect(res.body).toMatchObject({
+        message: 'Hello World',
+        status: 'ok',
+        timestamp: expect.any(String),
+      });
+      // Verify timestamp is valid ISO 8601
+      expect(new Date(res.body.timestamp).toISOString()).toBe(res.body.timestamp);
     });
 
     test('GET /api/version returns build metadata', async () => {
