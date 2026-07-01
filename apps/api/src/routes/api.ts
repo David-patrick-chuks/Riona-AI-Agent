@@ -31,7 +31,12 @@ import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getIgProfile, getEffectiveIgProfile } from '../config/igProfile';
 import { getIgRiskSummary } from '../config/igRisk';
-import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import {
+  ActionLogRecord,
+  getActionSummary,
+  listActionLogs,
+  logAction,
+} from '../services/actionLog';
 import { AdminLogLevel, listAdminErrors, listAdminLogs } from '../services/adminLogs';
 import {
   createWebhook,
@@ -235,6 +240,12 @@ const apiEndpoints = [
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
     method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Get merged Instagram and Twitter action logs',
+  },
+  {
+    method: 'GET',
     path: '/api/actions/export',
     auth: true,
     description: 'Export logs as CSV/JSON',
@@ -388,6 +399,40 @@ router.get('/docs', (_req: Request, res: Response) => {
   });
 });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+
+
+type UnifiedAction = {
+  platform: 'instagram' | 'twitter';
+  action: string;
+  timestamp: string;
+  status: ActionLogRecord['status'];
+  metadata: Record<string, unknown>;
+};
+
+const toUnifiedAction = (entry: ActionLogRecord): UnifiedAction | null => {
+  const platform = entry.platform.toLowerCase();
+  const normalizedPlatform = platform === 'instagram' || platform === 'ig' ? 'instagram' :
+    platform === 'twitter' || platform === 'x' ? 'twitter' : null;
+
+  if (!normalizedPlatform) {
+    return null;
+  }
+
+  return {
+    platform: normalizedPlatform,
+    action: entry.action,
+    timestamp: entry.createdAt,
+    status: entry.status,
+    metadata: {
+      id: entry.id,
+      account: entry.account,
+      ...(entry.username ? { username: entry.username } : {}),
+      ...(entry.error ? { error: entry.error } : {}),
+      ...(entry.details || {}),
+    },
+  };
+};
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -1235,6 +1280,44 @@ router.get('/actions', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions listing error:', error);
     return res.status(500).json({ error: 'Failed to load action logs' });
+  }
+});
+
+
+
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const fetchLimit = Math.min(limit + offset, 100);
+    const [instagram, twitter] = await Promise.all([
+      listActionLogs({ platform: 'instagram', limit: fetchLimit, offset: 0, sort: 'desc' }),
+      listActionLogs({ platform: 'twitter', limit: fetchLimit, offset: 0, sort: 'desc' }),
+    ]);
+
+    const merged = [...instagram.actions, ...twitter.actions]
+      .map(toUnifiedAction)
+      .filter((entry): entry is UnifiedAction => Boolean(entry))
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    const actions = merged.slice(offset, offset + limit);
+    const total = instagram.pagination.total + twitter.pagination.total;
+
+    return res.json({
+      actions,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + actions.length < total,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
   }
 });
 
