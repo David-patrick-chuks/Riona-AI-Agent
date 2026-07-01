@@ -26,7 +26,37 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn(async ({ platform }: { platform?: string } = {}) => {
+    const fixtures = {
+      instagram: [
+        {
+          id: 'ig-1',
+          platform: 'instagram',
+          action: 'like',
+          account: 'default',
+          status: 'success',
+          details: { postId: 'post-1' },
+          createdAt: '2026-06-01T10:00:00.000Z',
+        },
+      ],
+      twitter: [
+        {
+          id: 'tw-1',
+          platform: 'twitter',
+          action: 'retweet',
+          account: 'default',
+          status: 'error',
+          error: 'rate limited',
+          createdAt: '2026-06-01T11:00:00.000Z',
+        },
+      ],
+    };
+    const actions = platform === 'instagram' || platform === 'twitter' ? fixtures[platform] : [];
+    return {
+      actions,
+      pagination: { total: actions.length, limit: 20, offset: 0, hasMore: false },
+    };
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -146,6 +176,33 @@ describe('API routes', () => {
         igProfile: expect.any(String),
         effectiveProfile: expect.any(String),
       });
+    });
+
+
+
+    test('GET /api/actions/unified merges Instagram and Twitter logs', async () => {
+      const res = await request(app)
+        .get('/api/actions/unified')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.actions).toEqual([
+        expect.objectContaining({
+          platform: 'twitter',
+          action: 'retweet',
+          timestamp: '2026-06-01T11:00:00.000Z',
+          status: 'error',
+          metadata: expect.objectContaining({ error: 'rate limited' }),
+        }),
+        expect.objectContaining({
+          platform: 'instagram',
+          action: 'like',
+          timestamp: '2026-06-01T10:00:00.000Z',
+          status: 'success',
+          metadata: expect.objectContaining({ postId: 'post-1' }),
+        }),
+      ]);
+      expect(res.body.pagination.total).toBe(2);
     });
 
     test('GET /api/me returns current user', async () => {
