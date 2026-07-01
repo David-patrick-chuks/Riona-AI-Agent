@@ -2,7 +2,14 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { closeDB } from '../config/db';
-import { getActionSummary, listActionLogs, logAction } from './actionLog';
+import {
+  getActionSummary,
+  listActionLogs,
+  listUnifiedActionLogs,
+  logAction,
+  mergeSortedActionLists,
+} from './actionLog';
+import { ActionLogRecord } from './actionLog';
 
 describe('action log service', () => {
   const originalPath = process.env.ACTION_LOG_PATH;
@@ -100,7 +107,6 @@ describe('action log service', () => {
 
   describe('filtering', () => {
     beforeEach(async () => {
-      // Create a set of test entries with different properties
       await logAction({
         platform: 'instagram',
         action: 'login',
@@ -175,7 +181,6 @@ describe('action log service', () => {
 
   describe('pagination', () => {
     beforeEach(async () => {
-      // Create 5 test entries
       for (let i = 1; i <= 5; i++) {
         await logAction({
           platform: 'instagram',
@@ -215,15 +220,107 @@ describe('action log service', () => {
     test('sorts ascending when specified', async () => {
       const result = await listActionLogs({ sort: 'asc' });
       const actions = result.actions.map((a) => a.action);
-      // First entry should be action1 (oldest) in ascending order
       expect(actions[0]).toBe('action1');
     });
 
     test('sorts descending by default', async () => {
       const result = await listActionLogs({ sort: 'desc' });
       const actions = result.actions.map((a) => a.action);
-      // First entry should be action5 (newest) in descending order
       expect(actions[0]).toBe('action5');
+    });
+  });
+
+  describe('unified action logs', () => {
+    const makeRecord = (
+      platform: 'instagram' | 'twitter',
+      action: string,
+      createdAt: string,
+    ): ActionLogRecord => ({
+      id: `${platform}-${action}-${createdAt}`,
+      platform,
+      action,
+      account: 'default',
+      status: 'success',
+      createdAt,
+    });
+
+    test('mergeSortedActionLists interleaves platforms by timestamp', () => {
+      const instagram = [
+        makeRecord('instagram', 'login', '2026-06-30T12:00:00.000Z'),
+        makeRecord('instagram', 'interact', '2026-06-30T10:00:00.000Z'),
+      ];
+      const twitter = [
+        makeRecord('twitter', 'post-tweet', '2026-06-30T11:00:00.000Z'),
+        makeRecord('twitter', 'like', '2026-06-30T09:00:00.000Z'),
+      ];
+
+      const merged = mergeSortedActionLists([instagram, twitter], 'desc');
+
+      expect(merged.map((entry) => entry.action)).toEqual([
+        'login',
+        'post-tweet',
+        'interact',
+        'like',
+      ]);
+    });
+
+    test('returns merged IG and Twitter actions with consistent schema', async () => {
+      await logAction({
+        platform: 'instagram',
+        action: 'login',
+        status: 'success',
+        account: 'default',
+        username: 'riona',
+      });
+      await logAction({
+        platform: 'twitter',
+        action: 'post-tweet',
+        status: 'success',
+        account: 'default',
+        details: { textSnippet: 'hello world' },
+      });
+      await logAction({
+        platform: 'system',
+        action: 'logout',
+        status: 'success',
+        account: 'default',
+      });
+
+      const result = await listUnifiedActionLogs({ limit: 10 });
+
+      expect(result.actions).toHaveLength(2);
+      expect(result.actions.every((entry) => ['instagram', 'twitter'].includes(entry.platform))).toBe(
+        true,
+      );
+      expect(result.actions[0]).toMatchObject({
+        platform: expect.stringMatching(/instagram|twitter/),
+        action: expect.any(String),
+        timestamp: expect.any(String),
+        status: expect.stringMatching(/success|error/),
+        metadata: expect.objectContaining({ account: 'default' }),
+      });
+      expect(result.pagination.total).toBe(2);
+    });
+
+    test('supports pagination via limit and offset', async () => {
+      for (let i = 1; i <= 3; i++) {
+        await logAction({
+          platform: i % 2 === 0 ? 'twitter' : 'instagram',
+          action: `action${i}`,
+          status: 'success',
+          account: 'default',
+        });
+      }
+
+      const page = await listUnifiedActionLogs({ limit: 2, offset: 1 });
+
+      expect(page.actions).toHaveLength(2);
+      expect(page.pagination).toMatchObject({
+        total: 3,
+        limit: 2,
+        offset: 1,
+        hasMore: false,
+      });
     });
   });
 });

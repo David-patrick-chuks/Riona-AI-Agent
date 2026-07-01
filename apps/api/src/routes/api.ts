@@ -31,7 +31,7 @@ import path from 'path';
 import { getAccount, getAccountsMap } from '../config/accounts';
 import { getIgProfile, getEffectiveIgProfile } from '../config/igProfile';
 import { getIgRiskSummary } from '../config/igRisk';
-import { getActionSummary, listActionLogs, logAction } from '../services/actionLog';
+import { getActionSummary, listActionLogs, listUnifiedActionLogs, logAction } from '../services/actionLog';
 import { AdminLogLevel, listAdminErrors, listAdminLogs } from '../services/adminLogs';
 import {
   createWebhook,
@@ -226,11 +226,17 @@ const apiEndpoints = [
   },
 
   // Action logs
-  {
+    {
     method: 'GET',
     path: '/api/actions',
     auth: true,
     description: 'List action logs with filtering',
+  },
+  {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Merged Instagram + Twitter action log with consistent schema',
   },
   { method: 'GET', path: '/api/actions/summary', auth: true, description: 'Get action summary' },
   {
@@ -1197,7 +1203,41 @@ router.get('/scrape-followers', scrapeLimiter, async (req: Request, res: Respons
     res.status(500).send('Error scraping followers.');
   }
 });
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const status =
+      req.query.status === 'success' || req.query.status === 'error' ? req.query.status : undefined;
+    const action = typeof req.query.action === 'string' ? req.query.action : undefined;
+    const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
+    const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+    const errorKeyword =
+      typeof req.query.errorKeyword === 'string' ? req.query.errorKeyword : undefined;
+    const sort = req.query.sort === 'asc' ? 'asc' : 'desc';
+
+    const result = await listUnifiedActionLogs({
+      limit,
+      offset,
+      account,
+      status,
+      action,
+      fromDate,
+      toDate,
+      errorKeyword,
+      sort,
+    });
+
+    return res.json(result);
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
+  }
+});
 router.get('/actions', async (req: Request, res: Response) => {
   try {
     // Parse pagination params
