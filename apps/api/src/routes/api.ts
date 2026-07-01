@@ -273,6 +273,15 @@ router.get('/ping', (_req: Request, res: Response) => {
   return res.send('pong');
 });
 
+// Hello World endpoint for bot detection verification
+router.get('/hello-world', (_req: Request, res: Response) => {
+  return res.json({
+    message: 'Hello World',
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Version and build info endpoint
 router.get('/version', (_req: Request, res: Response) => {
   return res.json({
