@@ -154,5 +154,57 @@ describe('API routes', () => {
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
     });
+
+  describe('GET /api/actions/unified', () => {
+    test('requires authentication', async () => {
+      const res = await request(app).get('/api/actions/unified');
+      expect(res.status).toBe(401);
+    });
+
+    test('returns unified action array when authenticated', async () => {
+      const token = signToken({ username: 'testuser', account: 'default' });
+      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.actions).toBeDefined();
+      expect(Array.isArray(res.body.actions)).toBe(true);
+      expect(res.body.pagination).toBeDefined();
+      expect(res.body.pagination).toMatchObject({
+        total: expect.any(Number),
+        limit: expect.any(Number),
+        offset: expect.any(Number),
+        hasMore: expect.any(Boolean),
+      });
+    });
+
+    test('actions have consistent unified schema', async () => {
+      const token = signToken({ username: 'testuser', account: 'default' });
+      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      if (res.body.actions.length > 0) {
+        const action = res.body.actions[0];
+        expect(action).toHaveProperty('platform');
+        expect(action).toHaveProperty('action');
+        expect(action).toHaveProperty('timestamp');
+        expect(action).toHaveProperty('status');
+        expect(action).toHaveProperty('metadata');
+        expect(action.metadata).toMatchObject({
+          id: expect.any(String),
+          account: expect.any(String),
+        });
+      }
+    });
+
+    test('supports pagination via limit and offset', async () => {
+      const token = signToken({ username: 'testuser', account: 'default' });
+      const res1 = await request(app).get('/api/actions/unified?limit=1').set('Cookie', `token=${token}`);
+      expect(res1.status).toBe(200);
+      expect(res1.body.actions.length).toBeLessThanOrEqual(1);
+      
+      const res2 = await request(app).get('/api/actions/unified?limit=5&offset=0').set('Cookie', `token=${token}`);
+      expect(res2.status).toBe(200);
+      expect(res2.body.pagination.offset).toBe(0);
+    });
+  });
+
   });
 });
