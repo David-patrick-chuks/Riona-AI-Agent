@@ -55,6 +55,16 @@ app.use(metricsMiddleware);
 // Serve static files from the 'public' directory
 app.use(express.static('frontend/dist'));
 
+// Health check for bounty testing
+app.get('/hello', (_req, res) => {
+  res.json({ ok: true });
+});
+
+// Health check for bounty testing
+app.get('/hello', (_req, res) => {
+  res.json({ ok: true });
+});
+
 // API Routes
 app.use('/api', apiRoutes);
 
