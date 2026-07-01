@@ -1238,6 +1238,63 @@ router.get('/actions', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const fetchLimit = Math.min(100, limit + offset);
+
+    const [instagramLogs, twitterLogs] = await Promise.all([
+      listActionLogs({
+        limit: fetchLimit,
+        offset: 0,
+        account,
+        platform: 'instagram',
+      }),
+      listActionLogs({
+        limit: fetchLimit,
+        offset: 0,
+        account,
+        platform: 'twitter',
+      }),
+    ]);
+
+    const actions = [...instagramLogs.actions, ...twitterLogs.actions]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(offset, offset + limit)
+      .map((entry) => ({
+        platform: entry.platform,
+        action: entry.action,
+        timestamp: entry.createdAt,
+        status: entry.status,
+        metadata: {
+          account: entry.account,
+          username: entry.username ?? null,
+          error: entry.error ?? null,
+          details: entry.details ?? {},
+        },
+      }));
+
+    const total = instagramLogs.pagination.total + twitterLogs.pagination.total;
+
+    return res.json({
+      actions,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + actions.length < total,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions listing error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action logs' });
+  }
+});
+
 router.get('/actions/summary', async (req: Request, res: Response) => {
   try {
     const rawLimit = Number(req.query.limit);

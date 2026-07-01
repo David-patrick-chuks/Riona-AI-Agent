@@ -26,7 +26,10 @@ jest.mock('../client/Instagram', () => ({
 jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
-  listActionLogs: jest.fn().mockResolvedValue([]),
+  listActionLogs: jest.fn().mockResolvedValue({
+    actions: [],
+    pagination: { total: 0, limit: 20, offset: 0, hasMore: false },
+  }),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,6 +50,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listActionLogs } from '../services/actionLog';
 
 const app = express();
 app.use(express.json());
@@ -153,6 +157,90 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified merges instagram and twitter actions with pagination', async () => {
+      const mockedListActionLogs = listActionLogs as jest.MockedFunction<typeof listActionLogs>;
+      mockedListActionLogs
+        .mockResolvedValueOnce({
+          actions: [
+            {
+              id: 'ig-1',
+              platform: 'instagram',
+              action: 'like',
+              account: 'default',
+              username: 'ig-user',
+              status: 'success',
+              details: { mediaId: '123' },
+              createdAt: '2026-07-01T08:30:00.000Z',
+            },
+          ],
+          pagination: { total: 1, limit: 2, offset: 0, hasMore: false },
+        })
+        .mockResolvedValueOnce({
+          actions: [
+            {
+              id: 'tw-1',
+              platform: 'twitter',
+              action: 'tweet',
+              account: 'default',
+              username: 'tw-user',
+              status: 'error',
+              error: 'rate limit',
+              details: { tweetId: '456' },
+              createdAt: '2026-07-01T08:31:00.000Z',
+            },
+          ],
+          pagination: { total: 1, limit: 2, offset: 0, hasMore: false },
+        });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=2&offset=0&account=default')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(mockedListActionLogs).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ platform: 'instagram', limit: 2, offset: 0, account: 'default' }),
+      );
+      expect(mockedListActionLogs).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ platform: 'twitter', limit: 2, offset: 0, account: 'default' }),
+      );
+      expect(res.body).toEqual({
+        actions: [
+          {
+            platform: 'twitter',
+            action: 'tweet',
+            timestamp: '2026-07-01T08:31:00.000Z',
+            status: 'error',
+            metadata: {
+              account: 'default',
+              username: 'tw-user',
+              error: 'rate limit',
+              details: { tweetId: '456' },
+            },
+          },
+          {
+            platform: 'instagram',
+            action: 'like',
+            timestamp: '2026-07-01T08:30:00.000Z',
+            status: 'success',
+            metadata: {
+              account: 'default',
+              username: 'ig-user',
+              error: null,
+              details: { mediaId: '123' },
+            },
+          },
+        ],
+        pagination: {
+          total: 2,
+          limit: 2,
+          offset: 0,
+          hasMore: false,
+        },
+      });
     });
   });
 });
