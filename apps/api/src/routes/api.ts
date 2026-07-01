@@ -239,6 +239,12 @@ const apiEndpoints = [
     auth: true,
     description: 'Export logs as CSV/JSON',
   },
+    {
+    method: 'GET',
+    path: '/api/actions/unified',
+    auth: true,
+    description: 'Unified cross-platform action log (IG + Twitter) with consistent schema',
+  },
   { method: 'GET', path: '/api/actions/stats', auth: true, description: 'Get action statistics' },
   {
     method: 'DELETE',
@@ -1235,6 +1241,65 @@ router.get('/actions', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Actions listing error:', error);
     return res.status(500).json({ error: 'Failed to load action logs' });
+  }
+});
+
+
+// Unified cross-platform action log endpoint
+router.get('/actions/unified', async (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const rawOffset = Number(req.query.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+    const account = typeof req.query.account === 'string' ? req.query.account : undefined;
+    const sort = req.query.sort === 'asc' ? 'asc' : 'desc';
+
+    // Fetch from both platforms
+    const igResult = await listActionLogs({
+      limit, offset, account, platform: 'instagram', sort,
+    });
+    const twResult = await listActionLogs({
+      limit, offset, account, platform: 'twitter', sort,
+    });
+
+    // Merge and normalize to consistent schema
+    const normalize = (a: ActionLogRecord) => ({
+      platform: a.platform,
+      action: a.action,
+      timestamp: a.createdAt,
+      status: a.status,
+      metadata: {
+        id: a.id,
+        account: a.account,
+        username: a.username,
+        error: a.error,
+        details: a.details,
+      },
+    });
+
+    const all = [...igResult.actions.map(normalize), ...twResult.actions.map(normalize)];
+    all.sort((a, b) => sort === 'asc'
+      ? new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+
+    // Apply pagination post-merge
+    const paginated = all.slice(offset, offset + limit);
+    const total = igResult.pagination.total + twResult.pagination.total;
+
+    return res.json({
+      actions: paginated,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total,
+      },
+    });
+  } catch (error) {
+    logger.error('Unified actions error:', error);
+    return res.status(500).json({ error: 'Failed to load unified action log' });
   }
 });
 
