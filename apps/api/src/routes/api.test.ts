@@ -61,6 +61,12 @@ describe('API routes', () => {
       expect(res.text).toBe('pong');
     });
 
+    test('GET /api/hello returns ok true', async () => {
+      const res = await request(app).get('/api/hello');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
+
     test('GET /api/version returns build metadata', async () => {
       const res = await request(app).get('/api/version');
       expect(res.status).toBe(200);
