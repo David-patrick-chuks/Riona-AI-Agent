@@ -2,13 +2,13 @@ import express, { Request, Response, NextFunction } from 'express';
 import {
   getIgClient,
   closeIgClient,
-  scrapeFollowersHandler,
-  getIgClientStatus,
-  getIgClientsSnapshot,
-} from '../client/Instagram';
-import {
-  getPosterClient,
-  schedulePhotoPost,
+import { getIgClient, closeIgClient, getIgClientStatus, getIgClientsSnapshot } from '../client/Instagram';
+import { getAccount, getAccountsMap } from '../config/accounts';
+import { getMetrics } from '../services/metrics';
+import { logAction, getActionSummary, listActionLogs, getUnifiedActionLog } from '../services/actionLog';
+import { isDbConnected } from '../config/db';
+import { signToken, verifyToken } from '../secret';
+
   cancelScheduledPost,
   listScheduledPosts,
 } from '../client/InstagramPoster';
@@ -212,12 +212,25 @@ const apiEndpoints = [
   // Scraping
   {
     method: 'GET',
-    path: '/api/scrape-followers',
-    auth: true,
-    description: 'Scrape followers (download)',
-    rateLimit: '2/5min',
-  },
-  {
+  }
+});
+
+router.get('/actions/unified', authenticate, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string, 10) || 0, 0);
+    
+    const actions = await getUnifiedActionLog({ limit, offset });
+    res.json(actions);
+  } catch (err) {
+    logger.error('Failed to get unified action log', { error: err });
+    res.status(500).json({ error: 'Failed to get unified action log' });
+  }
+});
+
+router.get('/actions/summary', authenticate, async (req, res) => {
+  try {
+    const summary = await getActionSummary();
     method: 'POST',
     path: '/api/scrape-followers',
     auth: true,
