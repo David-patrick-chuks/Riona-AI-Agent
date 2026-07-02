@@ -27,6 +27,7 @@ jest.mock('../services/actionLog', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
+  listUnifiedActionLogs: jest.fn(),
 }));
 
 jest.mock('../services/metrics', () => ({
@@ -47,6 +48,11 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import apiRoutes from './api';
 import { signToken } from '../secret';
+import { listUnifiedActionLogs } from '../services/actionLog';
+
+const listUnifiedActionLogsMock = listUnifiedActionLogs as jest.MockedFunction<
+  typeof listUnifiedActionLogs
+>;
 
 const app = express();
 app.use(express.json());
@@ -153,6 +159,57 @@ describe('API routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.username).toBe('testuser');
       expect(res.body.account).toBe('default');
+    });
+
+    test('GET /api/actions/unified returns paginated Instagram and Twitter actions', async () => {
+      listUnifiedActionLogsMock.mockResolvedValueOnce({
+        actions: [
+          {
+            platform: 'instagram',
+            action: 'post-photo',
+            timestamp: '2026-07-02T10:00:00.000Z',
+            status: 'success',
+            metadata: { id: 'ig-1', account: 'default', details: { mediaId: 'media-1' } },
+          },
+          {
+            platform: 'twitter',
+            action: 'post-tweet',
+            timestamp: '2026-07-02T10:05:00.000Z',
+            status: 'error',
+            metadata: { id: 'tw-1', account: 'default', error: 'rate limit exceeded' },
+          },
+        ],
+        pagination: {
+          total: 2,
+          limit: 2,
+          offset: 1,
+          hasMore: false,
+        },
+      });
+
+      const res = await request(app)
+        .get('/api/actions/unified?limit=2&offset=1')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.actions).toEqual([
+        expect.objectContaining({
+          platform: 'instagram',
+          action: 'post-photo',
+          timestamp: '2026-07-02T10:00:00.000Z',
+          status: 'success',
+          metadata: expect.any(Object),
+        }),
+        expect.objectContaining({
+          platform: 'twitter',
+          action: 'post-tweet',
+          timestamp: '2026-07-02T10:05:00.000Z',
+          status: 'error',
+          metadata: expect.any(Object),
+        }),
+      ]);
+      expect(res.body.pagination).toMatchObject({ total: 2, limit: 2, offset: 1 });
+      expect(listUnifiedActionLogsMock).toHaveBeenCalledWith({ limit: 2, offset: 1 });
     });
   });
 });
