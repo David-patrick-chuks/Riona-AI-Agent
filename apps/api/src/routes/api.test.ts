@@ -17,16 +17,15 @@ jest.mock('../config/db', () => ({
 
 jest.mock('../client/Instagram', () => ({
   getIgClient: jest.fn(),
-  closeIgClient: jest.fn(),
-  scrapeFollowersHandler: jest.fn(),
   logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
-  getInstagramActionLogs: jest.fn().mockResolvedValue([]),
-  getTwitterActionLogs: jest.fn().mockResolvedValue([]),
+  getUnifiedActionLog: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../services/metrics', () => ({
+jest.mock('../services/actionLog', () => ({
+  logAction: jest.fn().mockResolvedValue(undefined),
   getActionSummary: jest.fn().mockResolvedValue({}),
   listActionLogs: jest.fn().mockResolvedValue([]),
 }));
@@ -110,85 +109,64 @@ describe('API routes', () => {
     });
   });
 
-  describe('authenticated endpoints', () => {
-    const token = signToken({ username: 'testuser', account: 'default' });
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
 
-    test('GET /api/health returns extended payload with valid token', async () => {
-      const res = await request(app).get('/api/health').set('Cookie', `token=${token}`);
+    test('GET /api/actions/unified returns merged action log with pagination', async () => {
+      const { getUnifiedActionLog } = require('../services/actionLog');
+      const mockActions = [
+        {
+          platform: 'instagram',
+          action: 'like',
+          timestamp: '2024-01-01T00:00:00.000Z',
+          status: 'success',
+          metadata: { postId: '123' },
+        },
+        {
+          platform: 'twitter',
+          action: 'tweet',
+          timestamp: '2024-01-02T00:00:00.000Z',
+          status: 'success',
+          metadata: { tweetId: '456' },
+        },
+      ];
+      getUnifiedActionLog.mockResolvedValue(mockActions);
+
+      const res = await request(app)
+        .get('/api/actions/unified')
+        .set('Cookie', `token=${token}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body).toHaveLength(2);
+      expect(res.body[0]).toHaveProperty('platform');
+      expect(res.body[0]).toHaveProperty('action');
+      expect(res.body[0]).toHaveProperty('timestamp');
+      expect(res.body[0]).toHaveProperty('status');
+      expect(res.body[0]).toHaveProperty('metadata');
+      expect(getUnifiedActionLog).toHaveBeenCalledWith({ limit: 50, offset: 0 });
+    });
+
+    test('GET /api/actions/unified supports limit and offset query params', async () => {
+      const { getUnifiedActionLog } = require('../services/actionLog');
+      await request(app)
+        .get('/api/actions/unified?limit=10&offset=5')
+        .set('Cookie', `token=${token}`);
+      expect(getUnifiedActionLog).toHaveBeenCalledWith({ limit: 10, offset: 5 });
+    });
+  });
+});
       expect(res.status).toBe(200);
       expect(res.body.ok).toBe(true);
       expect(res.body.igClient).toBeDefined();
       expect(res.body.geminiKeys).toBeDefined();
-      expect(res.body.igClient).toBeDefined();
-      expect(res.body.geminiKeys).toBeDefined();
-    });
-
-    test('GET /api/actions/unified returns merged action logs with default pagination', async () => {
-      const { getInstagramActionLogs, getTwitterActionLogs } = require('../services/actionLog');
-      getInstagramActionLogs.mockResolvedValue([
-        { id: 'ig-1', platform: 'instagram', action: 'like', timestamp: '2024-01-01T00:00:00Z', status: 'success', metadata: { postId: '123' } },
-      ]);
-      getTwitterActionLogs.mockResolvedValue([
-        { id: 'tw-1', platform: 'twitter', action: 'tweet', timestamp: '2024-01-02T00:00:00Z', status: 'success', metadata: { tweetId: '456' } },
-      ]);
-
-      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(2);
-      expect(res.body[0]).toMatchObject({
-        platform: expect.any(String),
-        action: expect.any(String),
-        timestamp: expect.any(String),
-        status: expect.any(String),
-        metadata: expect.any(Object),
-      });
-    });
-
-    test('GET /api/actions/unified supports limit and offset pagination', async () => {
-      const { getInstagramActionLogs, getTwitterActionLogs } = require('../services/actionLog');
-      getInstagramActionLogs.mockResolvedValue([
-        { id: 'ig-1', platform: 'instagram', action: 'like', timestamp: '2024-01-01T00:00:00Z', status: 'success', metadata: { postId: '123' } },
-        { id: 'ig-2', platform: 'instagram', action: 'comment', timestamp: '2024-01-03T00:00:00Z', status: 'success', metadata: { postId: '124' } },
-      ]);
-      getTwitterActionLogs.mockResolvedValue([
-        { id: 'tw-1', platform: 'twitter', action: 'tweet', timestamp: '2024-01-02T00:00:00Z', status: 'success', metadata: { tweetId: '456' } },
-      ]);
-
-      const res = await request(app).get('/api/actions/unified?limit=2&offset=1').set('Cookie', `token=${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body.length).toBe(2);
-      expect(res.body[0].id).toBe('tw-1');
-      expect(res.body[1].id).toBe('ig-2');
-    });
-
-    test('GET /api/actions/unified returns empty array when no logs exist', async () => {
-      const { getInstagramActionLogs, getTwitterActionLogs } = require('../services/actionLog');
-      getInstagramActionLogs.mockResolvedValue([]);
-      getTwitterActionLogs.mockResolvedValue([]);
-
-      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual([]);
-    });
-
-    test('GET /api/actions/unified sorts actions by timestamp descending', async () => {
-      const { getInstagramActionLogs, getTwitterActionLogs } = require('../services/actionLog');
-      getInstagramActionLogs.mockResolvedValue([
-        { id: 'ig-1', platform: 'instagram', action: 'like', timestamp: '2024-01-01T00:00:00Z', status: 'success', metadata: {} },
-      ]);
-      getTwitterActionLogs.mockResolvedValue([
-        { id: 'tw-1', platform: 'twitter', action: 'tweet', timestamp: '2024-01-02T00:00:00Z', status: 'success', metadata: {} },
-      ]);
-
-      const res = await request(app).get('/api/actions/unified').set('Cookie', `token=${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body[0].timestamp).toBe('2024-01-02T00:00:00Z');
-      expect(res.body[1].timestamp).toBe('2024-01-01T00:00:00Z');
     });
 
     test('GET /api/config returns feature flags when authenticated', async () => {
-      const res = await request(app).get('/a
+      const res = await request(app).get('/api/config').set('Cookie', `token=${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.features).toMatchObject({
         dbConnected: false,
         igAgentEnabled: false,
       });
