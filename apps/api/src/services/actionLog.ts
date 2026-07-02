@@ -26,6 +26,14 @@ export type ActionLogRecord = {
   createdAt: string;
 };
 
+export type UnifiedActionRecord = {
+  platform: string;
+  action: string;
+  timestamp: string;
+  status: ActionLogStatus;
+  metadata: Record<string, unknown>;
+};
+
 type ActionSummary = {
   total: number;
   success: number;
@@ -39,6 +47,7 @@ export type ActionLogFilterOptions = {
   limit?: number;
   offset?: number;
   platform?: string;
+  platforms?: string[];
   account?: string;
   status?: ActionLogStatus;
   action?: string;
@@ -57,6 +66,10 @@ export type PaginatedActionLogs = {
     offset: number;
     hasMore: boolean;
   };
+};
+
+export type PaginatedUnifiedActionLogs = Omit<PaginatedActionLogs, 'actions'> & {
+  actions: UnifiedActionRecord[];
 };
 
 const getActionLogPath = () =>
@@ -178,6 +191,12 @@ const queryDbLogs = async (
   if (options.platform) {
     values.push(options.platform);
     conditions.push(`platform = $${values.length}`);
+  } else if (options.platforms?.length) {
+    const platformParams = options.platforms.map((platform) => {
+      values.push(platform);
+      return `$${values.length}`;
+    });
+    conditions.push(`platform IN (${platformParams.join(', ')})`);
   }
   if (options.account) {
     values.push(options.account);
@@ -271,6 +290,13 @@ const filterFileLogs = (
 ): ActionLogRecord[] => {
   return entries.filter((entry) => {
     if (options.platform && entry.platform !== options.platform) return false;
+    if (
+      !options.platform &&
+      options.platforms?.length &&
+      !options.platforms.includes(entry.platform)
+    ) {
+      return false;
+    }
     if (options.account && entry.account !== options.account) return false;
     if (options.status && entry.status !== options.status) return false;
     if (options.action && entry.action !== options.action) return false;
@@ -347,6 +373,43 @@ export const listActionLogsLegacy = async (options?: {
 }): Promise<ActionLogRecord[]> => {
   const result = await listActionLogs(options);
   return result.actions;
+};
+
+const toUnifiedActionRecord = (entry: ActionLogRecord): UnifiedActionRecord => {
+  const metadata: Record<string, unknown> = {
+    id: entry.id,
+    account: entry.account,
+  };
+
+  if (entry.username) metadata.username = entry.username;
+  if (entry.error) metadata.error = entry.error;
+  if (entry.details) metadata.details = entry.details;
+
+  return {
+    platform: entry.platform,
+    action: entry.action,
+    timestamp: entry.createdAt,
+    status: entry.status,
+    metadata,
+  };
+};
+
+export const listUnifiedActionLogs = async (options?: {
+  limit?: number;
+  offset?: number;
+  sort?: 'asc' | 'desc';
+}): Promise<PaginatedUnifiedActionLogs> => {
+  const result = await listActionLogs({
+    limit: options?.limit,
+    offset: options?.offset,
+    sort: options?.sort,
+    platforms: ['instagram', 'twitter'],
+  });
+
+  return {
+    actions: result.actions.map(toUnifiedActionRecord),
+    pagination: result.pagination,
+  };
 };
 
 export const getActionSummary = async (options?: {
