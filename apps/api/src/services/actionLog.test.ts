@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { closeDB } from '../config/db';
-import { getActionSummary, listActionLogs, logAction } from './actionLog';
+import { getActionSummary, listActionLogs, listUnifiedActionLogs, logAction } from './actionLog';
 
 describe('action log service', () => {
   const originalPath = process.env.ACTION_LOG_PATH;
@@ -96,6 +96,44 @@ describe('action log service', () => {
     expect(result.actions).toHaveLength(1);
     expect(result.actions[0].action).toBe('interact');
     expect(result.actions[0].status).toBe('error');
+  });
+
+  test('returns unified Instagram and Twitter action logs', async () => {
+    await logAction({
+      platform: 'instagram',
+      action: 'post-photo',
+      status: 'success',
+      account: 'default',
+      details: { mediaId: 'media-1' },
+    });
+    await logAction({
+      platform: 'twitter',
+      action: 'post-tweet',
+      status: 'error',
+      account: 'default',
+      error: 'rate limit exceeded',
+    });
+    await logAction({
+      platform: 'github',
+      action: 'open-pr',
+      status: 'success',
+      account: 'default',
+    });
+
+    const result = await listUnifiedActionLogs({ limit: 10 });
+
+    expect(result.actions).toHaveLength(2);
+    expect(result.actions.map((entry) => entry.platform).sort()).toEqual(['instagram', 'twitter']);
+    expect(result.actions[0]).toEqual(
+      expect.objectContaining({
+        platform: expect.any(String),
+        action: expect.any(String),
+        timestamp: expect.any(String),
+        status: expect.any(String),
+        metadata: expect.any(Object),
+      }),
+    );
+    expect(result.pagination.total).toBe(2);
   });
 
   describe('filtering', () => {
