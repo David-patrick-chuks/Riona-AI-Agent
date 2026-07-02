@@ -8,6 +8,7 @@ import session from 'express-session';
 import logger, { setupErrorHandlers } from './config/logger';
 import { setup_HandleError } from './utils';
 import apiRoutes from './routes/api';
+import { registerHelloRoute } from './routes/hello';
 import { metricsMiddleware } from './services/metrics';
 import { verifyToken, getTokenFromRequest } from './secret';
 import { getIgClient, closeIgClient } from './client/Instagram';
@@ -51,6 +52,8 @@ app.use(
   }),
 );
 app.use(metricsMiddleware);
+
+registerHelloRoute(app);
 
 // Serve static files from the 'public' directory
 app.use(express.static('frontend/dist'));
